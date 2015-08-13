@@ -190,11 +190,13 @@ buildtimedata: VERSION
 
 releasebuild: buildtimedata
 	cd \$(BUILDDIR); \$(MAKE) release
+	@touch \$(BUILDDIR)/bin/classes.jar
 
 debugbuild: buildtimedata
 	cd \$(BUILDDIR); \$(MAKE) debug
+	@touch \$(BUILDDIR)/bin/classes.jar
 
-export:
+export: \$(BUILDDIR)/bin/classes.jar
 	@printf "\\n\\nExporting to ./export\\n\\n"
 	@mkdir -p export
 	@rm -rf export/*
