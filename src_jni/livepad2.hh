@@ -38,7 +38,8 @@
 
 class LivePad2 : public KammoGUI::SVGCanvas::SVGDocument,
 		 public RemoteInterface::RIMachine::RIMachineSetListener,
-		 public RemoteInterface::GlobalControlObject::PlaybackStateListener {
+		 public RemoteInterface::GlobalControlObject::PlaybackStateListener,
+		 public KammoGUI::SensorEvent::Listener {
 private:
 	static LivePad2 *l_pad2;
 
@@ -54,6 +55,10 @@ private:
 	std::string chord_mode, mode, controller;
 
 	bool is_recording = false, is_playing = false;
+
+	// last event data
+	bool f_active[10];
+	float l_ev_x[10], l_ev_y[10], l_ev_z;
 
 	KammoGUI::SVGCanvas::ElementReference graphArea_element;
 	KammoGUI::SVGCanvas::SVGRect graphArea_viewport;
@@ -124,6 +129,8 @@ public:
 	virtual void playback_state_changed(bool is_playing) override;
 	virtual void recording_state_changed(bool is_recording) override;
 	virtual void periodic_playback_update(int current_line) override { /* empty */ }
+
+	virtual void on_sensor_event(std::shared_ptr<KammoGUI::SensorEvent> event) override;
 };
 
 #endif

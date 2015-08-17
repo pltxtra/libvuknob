@@ -130,6 +130,9 @@ void *get_controller_ptr(MachineTable *mt, void *void_instance,
 		if(strcmp(name, "volume") == 0) {
 			return &(instance->volume);
 		}
+		if(strcmp(name, "pitch_bend") == 0) {
+			return &(instance->pitch_bend);
+		}
 	}
 
 	return NULL;
@@ -244,6 +247,15 @@ void execute(MachineTable *mt, void *void_instance) {
 					int param = mev->data[1];
 					int value = mev->data[2];
 					hexter_instance_control_change(instance, param, value);
+				}
+				break;
+				case MIDI_PITCH_BEND:
+				{
+					int value_lsb = mev->data[1];
+					int value_msb = mev->data[2];
+					int value = (value_msb << 7) | value_lsb;
+					value -= 8192; // hexter expects a value in the range of [-8192 8191]
+					hexter_instance_pitch_bend(instance, value);
 				}
 				break;
 				default:

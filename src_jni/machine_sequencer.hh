@@ -175,7 +175,7 @@ private:
 		virtual void queue_note_on(int note, int velocity, int channel = 0);
 		virtual void queue_note_off(int note, int velocity, int channel = 0);
 		virtual void queue_controller(int controller, int value, int channel = 0);
-
+		virtual void queue_pitch_bend(int value_lsb, int value_msb, int channel = 0);
 	};
 
 	class PadMidiExportBuilder : public MidiEventBuilder {
@@ -310,10 +310,10 @@ public:
 		int scale_data[21];
 
 		 // if coarse == -1 default to using pad to set velocity.. otherwise pad will set the assigned controller
-		int pad_controller_coarse, pad_controller_fine;
+		int pad_controller_coarse[2], pad_controller_fine[2];
 
-		void set_coarse_controller(int c);
-		void set_fine_controller(int c);
+		void set_coarse_controller(int id, int c);
+		void set_fine_controller(int id, int c);
 		void set_mode(PadMode mode);
 		void set_arpeggio_pattern(int arp_pattern);
 		void set_chord_mode(ChordMode mode);
@@ -334,10 +334,10 @@ private:
 	class PadEvent {
 	public:
 		PadEvent();
-		PadEvent(int finger_id, PadEvent_t t, int x, int y);
+		PadEvent(int finger_id, PadEvent_t t, int x, int y, int z);
 
 		PadEvent_t t;
-		int finger, x, y;
+		int finger, x, y, z;
 	};
 
 	class PadMotion : public PadConfiguration {
@@ -350,6 +350,7 @@ private:
 
 		std::vector<int> x;
 		std::vector<int> y;
+		std::vector<int> z;
 		std::vector<int> t; // relative number of ticks from the start_tick
 
 		int start_tick;
@@ -364,7 +365,7 @@ private:
 		void get_padmotion_xml(int finger, std::ostringstream &stream);
 
 		PadMotion(Pad *parent_config,
-			  int sequence_position, int x, int y);
+			  int sequence_position, int x, int y, int z);
 
 		// used to parse PadMotion xml when using project level < 5
 		PadMotion(Pad *parent_config,
@@ -372,11 +373,11 @@ private:
 			  const KXMLDoc &motion_xml);
 
 		// used to parse PadMotion xml when using project level >= 5
-		PadMotion(Pad *parent_config,
+		PadMotion(int project_interface_level, Pad *parent_config,
 			  const KXMLDoc &motion_xml);
 
 		void quantize();
-		void add_position(int x, int y);
+		void add_position(int x, int y, int z);
 		void terminate();
 		static void can_be_deleted_now(PadMotion *can_be_deleted);
 		static void delete_motion(PadMotion *to_be_deleted);
@@ -552,7 +553,7 @@ public:
 	public:
 		PadSession(Pad *parent, int start_at_tick, bool terminated);
 		PadSession(Pad *parent, int start_at_tick, PadMotion *padmot, int finger_id);
-		PadSession(Pad *parent, const KXMLDoc &ps_xml);
+		PadSession(int project_interface_level, Pad *parent, const KXMLDoc &ps_xml);
 
 		PadFinger finger[MAX_PAD_FINGERS];
 
@@ -585,7 +586,6 @@ public:
 	private:
 		friend class PadMotion;
 
-		int pad_width, pad_height;
 		moodycamel::ReaderWriterQueue<PadEvent> *padEventQueue;
 
 		PadSession *current_session;
@@ -613,8 +613,7 @@ public:
 		Arpeggiator arpeggiator;
 
 	public: // actually public (lock protected)
-		void set_pad_resolution(int width, int height);
-		void enqueue_event(int finger_id, PadEvent_t t, int x, int y);
+		void enqueue_event(int finger_id, PadEvent_t t, int x, int y, int z); // x, y, z should be 14 bit values
 		void set_record(bool do_record);
 		void set_quantize(bool do_quantize);
 		void clear_pad();

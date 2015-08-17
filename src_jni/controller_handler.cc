@@ -154,6 +154,12 @@ void process_value_changed(KammoGUI::Widget *wid) {
 	}
 	break;
 
+	case RemoteInterface::RIMachine::RIController::ric_double:
+	{
+		ctr->set_value(value); // no conversion needed
+	}
+	break;
+
 	case RemoteInterface::RIMachine::RIController::ric_bool:
 	{
 		bool val = value == 1.0 ? true : false;
@@ -175,6 +181,7 @@ void process_value_changed(KammoGUI::Widget *wid) {
 		break;
 	case RemoteInterface::RIMachine::RIController::ric_int:
 	case RemoteInterface::RIMachine::RIController::ric_float:
+	case RemoteInterface::RIMachine::RIController::ric_double:
 	case RemoteInterface::RIMachine::RIController::ric_bool:
 	case RemoteInterface::RIMachine::RIController::ric_string:
 	default:
@@ -228,6 +235,19 @@ void add_scale(KammoGUI::Container *cnt,
 	}
 	break;
 
+	case RemoteInterface::RIMachine::RIController::ric_double:
+	{
+		double _min; ctr->get_min(_min);
+		double _max; ctr->get_max(_max);
+		double _step; ctr->get_step(_step);
+		double _val; ctr->get_value(_val);
+		min = _min;
+		max = _max;
+		step = _step;
+		value = _val;
+	}
+	break;
+
 	case RemoteInterface::RIMachine::RIController::ric_bool:
 	{
 		bool _val; ctr->get_value(_val);
@@ -256,6 +276,7 @@ void add_scale(KammoGUI::Container *cnt,
 		break;
 	case RemoteInterface::RIMachine::RIController::ric_int:
 	case RemoteInterface::RIMachine::RIController::ric_float:
+	case RemoteInterface::RIMachine::RIController::ric_double:
 	case RemoteInterface::RIMachine::RIController::ric_bool:
 	case RemoteInterface::RIMachine::RIController::ric_string:
 	default:
@@ -324,6 +345,7 @@ void rebuild_controller_list(std::shared_ptr<RemoteInterface::RIMachine> ri_m, s
 			case RemoteInterface::RIMachine::RIController::ric_enum:
 			case RemoteInterface::RIMachine::RIController::ric_int:
 			case RemoteInterface::RIMachine::RIController::ric_float:
+			case RemoteInterface::RIMachine::RIController::ric_double:
 			case RemoteInterface::RIMachine::RIController::ric_bool:
 				add_scale(cnt,ctr);
 				break;

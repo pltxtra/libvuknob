@@ -381,6 +381,12 @@ namespace RemoteInterface {
 		virtual void on_delete(Client *context); // called on client side when it's about to be deleted
 
 	public:
+		class FailedToCreateMachine : public std::runtime_error {
+		public:
+			FailedToCreateMachine() : runtime_error("Server failed to create the machine.") {}
+			virtual ~FailedToCreateMachine() {}
+		};
+
 		HandleList(const Factory *factory, const Message &serialized); // create client side HandleList
 		HandleList(int32_t new_obj_id, const Factory *factory); // create server side HandleList
 
@@ -566,7 +572,8 @@ namespace RemoteInterface {
 				ric_bool = 2,
 				ric_string = 3,
 				ric_enum = 4, // integer values map to a name
-				ric_sigid = 5 // integer values map to sample bank index
+				ric_sigid = 5, // integer values map to sample bank index
+				ric_double = 6
 			};
 
 			RIController(int ctrl_id, Machine::Controller *ctrl);
@@ -583,12 +590,16 @@ namespace RemoteInterface {
 			void get_min(float &val);
 			void get_max(float &val);
 			void get_step(float &val);
+			void get_min(double &val);
+			void get_max(double &val);
+			void get_step(double &val);
 			void get_min(int &val);
 			void get_max(int &val);
 			void get_step(int &val);
 
 			void get_value(int &val);
 			void get_value(float &val);
+			void get_value(double &val);
 			void get_value(bool &val);
 			void get_value(std::string &val);
 
@@ -596,6 +607,7 @@ namespace RemoteInterface {
 
 			void set_value(int val);
 			void set_value(float val);
+			void set_value(double val);
 			void set_value(bool val);
 			void set_value(const std::string &val);
 
@@ -618,11 +630,15 @@ namespace RemoteInterface {
 			struct data_f {
 				float min, max, step, value;
 			};
+			struct data_d {
+				double min, max, step, value;
+			};
 			struct data_i {
 				int min, max, step, value;
 			};
 			union {
 				data_f f;
+				data_d d;
 				data_i i;
 			} data;
 
@@ -672,7 +688,7 @@ namespace RemoteInterface {
 		void pad_set_chord_mode(ChordMode_t chord_mode);
 		void pad_set_arpeggio_pattern(const std::string &arp_pattern);
 		void pad_clear();
-		void pad_enqueue_event(int finger, PadEvent_t event_type, float ev_x, float ev_y);
+		void pad_enqueue_event(int finger, PadEvent_t event_type, float ev_x, float ev_y, float ev_z);
 		void enqueue_midi_data(size_t len, const char* data);
 
 		int get_nr_of_loops();

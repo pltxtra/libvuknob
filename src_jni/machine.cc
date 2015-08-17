@@ -75,7 +75,8 @@ Machine::Controller::Controller(
 	ptr = _ptr;
 
 	min_i = -32768;
-	min_f = 0.0;
+	min_f = 0.f;
+	min_d = 0.0;
 	if(min != "") {
 		if(tp == c_int || tp == c_enum) {
 			std::string strng = min;
@@ -85,11 +86,16 @@ Machine::Controller::Controller(
 			std::string strng = min;
 			std::istringstream st(strng);
 			st >> min_f;
+		} else if(tp == c_double) {
+			std::string strng = min;
+			std::istringstream st(strng);
+			st >> min_d;
 		}
 	}
 
 	max_i = 32767;
-	max_f = 1.0;
+	max_f = 1.0f;
+	max_d = 1.0;
 	if(max != "") {
 		if(tp == c_int || tp == c_enum) {
 			std::string strng = max;
@@ -99,15 +105,24 @@ Machine::Controller::Controller(
 			std::string strng = max;
 			std::istringstream st(strng);
 			st >> max_f;
+		} else if(tp == c_double) {
+			std::string strng = max;
+			std::istringstream st(strng);
+			st >> max_d;
 		}
 	}
-	step_f = (max_f - min_f) / 10.0;
+	step_f = (max_f - min_f) / 10.0f;
+	step_d = (max_d - min_d) / 10.0;
 	step_i = 1;
 	if(step != "") {
 		if(tp == c_float) {
 			std::string strng = step;
 			std::istringstream st(strng);
 			st >> step_f;
+		} else if(tp == c_double) {
+			std::string strng = step;
+			std::istringstream st(strng);
+			st >> step_d;
 		} else {
 			std::string strng = step;
 			std::istringstream st(strng);
@@ -127,7 +142,18 @@ void Machine::Controller::set_midi_controller(int _coarse, int _fine) {
 	if(has_midi_ctrl)
 		throw jException("Controller already mapped to MIDI controller!", jException::sanity_error);
 
-	if((_coarse < 0 || _coarse > 127) ||
+	bool coarse_ok =
+		(
+			(_coarse >=  0) &&
+			(_coarse < 128)
+			)
+		||
+		(
+			(_coarse >= sc_special_first) &&
+			(_coarse <= sc_special_last)
+			) ? true : false;
+
+	if((!coarse_ok) ||
 	   ((_fine != -1) && (_fine < -1 || _fine > 127)) ||
 	   _coarse == _fine)
 		throw jException("Trying to set illegal MIDI controller values.",
@@ -163,6 +189,18 @@ void Machine::Controller::get_step(float &val) {
 	val = step_f;
 }
 
+void Machine::Controller::get_min(double &val) {
+	val = min_d;
+}
+
+void Machine::Controller::get_max(double &val) {
+	val = max_d;
+}
+
+void Machine::Controller::get_step(double &val) {
+	val = step_d;
+}
+
 void Machine::Controller::get_min(int &val) {
 	val = min_i;
 }
@@ -175,116 +213,98 @@ void Machine::Controller::get_step(int &val) {
 	val = step_i;
 }
 
-void Machine::Controller::internal_get_value(int *val) {
-	*val = *((int *)ptr);
+void Machine::Controller::internal_get_value(int &val) {
+	val = *((int *)ptr);
 }
 
-void Machine::Controller::internal_get_value(float *val) {
+void Machine::Controller::internal_get_value(float &val) {
 	if(float_is_FTYPE)
-		*val = FTYPEtof(*((FTYPE *)ptr));
+		val = FTYPEtof(*((FTYPE *)ptr));
 	else
-		*val = *((float *)ptr);
+		val = *((float *)ptr);
 }
 
-void Machine::Controller::internal_get_value(bool *val) {
+void Machine::Controller::internal_get_value(double &val) {
+	val = *((double *)ptr);
+}
+
+void Machine::Controller::internal_get_value(bool &val) {
 	int k = *((int *)ptr);
-	if(k) *val = true;
-	else *val = false;
+	if(k) val = true;
+	else val = false;
 }
 
-void Machine::Controller::internal_get_value(std::string *val) {
-	*val = *((char *)ptr);
+void Machine::Controller::internal_get_value(std::string &val) {
+	val = *((char *)ptr);
 }
 
-void Machine::Controller::internal_set_value(int *val) {
-	if((*val) >= min_i && (*val) <= max_i)
-		*((int *)ptr) = *val;
+void Machine::Controller::internal_set_value(int val) {
+	if(val >= min_i && val <= max_i)
+		*((int *)ptr) = val;
 }
 
-void Machine::Controller::internal_set_value(float *val) {
-	if((*val) >= min_f && (*val) <= max_f) {
+void Machine::Controller::internal_set_value(float val) {
+	if(val >= min_f && val <= max_f) {
 		if(float_is_FTYPE)
-			*((FTYPE *)ptr) = ftoFTYPE(*val);
+			*((FTYPE *)ptr) = ftoFTYPE(val);
 		else
-			*((float *)ptr) = *val;
+			*((float *)ptr) = val;
 	}
 }
 
-void Machine::Controller::internal_set_value(bool *val) {
-	*((int *)ptr) = (*val) ? -1 : 0;
+void Machine::Controller::internal_set_value(double val) {
+	if(val >= min_d && val <= max_d) {
+		*((double *)ptr) = val;
+	}
 }
 
-void Machine::Controller::internal_set_value(std::string *val) {
+void Machine::Controller::internal_set_value(bool val) {
+	*((int *)ptr) = (val) ? -1 : 0;
+}
+
+void Machine::Controller::internal_set_value(const std::string &val) {
 	char *str = (char *)ptr;
-	strncpy(str, val->c_str(), STRING_CONTROLLER_SIZE);
-}
-
-void Machine::Controller::CALL_internal_get_value_int(void *p) {
-	std::pair<Machine::Controller *, int *> *d = (std::pair<Machine::Controller *, int *> *)p;
-	d->first->internal_get_value(d->second);
-}
-
-void Machine::Controller::CALL_internal_get_value_float(void *p) {
-	std::pair<Machine::Controller *, float *> *d = (std::pair<Machine::Controller *, float *> *)p;
-	d->first->internal_get_value(d->second);
-}
-
-void Machine::Controller::CALL_internal_get_value_bool(void *p) {
-	std::pair<Machine::Controller *, bool *> *d = (std::pair<Machine::Controller *, bool *> *)p;
-	d->first->internal_get_value(d->second);
-}
-
-void Machine::Controller::CALL_internal_get_value_string(void *p) {
-	std::pair<Machine::Controller *, std::string *> *d = (std::pair<Machine::Controller *, std::string *> *)p;
-	d->first->internal_get_value(d->second);
-}
-
-void Machine::Controller::CALL_internal_set_value_int(void *p) {
-	std::pair<Machine::Controller *, int *> *d = (std::pair<Machine::Controller *, int *> *)p;
-	d->first->internal_set_value(d->second);
-}
-
-void Machine::Controller::CALL_internal_set_value_float(void *p) {
-	std::pair<Machine::Controller *, float *> *d = (std::pair<Machine::Controller *, float *> *)p;
-	d->first->internal_set_value(d->second);
-}
-
-void Machine::Controller::CALL_internal_set_value_bool(void *p) {
-	std::pair<Machine::Controller *, bool *> *d = (std::pair<Machine::Controller *, bool *> *)p;
-	d->first->internal_set_value(d->second);
-}
-
-void Machine::Controller::CALL_internal_set_value_string(void *p) {
-	std::pair<Machine::Controller *, std::string *> *d = (std::pair<Machine::Controller *, std::string *> *)p;
-	d->first->internal_set_value(d->second);
+	strncpy(str, val.c_str(), STRING_CONTROLLER_SIZE);
 }
 
 void Machine::Controller::get_value(int &val) {
-	std::pair<Machine::Controller *, int *> param;
-	param.first = this;
-	param.second = &val;
-	Machine::machine_operation_enqueue(CALL_internal_get_value_int, &param, true);
+	Machine::machine_operation_enqueue(
+		[&val, this](void *) {
+			internal_get_value(val);
+		},
+		NULL, true);
 }
 
 void Machine::Controller::get_value(float &val) {
-	std::pair<Machine::Controller *, float *> param;
-	param.first = this;
-	param.second = &val;
-	Machine::machine_operation_enqueue(CALL_internal_get_value_float, &param, true);
+	Machine::machine_operation_enqueue(
+		[&val, this](void *) {
+			internal_get_value(val);
+		},
+		NULL, true);
+}
+
+void Machine::Controller::get_value(double &val) {
+	Machine::machine_operation_enqueue(
+		[&val, this](void*) {
+			internal_get_value(val);
+		},
+		NULL, true);
 }
 
 void Machine::Controller::get_value(bool &val) {
-	std::pair<Machine::Controller *, bool *> param;
-	param.first = this;
-	param.second = &val;
-	Machine::machine_operation_enqueue(CALL_internal_get_value_bool, &param, true);
+	Machine::machine_operation_enqueue(
+		[&val, this](void *) {
+			internal_get_value(val);
+		},
+		NULL, true);
 }
 
 void Machine::Controller::get_value(std::string &val) {
-	std::pair<Machine::Controller *, std::string *> param;
-	param.first = this;
-	param.second = &val;
-	Machine::machine_operation_enqueue(CALL_internal_get_value_string, &param, true);
+	Machine::machine_operation_enqueue(
+		[&val, this] (void *) {
+			internal_get_value(val);
+		},
+		NULL, true);
 }
 
 std::string Machine::Controller::get_value_name(const int &val) {
@@ -312,36 +332,50 @@ std::string Machine::Controller::get_value_name(const int &val) {
 }
 
 void Machine::Controller::set_value(int &val) {
-	std::pair<Machine::Controller *, int *> param;
-	param.first = this;
-	param.second = &val;
-	Machine::machine_operation_enqueue(CALL_internal_set_value_int, &param, true);
+	Machine::machine_operation_enqueue(
+		[this, val](void *) {
+			internal_set_value(val);
+		},
+		NULL, true);
 }
 
 void Machine::Controller::set_value(float &val) {
-	std::pair<Machine::Controller *, float *> param;
-	param.first = this;
-	param.second = &val;
-	Machine::machine_operation_enqueue(CALL_internal_set_value_float, &param, true);
+	Machine::machine_operation_enqueue(
+		[val, this](void *) {
+			internal_set_value(val);
+		},
+		NULL, true);
+}
+
+void Machine::Controller::set_value(double &val) {
+	Machine::machine_operation_enqueue(
+		[val, this](void*) {
+			internal_set_value(val);
+		},
+		NULL, true);
 }
 
 void Machine::Controller::set_value(bool &val) {
-	std::pair<Machine::Controller *, bool *> param;
-	param.first = this;
-	param.second = &val;
-	Machine::machine_operation_enqueue(CALL_internal_set_value_bool, &param, true);
+	Machine::machine_operation_enqueue(
+		[val, this](void *) {
+			internal_set_value(val);
+		},
+		NULL, true);
 }
 
-void Machine::Controller::set_value(std::string &val) {
-	std::pair<Machine::Controller *, std::string *> param;
-	param.first = this;
-	param.second = &val;
-	Machine::machine_operation_enqueue(CALL_internal_set_value_string, &param, true);
+void Machine::Controller::set_value(const std::string &val) {
+	Machine::machine_operation_enqueue(
+		[&val, this](void *) {
+			internal_set_value(val);
+		},
+		NULL, true);
 }
 
 bool Machine::Controller::has_midi_controller(int &_coarse, int &_fine) {
 	if(has_midi_ctrl) {
-		if(coarse_controller < 0 || coarse_controller > 127)
+		if((coarse_controller < 0 || coarse_controller > 127) &&
+		   (coarse_controller < sc_special_first || coarse_controller > sc_special_last)
+			)
 			throw jException("BUG! Midi controller erronous!", jException::sanity_error);
 
 		_coarse = coarse_controller;
@@ -1139,7 +1173,7 @@ Machine::~Machine() {
 			{ \
 				b value; \
 				KXML_GET_NUMBER(a,"value",value,d);	\
-				c->internal_set_value(&value); \
+				c->internal_set_value(value); \
 			}
 
 void Machine::setup_using_xml(const KXMLDoc &mxml) {
@@ -1166,7 +1200,10 @@ void Machine::setup_using_xml(const KXMLDoc &mxml) {
 				SET_CONTROLLER_VALUE(c_xml,int,c, 0);
 				break;
 			case Controller::c_float:
-				SET_CONTROLLER_VALUE(c_xml,float,c, 0.0);
+				SET_CONTROLLER_VALUE(c_xml,float,c, 0.0f);
+				break;
+			case Controller::c_double:
+				SET_CONTROLLER_VALUE(c_xml,double,c, 0.0);
 				break;
 			case Controller::c_bool:
 				SET_CONTROLLER_VALUE(c_xml,bool,c, false);
@@ -1443,7 +1480,7 @@ int Machine::get_samples_per_tick_shuffle(Dimension d) {
 #define COPY_VALUE_TO_STREAM(a,b,c) \
 		{ \
 			a value; \
-			c->internal_get_value(&value);	\
+			c->internal_get_value(value);	\
 			b << value; \
 		}
 
@@ -1465,6 +1502,9 @@ std::string Machine::get_controller_xml() {
 			break;
 		case Controller::c_float:
 			COPY_VALUE_TO_STREAM(float,result,c);
+			break;
+		case Controller::c_double:
+			COPY_VALUE_TO_STREAM(double,result,c);
 			break;
 		case Controller::c_bool:
 			COPY_VALUE_TO_STREAM(bool,result,c);

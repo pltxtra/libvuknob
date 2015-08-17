@@ -334,8 +334,18 @@ void DynamicMachine::Handle::parse_controller(const KXMLDoc &ctr_xml) {
 
 	int cr = -1, fn = -1;
 
-	KXML_GET_NUMBER(ctr_xml,"coarse",cr,-1);
-	KXML_GET_NUMBER(ctr_xml,"fine",fn,-1);
+	try {
+		if(ctr_xml.get_attr("coarse") == "pitch_bend") {
+			cr = Controller::sc_pitch_bend;
+		} else {
+			KXML_GET_NUMBER(ctr_xml,"coarse",cr,-1);
+			KXML_GET_NUMBER(ctr_xml,"fine",fn,-1);
+
+			// clamp to 7 bit range
+			cr &= 127;
+			fn &= 127;
+		}
+	} catch(...) { /* ignore */ }
 
 	if(controller_has_midi_s == "yes") {
 		controller_has_midi[name] = true;
@@ -346,6 +356,7 @@ void DynamicMachine::Handle::parse_controller(const KXMLDoc &ctr_xml) {
 	if(type_name == "integer") tp = Machine::Controller::c_int;
 	else if(type_name == "FTYPE") tp = Machine::Controller::c_float;
 	else if(type_name == "float") tp = Machine::Controller::c_float;
+	else if(type_name == "double") tp = Machine::Controller::c_double;
 	else if(type_name == "boolean") tp = Machine::Controller::c_bool;
 	else if(type_name == "string") tp = Machine::Controller::c_string;
 	else if(type_name == "enumerated") tp = Machine::Controller::c_enum;

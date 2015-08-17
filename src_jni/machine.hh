@@ -33,8 +33,8 @@
 #ifndef __MACHINE
 #define __MACHINE
 
-#define MACHINE_PROJECT_INTERFACE_LEVEL 7
-#define SIGNAL_PROJECT_INTERFACE_LEVEL 7
+#define MACHINE_PROJECT_INTERFACE_LEVEL 8
+#define SIGNAL_PROJECT_INTERFACE_LEVEL 8
 
 #include "signal.hh"
 
@@ -137,10 +137,20 @@ public:
 		enum Type {
 			c_int,
 			c_float,
+			c_double,
 			c_bool,
 			c_string,
 			c_enum,
 			c_sigid
+		};
+
+		// values in the [sc_special_first sc_special_last] range
+		// are special, and legal, coarse controller id values
+		// they map to special controls such as pitch bend.
+		static const int sc_special_first = 1024;
+		static const int sc_special_last = 1024;
+		enum SpecialController {
+			sc_pitch_bend = 1024
 		};
 
 
@@ -153,6 +163,7 @@ public:
 		void *ptr;
 		int min_i, max_i, step_i;
 		float min_f, max_f, step_f;
+		float min_d, max_d, step_d;
 
 		bool float_is_FTYPE;
 
@@ -175,25 +186,17 @@ public:
 		// fine_controller < 0 means no fine controller used
 		void set_midi_controller(int coarse_controller, int fine_controller);
 
-		void internal_get_value(int *val);
-		void internal_get_value(float *val);
-		void internal_get_value(bool *val);
-		void internal_get_value(std::string *str);
+		void internal_get_value(int &val);
+		void internal_get_value(float &val);
+		void internal_get_value(double &val);
+		void internal_get_value(bool &val);
+		void internal_get_value(std::string &str);
 
-		void internal_set_value(int *val);
-		void internal_set_value(float *val);
-		void internal_set_value(bool *val);
-		void internal_set_value(std::string *val);
-
-		static __MACHINE_OPERATION_CALLBACK CALL_internal_get_value_int(void *p);
-		static __MACHINE_OPERATION_CALLBACK CALL_internal_get_value_float(void *p);
-		static __MACHINE_OPERATION_CALLBACK CALL_internal_get_value_bool(void *p);
-		static __MACHINE_OPERATION_CALLBACK CALL_internal_get_value_string(void *p);
-
-		static __MACHINE_OPERATION_CALLBACK CALL_internal_set_value_int(void *p);
-		static __MACHINE_OPERATION_CALLBACK CALL_internal_set_value_float(void *p);
-		static __MACHINE_OPERATION_CALLBACK CALL_internal_set_value_bool(void *p);
-		static __MACHINE_OPERATION_CALLBACK CALL_internal_set_value_string(void *p);
+		void internal_set_value(int val);
+		void internal_set_value(float val);
+		void internal_set_value(double val);
+		void internal_set_value(bool val);
+		void internal_set_value(const std::string &val);
 
 	public:
 		std::string get_name();
@@ -203,12 +206,16 @@ public:
 		void get_min(float &val);
 		void get_max(float &val);
 		void get_step(float &val);
+		void get_min(double &val);
+		void get_max(double &val);
+		void get_step(double &val);
 		void get_min(int &val);
 		void get_max(int &val);
 		void get_step(int &val);
 
 		void get_value(int &val);
 		void get_value(float &val);
+		void get_value(double &val);
 		void get_value(bool &val);
 		void get_value(std::string &val);
 
@@ -216,14 +223,21 @@ public:
 
 		void set_value(int &val);
 		void set_value(float &val);
+		void set_value(double &val);
 		void set_value(bool &val);
-		void set_value(std::string &val);
+		void set_value(const std::string &val);
 
 		// return true if a controller has a MIDI equivalent, if so
 		// the coarse_controller integer is set
 		// and if a fine controller exists, the fine_controller int is set
 		// to verify if a value has been set, make sure you pass a negative (<0) value
 		// when calling.
+		//
+		// coarse_controller is usually a value in the range of [0 127]
+		// which maps directly to a MIDI equivalent.
+		//
+		// there are special cases above the range of 127, these are defined
+		// by the SpecialController enum.
 		bool has_midi_controller(int &coarse_controller, int &fine_controller);
 	};
 

@@ -41,7 +41,7 @@
 #include "scales.hh"
 #include "serialize.hh"
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 /***************************
@@ -66,7 +66,7 @@
 #define __FCT_RIMACHINE			"RIMachine"
 #define __FCT_SAMPLEBANK	        "SampleBank"
 
-#define __VUKNOB_PROTOCOL_VERSION__ 6
+#define __VUKNOB_PROTOCOL_VERSION__ 7
 
 //#define VUKNOB_UDP_SUPPORT
 //#define VUKNOB_UDP_USE
@@ -738,17 +738,26 @@ void RemoteInterface::HandleList::process_message(Server *context, MessageHandle
 		if(new_machine) {
 			try {
 				MachineSequencer::create_sequencer_for_machine(new_machine);
+			} catch(std::exception &e) {
+				SATAN_ERROR("Server->HandleList::process_message() - failed to create sequencer for %s (%s)\n",
+					    new_m_handle.c_str(), e.what());
+				// something went wrong - destroy the new machine
+				Machine::disconnect_and_destroy(new_machine);
+				new_machine = NULL;
 			} catch(...) {
+				SATAN_ERROR("Server->HandleList::process_message() - failed to create sequencer for %s\n",
+					    new_m_handle.c_str());
 				// something went wrong - destroy the new machine
 				Machine::disconnect_and_destroy(new_machine);
 				new_machine = NULL;
 			}
 		}
+
+		std::shared_ptr<Message> reply = context->acquire_reply(msg);
 		if(new_machine) {
-			std::shared_ptr<Message> reply = context->acquire_reply(msg);
 			reply->set_value("name", new_machine->get_name());
-			src->deliver_message(reply);
 		}
+		src->deliver_message(reply);
 	}
 }
 
@@ -800,10 +809,14 @@ std::string RemoteInterface::HandleList::create_instance(const std::string &hand
 				msg2send->set_value("xpos", std::to_string(xpos));
 				msg2send->set_value("ypos", std::to_string(ypos));
 			},
-			[&retval, &failed](const Message *reply_message) {
+			[&handle, &retval, &failed](const Message *reply_message) {
 				if(reply_message) {
-					failed = false;
-					retval = reply_message->get_value("name");
+					try {
+						retval = reply_message->get_value("name");
+						failed = false;
+					} catch(...) {
+						throw FailedToCreateMachine();
+					}
 				}
 			}
 			);
@@ -1453,6 +1466,9 @@ RemoteInterface::RIMachine::RIController::RIController(int _ctrl_id, Machine::Co
 		case Machine::Controller::c_sigid:
 			ct_type = RIController::ric_sigid;
 			break;
+		case Machine::Controller::c_double:
+			ct_type = RIController::ric_double;
+			break;
 		}
 	}
 
@@ -1461,6 +1477,11 @@ RemoteInterface::RIMachine::RIController::RIController(int _ctrl_id, Machine::Co
 		ctrl->get_max(data.f.max);
 		ctrl->get_step(data.f.step);
 		ctrl->get_value(data.f.value);
+	} else if(ct_type == RIController::ric_double) {
+		ctrl->get_min(data.d.min);
+		ctrl->get_max(data.d.max);
+		ctrl->get_step(data.d.step);
+		ctrl->get_value(data.d.value);
 	} else {
 		ctrl->get_min(data.i.min);
 		ctrl->get_max(data.i.max);
@@ -1508,6 +1529,13 @@ void RemoteInterface::RIMachine::RIController::serderize_controller(SerderClassT
 		iserder.process(data.f.max);
 		iserder.process(data.f.step);
 		iserder.process(data.f.value);
+	} break;
+
+	case RIController::ric_double: {
+		iserder.process(data.d.min);
+		iserder.process(data.d.max);
+		iserder.process(data.d.step);
+		iserder.process(data.d.value);
 	} break;
 
 	case RIController::ric_int:
@@ -1561,6 +1589,18 @@ void RemoteInterface::RIMachine::RIController::get_step(float &val) {
 	val = data.f.step;
 }
 
+void RemoteInterface::RIMachine::RIController::get_min(double &val) {
+	val = data.d.min;
+}
+
+void RemoteInterface::RIMachine::RIController::get_max(double &val) {
+	val = data.d.max;
+}
+
+void RemoteInterface::RIMachine::RIController::get_step(double &val) {
+	val = data.d.step;
+}
+
 void RemoteInterface::RIMachine::RIController::get_min(int &val) {
 	val = data.i.min;
 }
@@ -1579,6 +1619,10 @@ void RemoteInterface::RIMachine::RIController::get_value(int &val) {
 
 void RemoteInterface::RIMachine::RIController::get_value(float &val) {
 	val = data.f.value;
+}
+
+void RemoteInterface::RIMachine::RIController::get_value(double &val) {
+	val = data.d.value;
 }
 
 void RemoteInterface::RIMachine::RIController::get_value(bool &val) {
@@ -1625,6 +1669,18 @@ void RemoteInterface::RIMachine::RIController::set_value(int val) {
 
 void RemoteInterface::RIMachine::RIController::set_value(float val) {
 	data.f.value = val;
+	auto crid = ctrl_id;
+	send_obj_message(
+		[crid, val](std::shared_ptr<Message> &msg_to_send) {
+			msg_to_send->set_value("command", "setctrval");
+			msg_to_send->set_value("ctrl_id", std::to_string(crid));
+			msg_to_send->set_value("value", std::to_string(val));
+		}
+		);
+}
+
+void RemoteInterface::RIMachine::RIController::set_value(double val) {
+	data.d.value = val;
 	auto crid = ctrl_id;
 	send_obj_message(
 		[crid, val](std::shared_ptr<Message> &msg_to_send) {
@@ -1802,7 +1858,6 @@ void RemoteInterface::RIMachine::serverside_init_from_machine_ptr(Machine *m_ptr
 			midi_controllers = mseq->available_midi_controllers();
 
 			// set pad defaults
-			mseq->get_pad()->set_pad_resolution(1024, 1024);
 			mseq->set_pad_arpeggio_pattern("no arpeggio");
 		}
 	}
@@ -2190,15 +2245,17 @@ void RemoteInterface::RIMachine::pad_clear() {
 		);
 }
 
-void RemoteInterface::RIMachine::pad_enqueue_event(int finger, PadEvent_t event_type, float ev_x, float ev_y) {
-	ev_x *= 1024.0f;
-	ev_y *= 1024.0f;
+void RemoteInterface::RIMachine::pad_enqueue_event(int finger, PadEvent_t event_type, float ev_x, float ev_y, float ev_z) {
+	ev_x *= 16383.0f;
+	ev_y = (1.0 - ev_y) * 16383.0f;
+	ev_z = ev_z * 16383.0f;
 	int xp = ev_x;
 	int yp = ev_y;
+	int zp = ev_z;
 
 	auto thiz = std::dynamic_pointer_cast<RIMachine>(shared_from_this());
 	send_object_message(
-		[this, xp, yp, finger, event_type, thiz](std::shared_ptr<Message> &msg2send) {
+		[this, xp, yp, zp, finger, event_type, thiz](std::shared_ptr<Message> &msg2send) {
 			msg2send->set_value("command", "padevt");
 			msg2send->set_value("ignored", thiz->name); // make sure thiz is not optimized away
 
@@ -2206,6 +2263,7 @@ void RemoteInterface::RIMachine::pad_enqueue_event(int finger, PadEvent_t event_
 			msg2send->set_value("fgr", std::to_string(finger));
 			msg2send->set_value("xp", std::to_string(xp));
 			msg2send->set_value("yp", std::to_string(yp));
+			msg2send->set_value("zp", std::to_string(zp));
 		},
 
 #if defined(VUKNOB_UDP_SUPPORT) && defined(VUKNOB_UDP_USE)
@@ -2291,6 +2349,7 @@ void RemoteInterface::RIMachine::process_message(Server *context, MessageHandler
 		int finger = std::stol(msg.get_value("fgr"));
 		int xp = std::stol(msg.get_value("xp"));
 		int yp = std::stol(msg.get_value("yp"));
+		int zp = std::stol(msg.get_value("zp"));
 
 		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
 		if(mseq != NULL) {
@@ -2309,7 +2368,7 @@ void RemoteInterface::RIMachine::process_message(Server *context, MessageHandler
 				pevt = MachineSequencer::ms_pad_no_event;
 				break;
 			}
-			mseq->get_pad()->enqueue_event(finger, pevt, xp, yp);
+			mseq->get_pad()->enqueue_event(finger, pevt, xp, yp, zp);
 		}
 	} else if(command == "midi") {
 		size_t len = 0;
@@ -2560,6 +2619,12 @@ void RemoteInterface::RIMachine::process_setctrl_val_message(MessageHandler *src
 			case Machine::Controller::c_float:
 			{
 				float val = std::stof(msg.get_value("value"));
+				ctrl->set_value(val);
+			}
+				break;
+			case Machine::Controller::c_double:
+			{
+				double val = std::stod(msg.get_value("value"));
 				ctrl->set_value(val);
 			}
 				break;

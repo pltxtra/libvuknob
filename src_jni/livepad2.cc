@@ -36,7 +36,7 @@
 #include "svg_loader.hh"
 #include "scales.hh"
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 #include "common.hh"
@@ -561,6 +561,10 @@ void LivePad2::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source, Kamm
 	float width  = ctx->doc_x2 - ctx->doc_x1 + 1;
 	float height = ctx->doc_y2 - ctx->doc_y1 + 1; // +1 to disable overflow
 
+	for(auto k = 0; k < 10; k++) {
+		ctx->f_active[k] = false;
+	}
+
 	switch(event.get_action()) {
 	case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
 	case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
@@ -578,6 +582,8 @@ void LivePad2::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source, Kamm
 		if(ctx->mseq) {
 			for(int k = 0; k < event.get_pointer_count(); k++) {
 				int f = event.get_pointer_id(k);
+				if(f >= 10) continue; // skip if too many fingers
+
 				/* scale by screen resolution, and complete svg offset */
 				float ev_x = event.get_x(k); float ev_y = event.get_y(k);
 				if(ev_x < ctx->doc_x1) ev_x = ctx->doc_x1;
@@ -588,10 +594,11 @@ void LivePad2::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source, Kamm
 				ev_x = (ev_x - ctx->doc_x1);
 				ev_y = (ev_y - ctx->doc_y1);
 
-				ev_x /= width;
-				ev_y /= height;
-
-				ctx->mseq->pad_enqueue_event(f, RemoteInterface::RIMachine::ms_pad_slide, ev_x, ev_y);
+				ctx->l_ev_x[f] = ev_x / width;
+				ctx->l_ev_y[f] = ev_y / height;
+				ctx->f_active[f] = true;
+				ctx->mseq->pad_enqueue_event(f, RemoteInterface::RIMachine::ms_pad_slide,
+							     ctx->l_ev_x[f], ctx->l_ev_y[f], ctx->l_ev_z);
 			}
 		}
 		break;
@@ -600,8 +607,8 @@ void LivePad2::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source, Kamm
 		break;
 	}
 
-	if(pevt != RemoteInterface::RIMachine::ms_pad_no_event && ctx->mseq) {
-		ctx->mseq->pad_enqueue_event(finger, pevt, x / width, y / height);
+	if(finger < 10 && pevt != RemoteInterface::RIMachine::ms_pad_no_event && ctx->mseq) {
+		ctx->mseq->pad_enqueue_event(finger, pevt, x / width, y / height, ctx->l_ev_z);
 	}
 }
 
@@ -623,10 +630,36 @@ void LivePad2::recording_state_changed(bool _is_recording) {
 		);
 }
 
+void LivePad2::on_sensor_event(std::shared_ptr<KammoGUI::SensorEvent> event) {
+	if(mseq) {
+		float ev_z = event->values[2];
+
+		if(ev_z > 20.0f) ev_z = 20.0f;
+		if(ev_z < -20.0f) ev_z = -20.0f;
+
+		l_ev_z = (ev_z / 40.0f) + 0.5f;
+
+		for(auto f = 0; f < 10; f++) {
+			// we only need to send the ev z for one finger, since it will be converted
+			// into a midi controller value, and that value is global for the instrument
+			// and not a per-finger value.
+			if(f_active[f]) {
+				mseq->pad_enqueue_event(f, RemoteInterface::RIMachine::ms_pad_slide, l_ev_x[f], l_ev_y[f], l_ev_z);
+				break;
+			}
+		}
+		SATAN_DEBUG("on_sensor_event() - Z: %f)\n", event->values[2]);
+	}
+}
+
 LivePad2::LivePad2(KammoGUI::SVGCanvas *cnv, std::string file_name)
 	: SVGDocument(file_name, cnv), octave(3), scale_index(0), scale_name("C- "), record(false), quantize(false)
 	, chord_mode("chord off"), mode("No Arpeggio"), controller("velocity"), listView(NULL), scale_editor(NULL)
 {
+	for(int k = 0; k < 10; k++) {
+		f_active[k] = false;
+	}
+
 	l_pad2 = this;
 
 	{ // get the graph area and attach the event listener
@@ -762,6 +795,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		static auto lpad = std::make_shared<LivePad2>(cnvs, SVGLoader::get_svg_path("/livePad2.svg"));
 		RemoteInterface::Client::register_ri_machine_set_listener(lpad);
 		RemoteInterface::GlobalControlObject::register_playback_state_listener(lpad);
+		KammoGUI::SensorEvent::register_listener(lpad);
 	}
 }
 

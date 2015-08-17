@@ -231,16 +231,20 @@ void MachineSequencer::MidiEventBuilder::queue_midi_data(size_t len, const char 
 
 	while(offset < len) {
 		switch(data[offset] & 0xf0) {
-		case 0x80: // note off
+		case MIDI_NOTE_OFF:
 			queue_note_off(data[offset + 1], data[offset + 2], data[offset] & 0x0f);
 			offset += 3;
 			break;
-		case 0x90: // note on
+		case MIDI_NOTE_ON:
 			queue_note_on(data[offset + 1], data[offset + 2], data[offset] & 0x0f);
 			offset += 3;
 			break;
-		case 0xb0: // change controller
+		case MIDI_CONTROL_CHANGE:
 			queue_controller(data[offset + 1], data[offset + 2], data[offset] & 0x0f);
+			offset += 3;
+			break;
+		case MIDI_PITCH_BEND:
+			queue_pitch_bend(data[offset + 1], data[offset + 2], data[offset] & 0x0f);
 			offset += 3;
 			break;
 		default: // not implemented - skip rest of data
@@ -282,6 +286,18 @@ void MachineSequencer::MidiEventBuilder::queue_controller(int controller, int va
 		(MIDI_CONTROL_CHANGE) | (channel & 0x0f),
 		controller,
 		value);
+
+	chain_event(mev);
+}
+
+void MachineSequencer::MidiEventBuilder::queue_pitch_bend(int value_lsb, int value_msb, int channel) {
+	MidiEvent *mev = MidiEventChainControler::pop_next_free_midi(3);
+
+	SET_MIDI_DATA_3(
+		mev,
+		(MIDI_PITCH_BEND) | (channel & 0x0f),
+		value_lsb,
+		value_msb);
 
 	chain_event(mev);
 }
@@ -428,13 +444,19 @@ void MachineSequencer::ControllerEnvelope::process_envelope(int t, MidiEventBuil
 		// interpolate
 		y = (*previous_c).second + ((((*next_c).second - (*previous_c).second) * (t - (*previous_c).first)) / ((*next_c).first - (*previous_c).first));
 	}
-	if(controller_coarse != -1) {
+	if(controller_coarse >= 0 && controller_coarse < 128) {
 		int y_c = (y >> 7) & 0x7f;
 		SATAN_DEBUG("[%5x]y: %d (%x) -> coarse: %x\n", t, y, y, y_c);
 		_meb->queue_controller(controller_coarse, y_c);
 		if(controller_fine != -1) {
 			int y_f = y & 0x7f;
 			_meb->queue_controller(controller_fine, y_f);
+		}
+	} else if(controller_coarse >= Machine::Controller::sc_special_first) {
+		switch(controller_coarse) {
+		case Machine::Controller::sc_pitch_bend:
+			_meb->queue_pitch_bend(0x7f & y, 0x7f & (y >> 7));
+			break;
 		}
 	}
 }
@@ -562,8 +584,14 @@ std::string MachineSequencer::ControllerEnvelope::read_from_xml(const KXMLDoc &e
  *
  *************************************/
 
-MachineSequencer::PadEvent::PadEvent() : x(0), y(0) {}
-MachineSequencer::PadEvent::PadEvent(int finger_id, PadEvent_t _t, int _x, int _y) : t(_t), finger(finger_id), x(_x), y(_y) {}
+MachineSequencer::PadEvent::PadEvent() : x(0), y(0), z(0) {}
+MachineSequencer::PadEvent::PadEvent(int finger_id, PadEvent_t _t, int _x, int _y, int _z)
+	: t(_t)
+	, finger(finger_id)
+	, x(_x)
+	, y(_y)
+	, z(_z)
+{}
 
 /*************************************
  *
@@ -1193,16 +1221,32 @@ void MachineSequencer::Loop::copy_loop(const MachineSequencer::Loop *src) {
 
 MachineSequencer::PadConfiguration::PadConfiguration() : chord_mode(chord_off) {}
 
-MachineSequencer::PadConfiguration::PadConfiguration(PadMode _mode, int _scale, int _octave) : mode(_mode), chord_mode(chord_off), scale(_scale), last_scale(-1), octave(_octave), arpeggio_pattern(0), pad_controller_coarse(-1), pad_controller_fine(-1) {}
+MachineSequencer::PadConfiguration::PadConfiguration(PadMode _mode, int _scale, int _octave)
+	: mode(_mode), chord_mode(chord_off)
+	, scale(_scale), last_scale(-1)
+	, octave(_octave)
+	, arpeggio_pattern(0)
+	, pad_controller_coarse {-1 , -1}
+	, pad_controller_fine {-1, -1}
+{}
 
-MachineSequencer::PadConfiguration::PadConfiguration(const PadConfiguration *parent) : mode(parent->mode), chord_mode(parent->chord_mode), scale(parent->scale), last_scale(-1), octave(parent->octave), arpeggio_pattern(0), pad_controller_coarse(parent->pad_controller_coarse), pad_controller_fine(parent->pad_controller_fine) {}
+MachineSequencer::PadConfiguration::PadConfiguration(const PadConfiguration *parent)
+	: mode(parent->mode), chord_mode(parent->chord_mode)
+	, scale(parent->scale), last_scale(-1)
+	, octave(parent->octave)
+	, arpeggio_pattern(0)
+	, pad_controller_coarse {parent->pad_controller_coarse[0], parent->pad_controller_coarse[1]}
+	, pad_controller_fine {parent->pad_controller_fine[0], parent->pad_controller_fine[1] }
+{}
 
-void MachineSequencer::PadConfiguration::set_coarse_controller(int c) {
-	pad_controller_coarse = c;
+void MachineSequencer::PadConfiguration::set_coarse_controller(int id, int c) {
+	id = (id % 2);
+	pad_controller_coarse[id] = c;
 }
 
-void MachineSequencer::PadConfiguration::set_fine_controller(int c) {
-	pad_controller_fine = c;
+void MachineSequencer::PadConfiguration::set_fine_controller(int id, int c) {
+	id = (id % 2);
+	pad_controller_fine[id] = c;
 }
 
 void MachineSequencer::PadConfiguration::set_mode(PadMode _mode) {
@@ -1232,8 +1276,10 @@ void MachineSequencer::PadConfiguration::get_configuration_xml(std::ostringstrea
 	       << "s=\"" << scale << "\" "
 	       << "o=\"" << octave << "\" "
 	       << "arp=\"" << arpeggio_pattern << "\" "
-	       << "cc=\"" << pad_controller_coarse << "\" "
-	       << "cf=\"" << pad_controller_fine << "\" "
+	       << "cc=\"" << pad_controller_coarse[0] << "\" "
+	       << "cf=\"" << pad_controller_fine[0] << "\" "
+	       << "czc=\"" << pad_controller_coarse[1] << "\" "
+	       << "czf=\"" << pad_controller_fine[1] << "\" "
 	       << "/>\n";
 }
 
@@ -1255,8 +1301,11 @@ void MachineSequencer::PadConfiguration::load_configuration_from_xml(const KXMLD
 	KXML_GET_NUMBER(c, "o", octave, octave);
 	KXML_GET_NUMBER(c, "arp", arpeggio_pattern, arpeggio_pattern);
 
-	KXML_GET_NUMBER(c, "cc", pad_controller_coarse, -1);
-	KXML_GET_NUMBER(c, "cf", pad_controller_fine, -1);
+	KXML_GET_NUMBER(c, "cc", pad_controller_coarse[0], -1);
+	KXML_GET_NUMBER(c, "cf", pad_controller_fine[0], -1);
+
+	KXML_GET_NUMBER(c, "czc", pad_controller_coarse[1], -1);
+	KXML_GET_NUMBER(c, "czf", pad_controller_fine[1], -1);
 }
 
 /*************************************
@@ -1279,14 +1328,14 @@ void MachineSequencer::PadMotion::get_padmotion_xml(int finger, std::ostringstre
 }
 
 MachineSequencer::PadMotion::PadMotion(Pad *parent_config,
-				       int session_position, int _x, int _y) :
+				       int session_position, int _x, int _y, int _z) :
 	PadConfiguration(parent_config), index(-1), crnt_tick(-1), start_tick(session_position),
 	terminated(false), to_be_deleted(false), prev(NULL), next(NULL)
 {
 	for(int x = 0; x < MAX_PAD_CHORD; x++)
 		last_chord[x] = -1;
 
-	add_position(_x, _y);
+	add_position(_x, _y, _z);
 
 }
 
@@ -1316,6 +1365,10 @@ MachineSequencer::PadMotion::PadMotion(Pad *parent_config, int &start_offset_ret
 		KXML_GET_NUMBER(dxml, "y", _y, -1);
 		KXML_GET_NUMBER(dxml, "t", _abs_time, -1);
 
+		// the x and y coordinate need to be converted to 14bit values
+		_x = ((_x & 0xfe0) << 2) | (_x & 0x1f); // shift coarse data up 2 bits to make room for 7 bit fine data
+		_y = ((_y & 0xfe0) << 2) | (_y & 0x1f); // shift coarse data up 2 bits to make room for 7 bit fine data
+
 		int lin = PAD_TIME_LINE(_abs_time);
 		int tick = PAD_TIME_TICK(_abs_time);
 
@@ -1333,13 +1386,15 @@ MachineSequencer::PadMotion::PadMotion(Pad *parent_config, int &start_offset_ret
 		if(_t >= 0) {
 			x.push_back(_x);
 			y.push_back(_y);
+			z.push_back(0); // prior to level 8 there was no z coordinate, default to 0
 			t.push_back(_t);
 		}
 	}
 }
 
-MachineSequencer::PadMotion::PadMotion(Pad *parent_config, const KXMLDoc &pad_xml) :
-	PadConfiguration(parent_config), index(-1), terminated(true), to_be_deleted(false), prev(NULL), next(NULL)
+MachineSequencer::PadMotion::PadMotion(int project_interface_level, Pad *parent_config, const KXMLDoc &pad_xml)
+	: PadConfiguration(parent_config)
+	, index(-1), terminated(true), to_be_deleted(false), prev(NULL), next(NULL)
 {
 	for(int x = 0; x < MAX_PAD_CHORD; x++)
 		last_chord[x] = -1;
@@ -1355,14 +1410,26 @@ MachineSequencer::PadMotion::PadMotion(Pad *parent_config, const KXMLDoc &pad_xm
 
 	for(int k = 0; k < mk; k++) {
 		KXMLDoc dxml = pad_xml["d"][k];
-		int _x, _y, _t;
+		int _x, _y, _z, _t;
 
 		KXML_GET_NUMBER(dxml, "x", _x, -1);
 		KXML_GET_NUMBER(dxml, "y", _y, -1);
+
+		if(project_interface_level < 8) {
+			_z = 0; // no z available, default to 0
+
+			// the x and y coordinate need to be converted to 14bit values
+			_x = ((_x & 0xfe0) << 2) | (_x & 0x1f); // shift coarse data up 2 bits to make room for 7 bit fine data
+			_y = ((_y & 0xfe0) << 2) | (_y & 0x1f); // shift coarse data up 2 bits to make room for 7 bit fine data
+		} else {
+			KXML_GET_NUMBER(dxml, "z", _z, 0);
+		}
+
 		KXML_GET_NUMBER(dxml, "t", _t, -1);
 
 		x.push_back(_x);
 		y.push_back(_y);
+		z.push_back(_z);
 		t.push_back(_t);
 	}
 }
@@ -1383,11 +1450,12 @@ void MachineSequencer::PadMotion::quantize() {
 #endif
 }
 
-void MachineSequencer::PadMotion::add_position(int _x, int _y) {
+void MachineSequencer::PadMotion::add_position(int _x, int _y, int _z) {
 	if(terminated) return;
 
 	x.push_back(_x);
 	y.push_back(_y);
+	z.push_back(_z);
 	t.push_back(crnt_tick + 1); // when add_position is called the crnt_tick has not been upreved yet by "process_motion", so we have to do + 1
 }
 
@@ -1483,7 +1551,7 @@ bool MachineSequencer::PadMotion::process_motion(MachineSequencer::MidiEventBuil
 	int max = (int)x.size();
 
 	while( (t[index] <= crnt_tick) && (index < max) ) {
-		int pad_column = (x[index] >> 5) >> 4; // first right shift 5 for "coarse" data, then shift by 4 to get wich of the 8 columns we are in..
+		int pad_column = (x[index] >> 7) >> 4; // first right shift 7 for "coarse" data, then shift by 4 to get wich of the 8 columns we are in..
 		int note = octave * 12 + scale_data[pad_column + scale_offset];
 		int chord[MAX_PAD_CHORD];
 
@@ -1495,15 +1563,25 @@ bool MachineSequencer::PadMotion::process_motion(MachineSequencer::MidiEventBuil
 			}
 		}
 
-		int y_c = (y[index] >> 5);
-		int y_f = (y[index] & 0x1f) << 2;
+		int c_c[] = {(y[index] >> 7), (z[index] >> 7)}; // coarse value
+		int c_f[] = {(y[index] & 0x7f), (z[index] & 0x7f)}; // fine value
 
-		int velocity = (pad_controller_coarse == -1) ? y_c : 0x7f;
+		// if y axis is set to control velocity, then pad_controller_coarse[0] will be set to -1
+		int velocity = (pad_controller_coarse[0] == -1) ? c_c[0] : 0x7f;
 
-		if(pad_controller_coarse != -1) {
-			_meb->queue_controller(pad_controller_coarse, y_c);
-			if(pad_controller_fine != -1) {
-				_meb->queue_controller(pad_controller_fine, y_f);
+		for(auto k = 0; k < 2; k++) {
+			auto pcc = pad_controller_coarse[k];
+			if((pcc & (~0x127)) == 0) { // if value is in the range [0 127]
+				_meb->queue_controller(pad_controller_coarse[k], c_c[k]);
+				if(pad_controller_fine[k] != -1) {
+					_meb->queue_controller(pad_controller_fine[k], c_f[k]);
+				}
+			} else if(pcc >= Machine::Controller::sc_special_first) {
+				switch(pcc) {
+				case Machine::Controller::sc_pitch_bend:
+					_meb->queue_pitch_bend(c_f[k], c_c[k], 0);
+					break;
+				}
 			}
 		}
 
@@ -1646,12 +1724,12 @@ void MachineSequencer::PadFinger::process_finger_events(const PadEvent &pe, int 
 
 	session_position++; // at this stage the session_position is at the last position still, we need to increase it by one.
 
-	int x = pe.x, y = pe.y;
+	int x = pe.x, y = pe.y, z = pe.z;
 	PadEvent_t t = pe.t;
 
 	switch(t) {
 	case ms_pad_press:
-		current = new PadMotion(parent, session_position, x, y);
+		current = new PadMotion(parent, session_position, x, y, z);
 		if(current->start_motion(session_position)) {
 			playing_motions.push_back(current);
 		} else {
@@ -1664,13 +1742,13 @@ void MachineSequencer::PadFinger::process_finger_events(const PadEvent &pe, int 
 
 	case ms_pad_release:
 		if(current) {
-			current->add_position(x, y);
+			current->add_position(x, y, z);
 			current->terminate();
 		}
 		break;
 	case ms_pad_slide:
 		if(current) {
-			current->add_position(x, y);
+			current->add_position(x, y, z);
 		}
 		break;
 	case ms_pad_no_event:
@@ -1764,7 +1842,7 @@ MachineSequencer::PadSession::PadSession(Pad *parent, int start, bool _terminate
 }
 
 
-MachineSequencer::PadSession::PadSession(Pad *parent, const KXMLDoc &ps_xml) :
+MachineSequencer::PadSession::PadSession(int project_interface_level, Pad *parent, const KXMLDoc &ps_xml) :
 	to_be_deleted(false), terminated(true),
 	playback_position(-1), in_play(false)
 {
@@ -1783,7 +1861,7 @@ MachineSequencer::PadSession::PadSession(Pad *parent, const KXMLDoc &ps_xml) :
 		int _f;
 		KXML_GET_NUMBER(mxml, "f", _f, 0);
 
-		PadMotion *m = new PadMotion(parent, mxml);
+		PadMotion *m = new PadMotion(project_interface_level, parent, mxml);
 		PadMotion::record_motion(&(finger[_f].recorded), m);
 	}
 
@@ -1887,8 +1965,9 @@ void MachineSequencer::PadSession::get_session_xml(std::ostringstream &stream) {
  *
  *************************************/
 
-MachineSequencer::Pad::Pad() : PadConfiguration(pad_arpeggiator, 0, 4), pad_width(4096), pad_height(4096), // 4096 in this context is just bogus, wee need to be properly configured before use anyway
-			       current_session(NULL), do_record(false), do_quantize(false) {
+MachineSequencer::Pad::Pad()
+	: PadConfiguration(pad_arpeggiator, 0, 4)
+	, current_session(NULL), do_record(false), do_quantize(false) {
 	padEventQueue = new moodycamel::ReaderWriterQueue<PadEvent>(100);
 }
 
@@ -1990,6 +2069,7 @@ void MachineSequencer::Pad::load_pad_from_xml(int project_interface_level, const
 	//
 	//  project_interface_level  < 5 == PadMotion xml uses old absolute coordinates
 	//                          => 5 == PadMotion xml uses new relative coordinates
+	//			    => 7 == PadEvent coordinates in 14 bit resolution, also added a z coordinate
 	//
 	try {
 		KXMLDoc pad_xml = p_xml["pad"];
@@ -2019,7 +2099,7 @@ void MachineSequencer::Pad::load_pad_from_xml(int project_interface_level, const
 			for(int k = 0; k < mx; k++) {
 				KXMLDoc ps_xml = pad_xml["s"][k];
 
-				PadSession *nses = new PadSession(this, ps_xml);
+				PadSession *nses = new PadSession(project_interface_level, this, ps_xml);
 				recorded_sessions.push_back(nses);
 			}
 		}
@@ -2095,17 +2175,11 @@ void MachineSequencer::Pad::export_to_loop(int start_tick, int stop_tick, Machin
 	SATAN_DEBUG("Done export!\n");
 }
 
-void MachineSequencer::Pad::set_pad_resolution(int width, int height) {
-	pad_width = width;
-	pad_height = height;
-}
-
-void MachineSequencer::Pad::enqueue_event(int finger_id, PadEvent_t t, int x, int y) {
-
-	x = PAD_RESOLUTION * x / pad_width;
-	y = PAD_RESOLUTION * (pad_height - y) / pad_height;
-
-	padEventQueue->enqueue(PadEvent(finger_id, t, x, y));
+void MachineSequencer::Pad::enqueue_event(int finger_id, PadEvent_t t, int x, int y, int z) {
+	x &= 0x00003fff;
+	y &= 0x00003fff;
+	z &= 0x00003fff;
+	padEventQueue->enqueue(PadEvent(finger_id, t, x, y, z));
 }
 
 void MachineSequencer::Pad::internal_set_record(bool _do_record) {
@@ -2715,29 +2789,19 @@ std::set<std::string> MachineSequencer::available_midi_controllers() {
 }
 
 void MachineSequencer::assign_pad_to_midi_controller(const std::string &name) {
-	typedef struct {
-		MachineSequencer *thiz;
-		const std::string &n;
-	} Param;
-	Param param = {
-		.thiz = this,
-		.n = name
-	};
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-
+		[this, name] (void *) {
 			int pad_controller_coarse = -1;
 			int pad_controller_fine = -1;
 			try {
-				p->thiz->get_midi_controllers(p->n, pad_controller_coarse, pad_controller_fine);
+				get_midi_controllers(name, pad_controller_coarse, pad_controller_fine);
 			} catch(...) {
 				/* ignore fault here */
 			}
-			p->thiz->pad.set_coarse_controller(pad_controller_coarse);
-			p->thiz->pad.set_fine_controller(pad_controller_fine);
+			pad.set_coarse_controller(0, pad_controller_coarse);
+			pad.set_fine_controller(0, pad_controller_fine);
 		},
-		&param, true);
+		NULL, true);
 }
 
 MachineSequencer::Pad *MachineSequencer::get_pad() {
@@ -3515,14 +3579,23 @@ void MachineSequencer::create_sequencer_for_machine(Machine *sibling) {
 				Machine *sib = (Machine *)d;
 				if(machine2sequencer.find(sib) !=
 				   machine2sequencer.end()) {
+					SATAN_ERROR("Error. Machine already has a sequencer.\n");
 					throw jException("Trying to create MachineSequencer for a machine that already has one!",
 							 jException::sanity_error);
 				}
 			},
 			sibling, true);
 	}
-	MachineSequencer *mseq =
-		new MachineSequencer(sibling->get_name());
+	MachineSequencer *mseq = NULL;
+	try {
+		mseq = new MachineSequencer(sibling->get_name());
+	} catch(jException &e) {
+		SATAN_ERROR("(A) MachineSequencer::create_sequencer_for_machine() - Caught a jException: %s\n", e.message.c_str());
+		throw;
+	} catch(const jException &e) {
+		SATAN_ERROR("(B) MachineSequencer::create_sequencer_for_machine() - Caught a jException: %s\n", e.message.c_str());
+		throw;
+	}
 
 	sibling->attach_input(mseq,
 			      MACHINE_SEQUENCER_MIDI_OUTPUT_NAME,
