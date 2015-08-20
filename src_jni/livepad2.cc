@@ -630,15 +630,42 @@ void LivePad2::recording_state_changed(bool _is_recording) {
 		);
 }
 
+#define SENSOR_LIMIT 10.0f
+#define MAX_ANGLE (M_PI / 4.0f)
 void LivePad2::on_sensor_event(std::shared_ptr<KammoGUI::SensorEvent> event) {
+	return;
 	if(mseq) {
+#if 0
+		float ev_z = event->values[2];
+		if(ev_z > SENSOR_LIMIT) ev_z = SENSOR_LIMIT;
+		if(ev_z < -SENSOR_LIMIT) ev_z = -SENSOR_LIMIT;
+
+		l_ev_z = (ev_z / (2.0f * SENSOR_LIMIT)) + 0.5f;
+#else
+		static float y_cmp = 9.0f, z_cmp = 0.0f;
+
+		float ev_y = event->values[1];
 		float ev_z = event->values[2];
 
-		if(ev_z > 20.0f) ev_z = 20.0f;
-		if(ev_z < -20.0f) ev_z = -20.0f;
+		float dot_p = z_cmp * ev_z + y_cmp * ev_y;
+		float cross_p = z_cmp * ev_y - y_cmp * ev_z;
+		float angle = atan2f(cross_p, dot_p);
 
-		l_ev_z = (ev_z / 40.0f) + 0.5f;
+		if(angle > MAX_ANGLE) angle = MAX_ANGLE;
+		if(angle < (-MAX_ANGLE)) angle = -MAX_ANGLE;
 
+		float alpha = 0.999;
+
+		y_cmp = alpha * y_cmp + (1.0 - alpha) * ev_y;
+		z_cmp = alpha * z_cmp + (1.0 - alpha) * ev_z;
+
+		l_ev_z = (angle / (2.0f * MAX_ANGLE)) + 0.5f;
+
+//		SATAN_DEBUG("on_sensor_event() - (%f, %f) -> (%f, %f) = angle: %f)\n",
+//			    z_cmp, y_cmp,
+//			    ev_z, ev_y,
+//			    angle * 180.0f / M_PI);
+#endif
 		for(auto f = 0; f < 10; f++) {
 			// we only need to send the ev z for one finger, since it will be converted
 			// into a midi controller value, and that value is global for the instrument
@@ -648,7 +675,6 @@ void LivePad2::on_sensor_event(std::shared_ptr<KammoGUI::SensorEvent> event) {
 				break;
 			}
 		}
-		SATAN_DEBUG("on_sensor_event() - Z: %f)\n", event->values[2]);
 	}
 }
 
@@ -795,7 +821,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		static auto lpad = std::make_shared<LivePad2>(cnvs, SVGLoader::get_svg_path("/livePad2.svg"));
 		RemoteInterface::Client::register_ri_machine_set_listener(lpad);
 		RemoteInterface::GlobalControlObject::register_playback_state_listener(lpad);
-		KammoGUI::SensorEvent::register_listener(lpad);
+//		KammoGUI::SensorEvent::register_listener(lpad);
 	}
 }
 
