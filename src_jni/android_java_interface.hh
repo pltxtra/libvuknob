@@ -46,7 +46,7 @@ private:
 	static jmethodID sharemusicfile;
 
 	static jmethodID announceservice;
-	static jmethodID takedownservice;
+	static jmethodID prepareforexit;
 	static jmethodID discoverservices;
 	static jmethodID listservices;
 
@@ -62,10 +62,10 @@ public:
 	static bool share_musicfile(const std::string &path_to_file);
 
 	static void announce_service(int port);
-	static void takedown_service();
+	static void prepare_for_exit();
 	static void discover_services();
 	static std::map<std::string, std::pair<std::string, int> > list_services();
-	
+
 	static void preview_16bit_wav_start(int channels, int samples, int frequency, int16_t *data);
 	static bool preview_16bit_wav_next_buffer();
 	static void preview_16bit_wav_stop();

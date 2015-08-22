@@ -45,7 +45,7 @@ jmethodID AndroidJavaInterface::call_tar_function = NULL;
 jmethodID AndroidJavaInterface::sharemusicfile = NULL;
 
 jmethodID AndroidJavaInterface::announceservice = NULL;
-jmethodID AndroidJavaInterface::takedownservice = NULL;
+jmethodID AndroidJavaInterface::prepareforexit = NULL;
 jmethodID AndroidJavaInterface::discoverservices = NULL;
 jmethodID AndroidJavaInterface::listservices = NULL;
 
@@ -100,8 +100,8 @@ void AndroidJavaInterface::setup_interface(jclass jc) {
 	announceservice = env->GetStaticMethodID(
 		JavaInterfaceClass, "AnnounceService",
 		"(I)V");
-	takedownservice = env->GetStaticMethodID(
-		JavaInterfaceClass, "TakedownService",
+	prepareforexit = env->GetStaticMethodID(
+		JavaInterfaceClass, "PrepareForExit",
 		"()V");
 	discoverservices = env->GetStaticMethodID(
 		JavaInterfaceClass, "DiscoverServices",
@@ -211,12 +211,12 @@ void AndroidJavaInterface::announce_service(int port) {
 
 }
 
-void AndroidJavaInterface::takedown_service() {
+void AndroidJavaInterface::prepare_for_exit() {
 	JNIEnv *env = get_env_for_thread();
 
 	env->CallStaticVoidMethod(
 		JavaInterfaceClass,
-		takedownservice
+		prepareforexit
 		);
 
 }

@@ -287,9 +287,10 @@ public class JavaInterface {
 			nsd_helper.registerService(port);
 	}
 
-	public static void TakedownService() {
+	public static void PrepareForExit() {
 		if(nsd_helper != null)
 			nsd_helper.tearDown();
+		VuknobAndroidAudio.stopAudioBridge();
 	}
 
 	public static void DiscoverServices() {

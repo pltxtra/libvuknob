@@ -1571,6 +1571,9 @@ bool MachineSequencer::PadMotion::process_motion(MachineSequencer::MidiEventBuil
 
 		for(auto k = 0; k < 2; k++) {
 			auto pcc = pad_controller_coarse[k];
+
+			if(k == 1) pcc = Machine::Controller::sc_pitch_bend;
+
 			if((pcc & (~0x127)) == 0) { // if value is in the range [0 127]
 				_meb->queue_controller(pad_controller_coarse[k], c_c[k]);
 				if(pad_controller_fine[k] != -1) {

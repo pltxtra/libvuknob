@@ -59,8 +59,8 @@ KammoEventHandler_Declare(MainWindowHandler, "MainWindow:quitnow");
 
 virtual void on_click(KammoGUI::Widget *wid) {
 #ifdef ANDROID
-	SATAN_ERROR("taking down service..\n");
-	AndroidJavaInterface::takedown_service();
+	SATAN_ERROR("Get Android ready for exit..\n");
+	AndroidJavaInterface::prepare_for_exit();
 #endif
 
 	SATAN_ERROR("stopping server..\n");

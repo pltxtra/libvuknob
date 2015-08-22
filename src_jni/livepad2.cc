@@ -633,7 +633,6 @@ void LivePad2::recording_state_changed(bool _is_recording) {
 #define SENSOR_LIMIT 10.0f
 #define MAX_ANGLE (M_PI / 4.0f)
 void LivePad2::on_sensor_event(std::shared_ptr<KammoGUI::SensorEvent> event) {
-	return;
 	if(mseq) {
 #if 0
 		float ev_z = event->values[2];
@@ -821,7 +820,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		static auto lpad = std::make_shared<LivePad2>(cnvs, SVGLoader::get_svg_path("/livePad2.svg"));
 		RemoteInterface::Client::register_ri_machine_set_listener(lpad);
 		RemoteInterface::GlobalControlObject::register_playback_state_listener(lpad);
-//		KammoGUI::SensorEvent::register_listener(lpad);
+		KammoGUI::SensorEvent::register_listener(lpad);
 	}
 }
 
