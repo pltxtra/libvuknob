@@ -396,8 +396,7 @@ void refresh_controllers(std::shared_ptr<RemoteInterface::RIMachine> ri_m, std::
 
 virtual void on_select_row(KammoGUI::Widget *widget, KammoGUI::List::iterator row) {
 	if(widget->get_id() == "cgroups") {
-//		std::string group_name = ((KammoGUI::List *)widget)->get_value(row, 0);
-		std::string group_name = "";
+		std::string group_name = ((KammoGUI::List *)widget)->get_value(row, 0);
 		SATAN_DEBUG("--- SELECTED CONTROLLER GROUP: %s\n", group_name.c_str());
 		rebuild_controller_list(current_ri_machine, group_name);
 	}

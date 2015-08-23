@@ -168,12 +168,12 @@ void AndroidJavaInterface::call_tar(std::vector<std::string > &args) {
 	if (env->ExceptionCheck()) {
 		jthrowable exceptionHandle = env->ExceptionOccurred();
 
-		env->ExceptionClear();
-
 		jclass jThrowableClass = env->GetObjectClass( exceptionHandle );
 		jmethodID methodID = env->GetMethodID( jThrowableClass, "getMessage", "()Ljava/lang/String;" );;
 
 		exception_string = (jstring)env->CallObjectMethod(exceptionHandle, methodID);
+
+		env->ExceptionClear();
 	}
 
 	/// Check if we received an exception message - if so, throw an exception!
