@@ -51,8 +51,10 @@ private:
 	int octave, scale_index;
 	std::string scale_name;
 
-	bool record, quantize;
-	std::string chord_mode, mode, controller;
+	bool record, quantize, do_pitch_bend;
+	std::string mode, controller, pitch_bend_controller;
+
+	RemoteInterface::RIMachine::ChordMode_t chord_mode;
 
 	bool is_recording = false, is_playing = false;
 
@@ -78,7 +80,8 @@ private:
 
 	KammoGUI::SVGCanvas::ElementReference selectMachine_element;
 	KammoGUI::SVGCanvas::ElementReference selectMode_element;
-	KammoGUI::SVGCanvas::ElementReference selectChord_element;
+	KammoGUI::SVGCanvas::ElementReference toggleChord_element;
+	KammoGUI::SVGCanvas::ElementReference togglePitchBend_element;
 	KammoGUI::SVGCanvas::ElementReference selectScale_element;
 	KammoGUI::SVGCanvas::ElementReference selectController_element;
 	KammoGUI::SVGCanvas::ElementReference selectMenu_element;
@@ -87,7 +90,6 @@ private:
 
 	void select_machine();
 	void select_mode();
-	void select_chord();
 	void select_scale();
 	void select_controller();
 	void select_menu();
@@ -104,6 +106,10 @@ private:
 	void octave_down();
 	void toggle_record();
 	void toggle_quantize();
+	void toggle_chord();
+	void toggle_pitch_bend();
+
+	void switch_MachineSequencer(std::shared_ptr<RemoteInterface::RIMachine> mseq);
 
 	static void yes(void *ctx);
 	static void no(void *ctx);
@@ -113,6 +119,7 @@ private:
 				    const KammoGUI::SVGCanvas::MotionEvent &event);
 	static void graphArea_on_event(SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
 				       const KammoGUI::SVGCanvas::MotionEvent &event);
+
 public:
 	LivePad2(KammoGUI::SVGCanvas *cnv, std::string file_name);
 	~LivePad2();

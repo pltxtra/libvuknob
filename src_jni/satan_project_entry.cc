@@ -33,11 +33,11 @@
 #include "satan_debug.hh"
 
 // we need to set this number to the value 2 at least. The value was not defined before interface level 2 (it was then implicit..)
-int SatanProjectEntry::project_interface_level = 7;
+int SatanProjectEntry::project_interface_level = 8;
 std::map<std::string, SatanProjectEntry *> *SatanProjectEntry::entries = NULL;
 std::map<int, std::vector<std::string> > *SatanProjectEntry::load_order = NULL;
 
-SatanProjectEntry::SatanProjectEntry() {} 
+SatanProjectEntry::SatanProjectEntry() {}
 
 SatanProjectEntry::SatanProjectEntry(const std::string &type_name, unsigned int _l_order,
 				     int minimal_project_interface_level) {
@@ -47,7 +47,7 @@ SatanProjectEntry::SatanProjectEntry(const std::string &type_name, unsigned int 
 	if(load_order == NULL) {
 		load_order = new std::map<int, std::vector<std::string> >();
 	}
-	
+
 	if(entries->find(type_name) != entries->end())
 		throw SatanProjectEntryAlreadyRegistered();
 
@@ -63,15 +63,15 @@ SatanProjectEntry::SatanProjectEntry(const std::string &type_name, unsigned int 
 void SatanProjectEntry::get_satan_project_xml(std::ostream &os) {
 	std::map<std::string, SatanProjectEntry *>::iterator k;
 
-	os << "<satanprojectv2 projectinterfacelevel=\"" << project_interface_level << "\" >\n"; 
+	os << "<satanprojectv2 projectinterfacelevel=\"" << project_interface_level << "\" >\n";
 	for(k = entries->begin(); k != entries->end(); k++) {
 		os << "<" << (*k).first << " ";
 		os << (*k).second->get_xml_attributes();
 		os << ">\n";
-		
+
 		(*k).second->generate_xml(os);
 
-		os << "</" << (*k).first << ">\n";		
+		os << "</" << (*k).first << ">\n";
 	}
 	os << "</satanprojectv2>\n";
 }
@@ -91,7 +91,7 @@ void SatanProjectEntry::parse_satan_project_xml(KXMLDoc &xml) {
 		throw jException("You need a newer version of this application to load the project you tried to load.",
 				 jException::sanity_error);
 	}
-	
+
 	std::map<std::string, SatanProjectEntry *>::iterator k;
 	std::map<int, std::vector<std::string> >::iterator l;
 	std::vector<std::string>::iterator U;
@@ -101,7 +101,7 @@ void SatanProjectEntry::parse_satan_project_xml(KXMLDoc &xml) {
 			    (*l).first, (*l).second.size());
 		for(U = (*l).second.begin(); U != (*l).second.end(); U++) {
 			k = entries->find(*U);
-			
+
 			int e_max = 0;
 			try {
 				e_max = xml[(*k).first].get_count();
@@ -109,7 +109,7 @@ void SatanProjectEntry::parse_satan_project_xml(KXMLDoc &xml) {
 			SATAN_DEBUG("Found %d entries of type %s\n",
 				    e_max, (*k).first.c_str());
 			if(e_max == 1) {
-				KXMLDoc node;				
+				KXMLDoc node;
 				node = xml[(*k).first];
 				SATAN_DEBUG("Parsing node: %s\n", (*k).first.c_str());
 				(*k).second->parse_xml(parsing_interface_level, node);

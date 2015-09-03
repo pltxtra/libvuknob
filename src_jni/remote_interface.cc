@@ -66,7 +66,7 @@
 #define __FCT_RIMACHINE			"RIMachine"
 #define __FCT_SAMPLEBANK	        "SampleBank"
 
-#define __VUKNOB_PROTOCOL_VERSION__ 7
+#define __VUKNOB_PROTOCOL_VERSION__ 8
 
 //#define VUKNOB_UDP_SUPPORT
 //#define VUKNOB_UDP_USE
@@ -2198,13 +2198,14 @@ void RemoteInterface::RIMachine::pad_set_quantize(bool do_quantize) {
 		);
 }
 
-void RemoteInterface::RIMachine::pad_assign_midi_controller(const std::string &controller) {
+void RemoteInterface::RIMachine::pad_assign_midi_controller(PadAxis_t axis, const std::string &controller) {
 	auto thiz = std::dynamic_pointer_cast<RIMachine>(shared_from_this());
 	send_object_message(
-		[this, controller, thiz](std::shared_ptr<Message> &msg2send) {
+		[this, axis, controller, thiz](std::shared_ptr<Message> &msg2send) {
 			msg2send->set_value("ignored", thiz->name); // make sure thiz is not optimized away
 
 			msg2send->set_value("command", "setctrl");
+			msg2send->set_value("axis", std::to_string((int)axis));
 			msg2send->set_value("midictrl", controller);
 		}
 		);
@@ -2493,8 +2494,22 @@ void RemoteInterface::RIMachine::process_message(Server *context, MessageHandler
 		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
 
 		if(mseq != NULL) { // see if it's a MachineSequencer
+			PadAxis_t axis = (PadAxis_t)(std::stoi(msg.get_value("axis")));
+			MachineSequencer::PadConfiguration::PadAxis p_axis = MachineSequencer::PadConfiguration::pad_x_axis;
 			std::string ctrl = msg.get_value("midictrl");
-			mseq->assign_pad_to_midi_controller(ctrl);
+			switch(axis) {
+			case pad_x_axis:
+				p_axis = MachineSequencer::PadConfiguration::pad_x_axis;
+				break;
+			case pad_y_axis:
+				p_axis = MachineSequencer::PadConfiguration::pad_y_axis;
+				break;
+			case pad_z_axis:
+				p_axis = MachineSequencer::PadConfiguration::pad_z_axis;
+				break;
+			}
+
+			mseq->assign_pad_to_midi_controller(p_axis, ctrl);
 		} else {
 			// not a MachineSequencer
 			throw Context::FailureResponse("Not a MachineSequencer object.");

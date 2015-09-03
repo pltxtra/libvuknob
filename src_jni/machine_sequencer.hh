@@ -291,6 +291,11 @@ public:
 	private:
 		PadConfiguration();
 	public:
+		enum PadAxis {
+			pad_x_axis = 0,
+			pad_y_axis = 1,
+			pad_z_axis = 2
+		};
 		enum PadMode {
 			pad_normal = 0,
 			pad_arpeggiator = 1
@@ -646,7 +651,7 @@ public:
 	// assign the pad to a specific MIDI controller - if "" or if the string does not match a proper MIDI controller
 	// the pad will be assigned to velocity
 	// if the pad is assigned to a midi controller, the velocity will default to full amplitude
-	void assign_pad_to_midi_controller(const std::string &);
+	void assign_pad_to_midi_controller(PadConfiguration::PadAxis p_axis, const std::string &);
 
 	Pad *get_pad();
 

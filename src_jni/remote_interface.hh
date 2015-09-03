@@ -509,6 +509,11 @@ namespace RemoteInterface {
 
 	class RIMachine : public BaseObject {
 	public:
+		enum PadAxis_t {
+			pad_x_axis = 0,
+			pad_y_axis = 1,
+			pad_z_axis = 2,
+		};
 		enum PadEvent_t {
 			ms_pad_press = 0,
 			ms_pad_slide = 1,
@@ -684,7 +689,7 @@ namespace RemoteInterface {
 		void pad_set_scale(int scale_index);
 		void pad_set_record(bool record);
 		void pad_set_quantize(bool do_quantize);
-		void pad_assign_midi_controller(const std::string &controller);
+		void pad_assign_midi_controller(PadAxis_t axis, const std::string &controller);
 		void pad_set_chord_mode(ChordMode_t chord_mode);
 		void pad_set_arpeggio_pattern(const std::string &arp_pattern);
 		void pad_clear();

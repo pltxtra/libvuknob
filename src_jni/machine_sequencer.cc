@@ -35,7 +35,7 @@
 
 #include <stddef.h>
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 /*************************************
@@ -1321,7 +1321,7 @@ void MachineSequencer::PadMotion::get_padmotion_xml(int finger, std::ostringstre
 
 	unsigned int k;
 	for(k = 0; k < x.size(); k++) {
-		stream << "<d x=\"" << x[k] << "\" y=\"" << y[k] << "\" t=\"" << t[k] << "\" />\n";
+		stream << "<d x=\"" << x[k] << "\" y=\"" << y[k] << "\" z=\"" << z[k] << "\" t=\"" << t[k] << "\" />\n";
 	}
 
 	stream << "</m>\n";
@@ -1403,6 +1403,8 @@ MachineSequencer::PadMotion::PadMotion(int project_interface_level, Pad *parent_
 
 	KXML_GET_NUMBER(pad_xml, "start", start_tick, -1);
 
+	SATAN_DEBUG("(XML) PadMotion::PadMotion(%d)\n", project_interface_level);
+
 	int mk = 0;
 	try {
 		mk = pad_xml["d"].get_count();
@@ -1423,6 +1425,7 @@ MachineSequencer::PadMotion::PadMotion(int project_interface_level, Pad *parent_
 			_y = ((_y & 0xfe0) << 2) | (_y & 0x1f); // shift coarse data up 2 bits to make room for 7 bit fine data
 		} else {
 			KXML_GET_NUMBER(dxml, "z", _z, 0);
+			SATAN_DEBUG("(XML) Got PadMotion _z value:: %d\n", _z);
 		}
 
 		KXML_GET_NUMBER(dxml, "t", _t, -1);
@@ -1572,7 +1575,7 @@ bool MachineSequencer::PadMotion::process_motion(MachineSequencer::MidiEventBuil
 		for(auto k = 0; k < 2; k++) {
 			auto pcc = pad_controller_coarse[k];
 
-			if(k == 1) pcc = Machine::Controller::sc_pitch_bend;
+//			if(k == 1) pcc = Machine::Controller::sc_pitch_bend;
 
 			if((pcc & (~0x127)) == 0) { // if value is in the range [0 127]
 				_meb->queue_controller(pad_controller_coarse[k], c_c[k]);
@@ -1858,6 +1861,8 @@ MachineSequencer::PadSession::PadSession(int project_interface_level, Pad *paren
 	int mx = 0;
 	mx = ps_xml["m"].get_count();
 
+	SATAN_DEBUG("(XML) PadSession::PadSession() - m count: %d\n", mx);
+
 	for(int k = 0; k < mx; k++) {
 		KXMLDoc mxml = ps_xml["m"][k];
 
@@ -1865,6 +1870,10 @@ MachineSequencer::PadSession::PadSession(int project_interface_level, Pad *paren
 		KXML_GET_NUMBER(mxml, "f", _f, 0);
 
 		PadMotion *m = new PadMotion(project_interface_level, parent, mxml);
+
+		SATAN_DEBUG("(XML) PadSessiion::PadSession() created new PadMotion %p - time to record: %p\n",
+			    m, finger[_f].recorded);
+
 		PadMotion::record_motion(&(finger[_f].recorded), m);
 	}
 
@@ -2079,9 +2088,13 @@ void MachineSequencer::Pad::load_pad_from_xml(int project_interface_level, const
 
 		load_configuration_from_xml(pad_xml);
 
+		SATAN_DEBUG("Loading Pad xml data, project interface level: %d\n", project_interface_level);
+
 		if(project_interface_level < 5) {
 			int mx = 0;
 			mx = pad_xml["m"].get_count();
+
+			SATAN_DEBUG("Pad (old) - #m : %d\n", mx);
 
 			for(int k = 0; k < mx; k++) {
 				KXMLDoc mxml = pad_xml["m"][k];
@@ -2099,16 +2112,33 @@ void MachineSequencer::Pad::load_pad_from_xml(int project_interface_level, const
 			int mx = 0;
 			mx = pad_xml["s"].get_count();
 
+			SATAN_DEBUG("Pad (new) - #s : %d\n", mx);
+
+			SATAN_DEBUG("   Pad (new) will debug XML:\n");
+			pad_xml.debug();
+			SATAN_DEBUG("   Pad (new) XML debugged.\n");
+
 			for(int k = 0; k < mx; k++) {
 				KXMLDoc ps_xml = pad_xml["s"][k];
 
-				PadSession *nses = new PadSession(project_interface_level, this, ps_xml);
-				recorded_sessions.push_back(nses);
+				SATAN_DEBUG("   Pad (new) will debug SUB XML:\n");
+				ps_xml.debug();
+				SATAN_DEBUG("   Pad (new) SUB XML debugged.\n");
+
+				try {
+					PadSession *nses = new PadSession(project_interface_level, this, ps_xml);
+					recorded_sessions.push_back(nses);
+				} catch(...) {
+					SATAN_DEBUG("Failed to create session - probably an empty session.\n");
+				}
 			}
 		}
-
+	} catch(jException &e) {
+		SATAN_ERROR("Pad::load_pad_from_xml() caught a jException: %s\n", e.message.c_str());
+	} catch(std::exception &e) {
+		SATAN_ERROR("Pad::load_pad_from_xml() caught a std::exception: %s\n", e.what());
 	} catch(...) {
-		// ignore
+		SATAN_ERROR("Pad::load_pad_from_xml() caught an unexpected exception.\n");
 	}
 	arpeggiator.set_pattern(arpeggio_pattern);
 }
@@ -2791,9 +2821,9 @@ std::set<std::string> MachineSequencer::available_midi_controllers() {
 	return param.retval;
 }
 
-void MachineSequencer::assign_pad_to_midi_controller(const std::string &name) {
+void MachineSequencer::assign_pad_to_midi_controller(PadConfiguration::PadAxis p_axis, const std::string &name) {
 	Machine::machine_operation_enqueue(
-		[this, name] (void *) {
+		[p_axis, this, name] (void *) {
 			int pad_controller_coarse = -1;
 			int pad_controller_fine = -1;
 			try {
@@ -2801,8 +2831,8 @@ void MachineSequencer::assign_pad_to_midi_controller(const std::string &name) {
 			} catch(...) {
 				/* ignore fault here */
 			}
-			pad.set_coarse_controller(0, pad_controller_coarse);
-			pad.set_fine_controller(0, pad_controller_fine);
+			pad.set_coarse_controller(p_axis == PadConfiguration::pad_y_axis ? 0 : 1, pad_controller_coarse);
+			pad.set_fine_controller(p_axis == PadConfiguration::pad_y_axis ? 0 : 1, pad_controller_fine);
 		},
 		NULL, true);
 }
@@ -3592,11 +3622,8 @@ void MachineSequencer::create_sequencer_for_machine(Machine *sibling) {
 	MachineSequencer *mseq = NULL;
 	try {
 		mseq = new MachineSequencer(sibling->get_name());
-	} catch(jException &e) {
-		SATAN_ERROR("(A) MachineSequencer::create_sequencer_for_machine() - Caught a jException: %s\n", e.message.c_str());
-		throw;
 	} catch(const jException &e) {
-		SATAN_ERROR("(B) MachineSequencer::create_sequencer_for_machine() - Caught a jException: %s\n", e.message.c_str());
+		SATAN_ERROR("(A) MachineSequencer::create_sequencer_for_machine() - Caught a jException: %s\n", e.message.c_str());
 		throw;
 	}
 

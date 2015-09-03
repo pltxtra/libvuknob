@@ -172,23 +172,6 @@ void LivePad2::select_mode() {
 		);
 }
 
-void LivePad2::select_chord() {
-	listView->clear();
-
-	listView->add_row("chord off");
-	listView->add_row("chord triad");
-
-	listView->select_from_list("Select chord",
-				   [this](bool row_selected, int row_index, const std::string &row_text) {
-					   if(!row_selected) return;
-
-					   l_pad2->chord_mode = row_text;
-
-					   refresh_machine_settings();
-				   }
-		);
-}
-
 void LivePad2::refresh_scale_key_names() {
 	auto scalo = Scales::get_scales_object();
 	if(!scalo) return;
@@ -400,15 +383,10 @@ void LivePad2::refresh_machine_settings() {
 		mseq->pad_set_scale(scale_index);
 		mseq->pad_set_record(record);
 		mseq->pad_set_quantize(quantize);
-
-		mseq->pad_assign_midi_controller(controller);
-
-		if(chord_mode == "chord triad") {
-			mseq->pad_set_chord_mode(RemoteInterface::RIMachine::chord_triad);
-		} else { // default
-			mseq->pad_set_chord_mode(RemoteInterface::RIMachine::chord_off);
-		}
-
+		mseq->pad_assign_midi_controller(RemoteInterface::RIMachine::pad_y_axis, controller);
+		mseq->pad_assign_midi_controller(RemoteInterface::RIMachine::pad_z_axis,
+						 do_pitch_bend ? pitch_bend_controller : "[disabled]");
+		mseq->pad_set_chord_mode(chord_mode);
 		mseq->pad_set_arpeggio_pattern(mode);
 
 		name = mseq->get_sibling_name();
@@ -423,7 +401,28 @@ void LivePad2::refresh_machine_settings() {
 		selectMode_element.find_child_by_class("selectedText").set_text_content(mode);
 	}
 	{
-		selectChord_element.find_child_by_class("selectedText").set_text_content(chord_mode);
+		auto no_chord = toggleChord_element.find_child_by_class("noChord");
+		auto triad_chord = toggleChord_element.find_child_by_class("triadChord");
+
+		no_chord.set_display("none");
+		triad_chord.set_display("none");
+
+		switch(chord_mode) {
+		case RemoteInterface::RIMachine::chord_off:
+			no_chord.set_display("inline");
+			break;
+		case RemoteInterface::RIMachine::chord_triad:
+			triad_chord.set_display("inline");
+			break;
+		}
+	}
+	{
+		if(do_pitch_bend && pitch_bend_controller == "[none]") {
+			jInformer::inform("Machine does not support pitch bend.");
+			do_pitch_bend = false;
+		}
+		auto no_pitchbend = togglePitchBend_element.find_child_by_class("disable");
+		no_pitchbend.set_display(do_pitch_bend ? "none" : "inline");
 	}
 	{
 		selectMachine_element.find_child_by_class("selectedText").set_text_content(name);
@@ -439,6 +438,24 @@ void LivePad2::octave_up() {
 void LivePad2::octave_down() {
 	octave = octave - 1;
 	if(octave < 1) octave = 1;
+	refresh_machine_settings();
+}
+
+void LivePad2::toggle_chord() {
+	switch(chord_mode) {
+	case RemoteInterface::RIMachine::chord_off:
+		chord_mode = RemoteInterface::RIMachine::chord_triad;
+		break;
+	case RemoteInterface::RIMachine::chord_triad:
+		chord_mode = RemoteInterface::RIMachine::chord_off;
+		break;
+	}
+	refresh_machine_settings();
+}
+
+void LivePad2::toggle_pitch_bend() {
+	do_pitch_bend = !do_pitch_bend;
+
 	refresh_machine_settings();
 }
 
@@ -520,8 +537,10 @@ void LivePad2::button_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGU
 					ctx->select_machine();
 				} else if(e_ref->get_id() == "selectMode") {
 					ctx->select_mode();
-				} else if(e_ref->get_id() == "selectChord") {
-					ctx->select_chord();
+				} else if(e_ref->get_id() == "toggleChord") {
+					ctx->toggle_chord();
+				} else if(e_ref->get_id() == "pitchBend") {
+					ctx->toggle_pitch_bend();
 				} else if(e_ref->get_id() == "selectScale") {
 					ctx->select_scale();
 				} else if(e_ref->get_id() == "selectController") {
@@ -679,7 +698,10 @@ void LivePad2::on_sensor_event(std::shared_ptr<KammoGUI::SensorEvent> event) {
 
 LivePad2::LivePad2(KammoGUI::SVGCanvas *cnv, std::string file_name)
 	: SVGDocument(file_name, cnv), octave(3), scale_index(0), scale_name("C- "), record(false), quantize(false)
-	, chord_mode("chord off"), mode("No Arpeggio"), controller("velocity"), listView(NULL), scale_editor(NULL)
+	, do_pitch_bend(false)
+	, mode("No Arpeggio"), controller("velocity")
+	, chord_mode(RemoteInterface::RIMachine::chord_off)
+	, listView(NULL), scale_editor(NULL)
 {
 	for(int k = 0; k < 10; k++) {
 		f_active[k] = false;
@@ -699,9 +721,13 @@ LivePad2::LivePad2(KammoGUI::SVGCanvas *cnv, std::string file_name)
 		selectMode_element = KammoGUI::SVGCanvas::ElementReference(this, "selectMode");
 		selectMode_element.set_event_handler(button_on_event);
 	}
-	{ // get the chord selector and attach the event listener
-		selectChord_element = KammoGUI::SVGCanvas::ElementReference(this, "selectChord");
-		selectChord_element.set_event_handler(button_on_event);
+	{ // get the chord toggle button and attach the event listener
+		toggleChord_element = KammoGUI::SVGCanvas::ElementReference(this, "toggleChord");
+		toggleChord_element.set_event_handler(button_on_event);
+	}
+	{ // get the chord toggle button and attach the event listener
+		togglePitchBend_element = KammoGUI::SVGCanvas::ElementReference(this, "pitchBend");
+		togglePitchBend_element.set_event_handler(button_on_event);
 	}
 	{ // get the scale selector and attach the event listener
 		selectScale_element = KammoGUI::SVGCanvas::ElementReference(this, "selectScale");
@@ -744,6 +770,21 @@ LivePad2::LivePad2(KammoGUI::SVGCanvas *cnv, std::string file_name)
 
 }
 
+void LivePad2::switch_MachineSequencer(std::shared_ptr<RemoteInterface::RIMachine> m) {
+	mseq = m;
+
+	if(mseq) {
+		pitch_bend_controller = "[none]";
+		for(auto ctrl : mseq->available_midi_controllers()) {
+			if(ctrl.find("pitch_bend") != std::string::npos) {
+				pitch_bend_controller = ctrl;
+			}
+		}
+
+		refresh_machine_settings();
+	}
+}
+
 LivePad2::~LivePad2() {
 	QUALIFIED_DELETE(listView);
 }
@@ -755,8 +796,7 @@ LivePad2::~LivePad2() {
  ***************************/
 
 void LivePad2::use_new_MachineSequencer(std::shared_ptr<RemoteInterface::RIMachine> m) {
-	l_pad2->mseq = m;
-	l_pad2->refresh_machine_settings();
+	l_pad2->switch_MachineSequencer(m);
 }
 
 void LivePad2::ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
@@ -768,8 +808,7 @@ void LivePad2::ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine>
 	KammoGUI::run_on_GUI_thread(
 		[this, ri_machine]() {
 			msequencers.insert(ri_machine);
-			if(!mseq) mseq = ri_machine;
-			refresh_machine_settings();
+			if(!mseq) switch_MachineSequencer(ri_machine);
 		}
 		);
 }

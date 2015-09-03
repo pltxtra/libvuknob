@@ -2319,23 +2319,15 @@ std::vector<std::string> Machine::get_controller_names(const std::string &_group
 }
 
 Machine::Controller *Machine::get_controller(const std::string &_name) {
-	typedef struct {
-		const std::string &n;
-		Machine *thiz;
-		Machine::Controller *retval;
-	} Param;
-	Param param = {
-		.n = _name,
-		.thiz = this,
-		.retval = NULL
-	};
+	Machine::Controller *retval;
+
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-			p->retval = p->thiz->internal_get_controller(p->n);
+		[this, _name, &retval] (void *d) {
+			retval = internal_get_controller(_name);
 		},
-		&param, true);
-	return param.retval;
+		NULL, true);
+
+	return retval;
 }
 
 std::string Machine::get_hint() {
