@@ -36,7 +36,7 @@
 #include "svg_loader.hh"
 #include "scales.hh"
 
-#define __DO_SATAN_DEBUG
+//#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 #include "common.hh"
@@ -385,7 +385,7 @@ void LivePad2::refresh_machine_settings() {
 		mseq->pad_set_quantize(quantize);
 		mseq->pad_assign_midi_controller(RemoteInterface::RIMachine::pad_y_axis, controller);
 		mseq->pad_assign_midi_controller(RemoteInterface::RIMachine::pad_z_axis,
-						 do_pitch_bend ? pitch_bend_controller : "[disabled]");
+						 pitch_bend_controller);
 		mseq->pad_set_chord_mode(chord_mode);
 		mseq->pad_set_arpeggio_pattern(mode);
 
@@ -584,6 +584,8 @@ void LivePad2::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source, Kamm
 		ctx->f_active[k] = false;
 	}
 
+	auto z_value = ctx->do_pitch_bend ? ctx->l_ev_z : 0.5f;
+
 	switch(event.get_action()) {
 	case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
 	case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
@@ -617,7 +619,8 @@ void LivePad2::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source, Kamm
 				ctx->l_ev_y[f] = ev_y / height;
 				ctx->f_active[f] = true;
 				ctx->mseq->pad_enqueue_event(f, RemoteInterface::RIMachine::ms_pad_slide,
-							     ctx->l_ev_x[f], ctx->l_ev_y[f], ctx->l_ev_z);
+							     ctx->l_ev_x[f], ctx->l_ev_y[f],
+							     z_value);
 			}
 		}
 		break;
@@ -627,7 +630,7 @@ void LivePad2::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source, Kamm
 	}
 
 	if(finger < 10 && pevt != RemoteInterface::RIMachine::ms_pad_no_event && ctx->mseq) {
-		ctx->mseq->pad_enqueue_event(finger, pevt, x / width, y / height, ctx->l_ev_z);
+		ctx->mseq->pad_enqueue_event(finger, pevt, x / width, y / height, z_value);
 	}
 }
 
@@ -653,14 +656,7 @@ void LivePad2::recording_state_changed(bool _is_recording) {
 #define MAX_ANGLE (M_PI / 4.0f)
 void LivePad2::on_sensor_event(std::shared_ptr<KammoGUI::SensorEvent> event) {
 	if(mseq) {
-#if 0
-		float ev_z = event->values[2];
-		if(ev_z > SENSOR_LIMIT) ev_z = SENSOR_LIMIT;
-		if(ev_z < -SENSOR_LIMIT) ev_z = -SENSOR_LIMIT;
-
-		l_ev_z = (ev_z / (2.0f * SENSOR_LIMIT)) + 0.5f;
-#else
-		static float y_cmp = 9.0f, z_cmp = 0.0f;
+		static float y_cmp = 5.608387f, z_cmp = 8.043009f;
 
 		float ev_y = event->values[1];
 		float ev_z = event->values[2];
@@ -679,18 +675,18 @@ void LivePad2::on_sensor_event(std::shared_ptr<KammoGUI::SensorEvent> event) {
 
 		l_ev_z = (angle / (2.0f * MAX_ANGLE)) + 0.5f;
 
-//		SATAN_DEBUG("on_sensor_event() - (%f, %f) -> (%f, %f) = angle: %f)\n",
-//			    z_cmp, y_cmp,
-//			    ev_z, ev_y,
-//			    angle * 180.0f / M_PI);
-#endif
-		for(auto f = 0; f < 10; f++) {
-			// we only need to send the ev z for one finger, since it will be converted
-			// into a midi controller value, and that value is global for the instrument
-			// and not a per-finger value.
-			if(f_active[f]) {
-				mseq->pad_enqueue_event(f, RemoteInterface::RIMachine::ms_pad_slide, l_ev_x[f], l_ev_y[f], l_ev_z);
-				break;
+		if(do_pitch_bend) {
+			for(auto f = 0; f < 10; f++) {
+				// we only need to send the ev z for one finger, since it will be converted
+				// into a midi controller value, and that value is global for the instrument
+				// and not a per-finger value.
+				if(f_active[f]) {
+					mseq->pad_enqueue_event(
+						f,
+						RemoteInterface::RIMachine::ms_pad_slide,
+						l_ev_x[f], l_ev_y[f], l_ev_z);
+					break;
+				}
 			}
 		}
 	}
