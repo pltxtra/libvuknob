@@ -35,7 +35,7 @@
 
 #include <stddef.h>
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 /*************************************
@@ -688,8 +688,11 @@ void MachineSequencer::Arpeggiator::Pattern::initiate_built_in() {
  *
  *************************************/
 
-MachineSequencer::Arpeggiator::Arpeggiator() : phase(0), ticks_left(0), note(0), velocity(0), current_finger(0),
-					       pattern_index(0), current_pattern(NULL), finger_count(0) {
+MachineSequencer::Arpeggiator::Arpeggiator()
+	: phase(0), ticks_left(0), note(0), velocity(0), current_finger(0)
+	, pattern_index(0)
+	, pingpong_direction_forward(true), mode(arp_pingpong)
+	, current_pattern(NULL), finger_count(0) {
 	for(int k = 0; k < MAX_ARP_FINGERS; k++) {
 		finger[k].counter = 0;
 	}
@@ -784,15 +787,40 @@ void MachineSequencer::Arpeggiator::process_pattern(bool mute, MidiEventBuilder 
 	case 0:
 	{
 		if((!mute) && (finger_count > 0)) {
+			switch(mode) {
+			default:
+			case arp_forward:
+				current_finger = (current_finger + 1) % finger_count;
+				break;
+			case arp_reverse:
+				current_finger = (current_finger - 1) % finger_count;
+				break;
+			case arp_pingpong:
+				if(pingpong_direction_forward) {
+					if(current_finger + 1 >= finger_count) {
+						pingpong_direction_forward = false;
+						current_finger = (current_finger - 1) % finger_count;
+					} else {
+						current_finger = (current_finger + 1) % finger_count;
+					}
+				} else {
+					if(current_finger - 1 < 0) {
+						pingpong_direction_forward = true;
+						current_finger = (current_finger + 1) % finger_count;
+					} else {
+						current_finger = (current_finger - 1) % finger_count;
+					}
+				}
+				break;
+			}
+
 			int finger_id = (current_finger) % finger_count;
-			current_finger++;
 
 			note = finger[finger_id].key + current_pattern->note[pattern_index].octave_offset * 12;
 			velocity = finger[finger_id].velocity;
 
 			// clamp note to [0 127]
-			if(note < 0) note = 0;
-			if(note > 127) note = 127;
+			note &= 0x7f;
 
 			_meb->queue_note_on(note, velocity);
 		} else {

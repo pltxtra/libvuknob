@@ -442,6 +442,9 @@ public:
 #define MAX_ARP_FINGERS 5
 	class Arpeggiator {
 	public:
+		enum ArpMode {
+			arp_forward, arp_reverse, arp_pingpong
+		};
 		class Note {
 		public:
 			int on_length, off_length;
@@ -478,6 +481,8 @@ public:
 		int ticks_left, note, velocity;
 		int current_finger;
 		int pattern_index;
+		bool pingpong_direction_forward;
+		ArpMode mode;
 		Pattern *current_pattern;
 
 		// Finger data
@@ -501,6 +506,7 @@ public:
 		void process_pattern(bool mute, MidiEventBuilder *_meb);
 
 		void set_pattern(int id);
+		void set_mode(ArpMode mode);
 
 		void reset();
 	};
