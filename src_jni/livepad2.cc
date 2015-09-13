@@ -403,9 +403,11 @@ void LivePad2::refresh_machine_settings() {
 	{
 		auto no_chord = toggleChord_element.find_child_by_class("noChord");
 		auto triad_chord = toggleChord_element.find_child_by_class("triadChord");
+		auto quad_chord = toggleChord_element.find_child_by_class("quadChord");
 
 		no_chord.set_display("none");
 		triad_chord.set_display("none");
+		quad_chord.set_display("none");
 
 		switch(chord_mode) {
 		case RemoteInterface::RIMachine::chord_off:
@@ -413,6 +415,9 @@ void LivePad2::refresh_machine_settings() {
 			break;
 		case RemoteInterface::RIMachine::chord_triad:
 			triad_chord.set_display("inline");
+			break;
+		case RemoteInterface::RIMachine::chord_quad:
+			quad_chord.set_display("inline");
 			break;
 		}
 	}
@@ -447,6 +452,9 @@ void LivePad2::toggle_chord() {
 		chord_mode = RemoteInterface::RIMachine::chord_triad;
 		break;
 	case RemoteInterface::RIMachine::chord_triad:
+		chord_mode = RemoteInterface::RIMachine::chord_quad;
+		break;
+	case RemoteInterface::RIMachine::chord_quad:
 		chord_mode = RemoteInterface::RIMachine::chord_off;
 		break;
 	}
@@ -721,7 +729,7 @@ LivePad2::LivePad2(KammoGUI::SVGCanvas *cnv, std::string file_name)
 		toggleChord_element = KammoGUI::SVGCanvas::ElementReference(this, "toggleChord");
 		toggleChord_element.set_event_handler(button_on_event);
 	}
-	{ // get the chord toggle button and attach the event listener
+	{ // get the pitchBend toggle button and attach the event listener
 		togglePitchBend_element = KammoGUI::SVGCanvas::ElementReference(this, "pitchBend");
 		togglePitchBend_element.set_event_handler(button_on_event);
 	}

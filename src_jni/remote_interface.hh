@@ -527,7 +527,8 @@ namespace RemoteInterface {
 
 		enum ChordMode_t {
 			chord_off = 0,
-			chord_triad = 1
+			chord_triad = 1,
+			chord_quad = 2
 		};
 
 		/* server side API */

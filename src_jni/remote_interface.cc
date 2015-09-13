@@ -2527,6 +2527,9 @@ void RemoteInterface::RIMachine::process_message(Server *context, MessageHandler
 			case chord_triad:
 				cm = MachineSequencer::PadConfiguration::chord_triad;
 				break;
+			case chord_quad:
+				cm = MachineSequencer::PadConfiguration::chord_quad;
+				break;
 			}
 			mseq->get_pad()->set_chord_mode(cm);
 		} else {

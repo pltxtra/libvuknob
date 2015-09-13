@@ -1509,14 +1509,32 @@ void MachineSequencer::PadMotion::reset() {
 	last_x = -1;
 }
 
-void MachineSequencer::PadMotion::build_chord(const int *scale_data, int scale_offset, int *chord, int pad_column) {
-	// this version of build_chord() builds a simple triad
-	chord[0] = octave * 12 + scale_data[pad_column + 0 + scale_offset];
-	chord[1] = octave * 12 + scale_data[pad_column + 2 + scale_offset];
-	chord[2] = octave * 12 + scale_data[pad_column + 4 + scale_offset];
-	chord[3] = -1; // indicate end
-	chord[4] = -1; // indicate end
-	chord[5] = -1; // indicate end
+void MachineSequencer::PadMotion::build_chord(ChordMode chord_mode,
+					      const int *scale_data, int scale_offset,
+					      int *chord, int pad_column) {
+	switch(chord_mode) {
+	case chord_triad:
+		chord[0] = octave * 12 + scale_data[pad_column + 0 + scale_offset];
+		chord[1] = octave * 12 + scale_data[pad_column + 2 + scale_offset];
+		chord[2] = octave * 12 + scale_data[pad_column + 4 + scale_offset];
+		chord[3] = -1; // indicate end
+		chord[4] = -1; // indicate end
+		chord[5] = -1; // indicate end
+		break;
+
+	case chord_quad:
+		chord[0] = octave * 12 + scale_data[pad_column + 0 + scale_offset];
+		chord[1] = octave * 12 + scale_data[pad_column + 2 + scale_offset];
+		chord[2] = octave * 12 + scale_data[pad_column + 4 + scale_offset];
+		chord[3] = octave * 12 + scale_data[pad_column + 0 + scale_offset] + 12;
+		chord[4] = -1; // indicate end
+		chord[5] = -1; // indicate end
+		break;
+
+	case chord_off:
+	default:
+		break;
+	}
 }
 
 bool MachineSequencer::PadMotion::process_motion(MachineSequencer::MidiEventBuilder *_meb, MachineSequencer::Arpeggiator *arpeggiator) {
@@ -1559,7 +1577,7 @@ bool MachineSequencer::PadMotion::process_motion(MachineSequencer::MidiEventBuil
 		int chord[MAX_PAD_CHORD];
 
 		if( (!to_be_deleted) && (chord_mode != chord_off) && ((!terminated) || (index < (max - 1))) ) {
-			build_chord(scale_data, scale_offset, chord, pad_column);
+			build_chord(chord_mode, scale_data, scale_offset, chord, pad_column);
 		} else {
 			for(int k = 0; k < MAX_PAD_CHORD; k++) {
 				chord[k] = -1;
@@ -2886,22 +2904,12 @@ void MachineSequencer::set_pad_arpeggio_pattern(const std::string identity) {
 }
 
 void MachineSequencer::set_pad_chord_mode(PadConfiguration::ChordMode pconf) {
-	typedef struct {
-		MachineSequencer *thiz;
-		PadConfiguration::ChordMode cnf;
-	} Param;
-	Param param = {
-		.thiz = this,
-		.cnf = pconf
-	};
-
 	machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-			SATAN_DEBUG("Chord selected (%p): %d\n", &(p->thiz->pad), p->cnf);
-			p->thiz->pad.set_chord_mode(p->cnf);
+		[this, pconf] (void *) {
+			SATAN_DEBUG("Chord selected (%p): %d\n", &(pad), pconf);
+			pad.set_chord_mode(pconf);
 		},
-		&param, true);
+		NULL, true);
 }
 
 void MachineSequencer::export_pad_to_loop(int loop_id) {

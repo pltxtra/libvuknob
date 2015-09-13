@@ -303,7 +303,8 @@ public:
 
 		enum ChordMode {
 			chord_off = 0,
-			chord_triad = 1
+			chord_triad = 1,
+			chord_quad = 2
 		};
 
 		PadConfiguration(PadMode mode, int scale, int octave);
@@ -364,7 +365,7 @@ private:
 
 		// notes should be an array with the size of MAX_PAD_CHORD
 		// unused entries will be marked with a -1
-		void build_chord(const int *scale_data, int scale_offset, int *notes, int pad_column);
+		void build_chord(ChordMode chord_mode, const int *scale_data, int scale_offset, int *notes, int pad_column);
 
 	public:
 		void get_padmotion_xml(int finger, std::ostringstream &stream);
