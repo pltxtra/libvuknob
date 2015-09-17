@@ -66,7 +66,7 @@
 #define __FCT_RIMACHINE			"RIMachine"
 #define __FCT_SAMPLEBANK	        "SampleBank"
 
-#define __VUKNOB_PROTOCOL_VERSION__ 8
+#define __VUKNOB_PROTOCOL_VERSION__ 9
 
 //#define VUKNOB_UDP_SUPPORT
 //#define VUKNOB_UDP_USE
@@ -2235,6 +2235,18 @@ void RemoteInterface::RIMachine::pad_set_arpeggio_pattern(const std::string &arp
 		);
 }
 
+void RemoteInterface::RIMachine::pad_set_arpeggio_direction(ArpeggioDirection_t arp_direction) {
+	auto thiz = std::dynamic_pointer_cast<RIMachine>(shared_from_this());
+	send_object_message(
+		[this, arp_direction, thiz](std::shared_ptr<Message> &msg2send) {
+			msg2send->set_value("ignored", thiz->name); // make sure thiz is not optimized away
+
+			msg2send->set_value("command", "setarpdirection");
+			msg2send->set_value("direction", std::to_string((int)arp_direction));
+		}
+		);
+}
+
 void RemoteInterface::RIMachine::pad_clear() {
 	auto thiz = std::dynamic_pointer_cast<RIMachine>(shared_from_this());
 	send_object_message(
@@ -2542,6 +2554,32 @@ void RemoteInterface::RIMachine::process_message(Server *context, MessageHandler
 		if(mseq != NULL) { // see if it's a MachineSequencer
 			std::string arp_pattern = msg.get_value("arppattern");
 			mseq->set_pad_arpeggio_pattern(arp_pattern);
+		} else {
+			// not a MachineSequencer
+			throw Context::FailureResponse("Not a MachineSequencer object.");
+		}
+	} else if(command == "setarpdirection") {
+		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
+
+		if(mseq != NULL) { // see if it's a MachineSequencer
+			ArpeggioDirection_t i_arp_direction = (ArpeggioDirection_t)std::stoi(msg.get_value("direction"));
+			MachineSequencer::PadConfiguration::ArpeggioDirection adir =
+				MachineSequencer::PadConfiguration::arp_off;
+			switch(i_arp_direction) {
+			case arp_off:
+				adir = MachineSequencer::PadConfiguration::arp_off;
+				break;
+			case arp_forward:
+				adir = MachineSequencer::PadConfiguration::arp_forward;
+				break;
+			case arp_reverse:
+				adir = MachineSequencer::PadConfiguration::arp_reverse;
+				break;
+			case arp_pingpong:
+				adir = MachineSequencer::PadConfiguration::arp_pingpong;
+				break;
+			}
+			mseq->set_pad_arpeggio_direction(adir);
 		} else {
 			// not a MachineSequencer
 			throw Context::FailureResponse("Not a MachineSequencer object.");

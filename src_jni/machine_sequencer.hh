@@ -296,9 +296,11 @@ public:
 			pad_y_axis = 1,
 			pad_z_axis = 2
 		};
-		enum PadMode {
-			pad_normal = 0,
-			pad_arpeggiator = 1
+		enum ArpeggioDirection {
+			arp_off = 0,
+			arp_forward = 1,
+			arp_reverse = 2,
+			arp_pingpong = 3
 		};
 
 		enum ChordMode {
@@ -307,10 +309,10 @@ public:
 			chord_quad = 2
 		};
 
-		PadConfiguration(PadMode mode, int scale, int octave);
+		PadConfiguration(ArpeggioDirection arp_dir, int scale, int octave);
 		PadConfiguration(const PadConfiguration *config);
 
-		PadMode mode;
+		ArpeggioDirection arp_direction;
 		ChordMode chord_mode;
 		int scale, last_scale, octave, arpeggio_pattern;
 		int scale_data[21];
@@ -320,7 +322,7 @@ public:
 
 		void set_coarse_controller(int id, int c);
 		void set_fine_controller(int id, int c);
-		void set_mode(PadMode mode);
+		void set_arpeggio_direction(ArpeggioDirection arp_direction);
 		void set_arpeggio_pattern(int arp_pattern);
 		void set_chord_mode(ChordMode mode);
 		void set_scale(int scale);
@@ -442,9 +444,6 @@ public:
 #define MAX_ARP_FINGERS 5
 	class Arpeggiator {
 	public:
-		enum ArpMode {
-			arp_forward, arp_reverse, arp_pingpong
-		};
 		class Note {
 		public:
 			int on_length, off_length;
@@ -482,7 +481,7 @@ public:
 		int current_finger;
 		int pattern_index;
 		bool pingpong_direction_forward;
-		ArpMode mode;
+		PadConfiguration::ArpeggioDirection arp_direction;
 		Pattern *current_pattern;
 
 		// Finger data
@@ -506,7 +505,7 @@ public:
 		void process_pattern(bool mute, MidiEventBuilder *_meb);
 
 		void set_pattern(int id);
-		void set_mode(ArpMode mode);
+		void set_direction(PadConfiguration::ArpeggioDirection direction);
 
 		void reset();
 	};
@@ -663,6 +662,7 @@ public:
 	Pad *get_pad();
 
 	void set_pad_arpeggio_pattern(const std::string identity);
+	void set_pad_arpeggio_direction(PadConfiguration::ArpeggioDirection arp_dir);
 	void set_pad_chord_mode(PadConfiguration::ChordMode pconf);
 	void export_pad_to_loop(int loop_id = LOOP_NOT_SET);
 

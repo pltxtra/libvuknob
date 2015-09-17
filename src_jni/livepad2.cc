@@ -150,10 +150,8 @@ void LivePad2::select_machine() {
 		);
 }
 
-void LivePad2::select_mode() {
+void LivePad2::select_arp_pattern() {
 	listView->clear();
-
-	listView->add_row("No Arpeggio");
 
 	if(auto gco = RemoteInterface::GlobalControlObject::get_global_control_object()) {
 		for(auto arpid :  gco->get_pad_arpeggio_patterns()) {
@@ -161,11 +159,11 @@ void LivePad2::select_mode() {
 		}
 	}
 
-	listView->select_from_list("Select mode",
+	listView->select_from_list("Select Arp Pattern",
 				   [this](bool row_selected, int row_index, const std::string &row_text) {
 					   if(!row_selected) return;
 
-					   mode = row_text;
+					   arp_pattern = row_text;
 
 					   refresh_machine_settings();
 				   }
@@ -376,6 +374,11 @@ void LivePad2::refresh_controller_indicator() {
 void LivePad2::refresh_machine_settings() {
 	refresh_scale_key_names();
 
+	if(!is_playing && arp_direction != RemoteInterface::RIMachine::arp_off) {
+		jInformer::inform("Press the play button before using arpeggio.");
+		arp_direction = RemoteInterface::RIMachine::arp_off;
+	}
+
 	std::string name = "mchn";
 	SATAN_DEBUG("Refresh machine settings, mseq\n");
 	if(mseq) {
@@ -387,7 +390,8 @@ void LivePad2::refresh_machine_settings() {
 		mseq->pad_assign_midi_controller(RemoteInterface::RIMachine::pad_z_axis,
 						 pitch_bend_controller);
 		mseq->pad_set_chord_mode(chord_mode);
-		mseq->pad_set_arpeggio_pattern(mode);
+		mseq->pad_set_arpeggio_pattern(arp_pattern);
+		mseq->pad_set_arpeggio_direction(arp_direction);
 
 		name = mseq->get_sibling_name();
 	}
@@ -398,7 +402,7 @@ void LivePad2::refresh_machine_settings() {
 	refresh_controller_indicator();
 
 	{
-		selectMode_element.find_child_by_class("selectedText").set_text_content(mode);
+		selectArpPattern_element.find_child_by_class("selectedText").set_text_content(arp_pattern);
 	}
 	{
 		auto no_chord = toggleChord_element.find_child_by_class("noChord");
@@ -418,6 +422,30 @@ void LivePad2::refresh_machine_settings() {
 			break;
 		case RemoteInterface::RIMachine::chord_quad:
 			quad_chord.set_display("inline");
+			break;
+		}
+	}
+	{
+		auto arrow_up = toggleArpDirection_element.find_child_by_class("arrowUp");
+		auto arrow_down = toggleArpDirection_element.find_child_by_class("arrowDown");
+
+		arrow_up.set_display("none");
+		arrow_down.set_display("none");
+
+		switch(arp_direction) {
+		default:
+		case RemoteInterface::RIMachine::arp_off:
+			/* nothing */
+			break;
+		case RemoteInterface::RIMachine::arp_forward:
+			arrow_up.set_display("inline");
+			break;
+		case RemoteInterface::RIMachine::arp_reverse:
+			arrow_down.set_display("inline");
+			break;
+		case RemoteInterface::RIMachine::arp_pingpong:
+			arrow_up.set_display("inline");
+			arrow_down.set_display("inline");
 			break;
 		}
 	}
@@ -458,6 +486,25 @@ void LivePad2::toggle_chord() {
 		chord_mode = RemoteInterface::RIMachine::chord_off;
 		break;
 	}
+	refresh_machine_settings();
+}
+
+void LivePad2::toggle_arp_direction() {
+	switch(arp_direction) {
+	case RemoteInterface::RIMachine::arp_off:
+		arp_direction = RemoteInterface::RIMachine::arp_forward;
+		break;
+	case RemoteInterface::RIMachine::arp_forward:
+		arp_direction = RemoteInterface::RIMachine::arp_reverse;
+		break;
+	case RemoteInterface::RIMachine::arp_reverse:
+		arp_direction = RemoteInterface::RIMachine::arp_pingpong;
+		break;
+	case RemoteInterface::RIMachine::arp_pingpong:
+		arp_direction = RemoteInterface::RIMachine::arp_off;
+		break;
+	}
+
 	refresh_machine_settings();
 }
 
@@ -543,10 +590,12 @@ void LivePad2::button_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGU
 					ctx->octave_down();
 				} else if(e_ref->get_id() == "selectMachine") {
 					ctx->select_machine();
-				} else if(e_ref->get_id() == "selectMode") {
-					ctx->select_mode();
+				} else if(e_ref->get_id() == "selectArpPattern") {
+					ctx->select_arp_pattern();
 				} else if(e_ref->get_id() == "toggleChord") {
 					ctx->toggle_chord();
+				} else if(e_ref->get_id() == "arpDirection") {
+					ctx->toggle_arp_direction();
 				} else if(e_ref->get_id() == "pitchBend") {
 					ctx->toggle_pitch_bend();
 				} else if(e_ref->get_id() == "selectScale") {
@@ -646,6 +695,10 @@ void LivePad2::playback_state_changed(bool _is_playing) {
 	KammoGUI::run_on_GUI_thread(
 		[this, _is_playing]() {
 			is_playing = _is_playing;
+			refresh_machine_settings();
+
+			selectArpPattern_element.set_display(is_playing ? "inline" : "none");
+
 			get_parent()->redraw();
 		}
 		);
@@ -703,8 +756,9 @@ void LivePad2::on_sensor_event(std::shared_ptr<KammoGUI::SensorEvent> event) {
 LivePad2::LivePad2(KammoGUI::SVGCanvas *cnv, std::string file_name)
 	: SVGDocument(file_name, cnv), octave(3), scale_index(0), scale_name("C- "), record(false), quantize(false)
 	, do_pitch_bend(false)
-	, mode("No Arpeggio"), controller("velocity")
+	, arp_pattern("No Arpeggio"), controller("velocity")
 	, chord_mode(RemoteInterface::RIMachine::chord_off)
+	, arp_direction(RemoteInterface::RIMachine::arp_off)
 	, listView(NULL), scale_editor(NULL)
 {
 	for(int k = 0; k < 10; k++) {
@@ -721,9 +775,9 @@ LivePad2::LivePad2(KammoGUI::SVGCanvas *cnv, std::string file_name)
 		selectMachine_element = KammoGUI::SVGCanvas::ElementReference(this, "selectMachine");
 		selectMachine_element.set_event_handler(button_on_event);
 	}
-	{ // get the mode selector and attach the event listener
-		selectMode_element = KammoGUI::SVGCanvas::ElementReference(this, "selectMode");
-		selectMode_element.set_event_handler(button_on_event);
+	{ // get the arp_pattern selector and attach the event listener
+		selectArpPattern_element = KammoGUI::SVGCanvas::ElementReference(this, "selectArpPattern");
+		selectArpPattern_element.set_event_handler(button_on_event);
 	}
 	{ // get the chord toggle button and attach the event listener
 		toggleChord_element = KammoGUI::SVGCanvas::ElementReference(this, "toggleChord");
@@ -732,6 +786,10 @@ LivePad2::LivePad2(KammoGUI::SVGCanvas *cnv, std::string file_name)
 	{ // get the pitchBend toggle button and attach the event listener
 		togglePitchBend_element = KammoGUI::SVGCanvas::ElementReference(this, "pitchBend");
 		togglePitchBend_element.set_event_handler(button_on_event);
+	}
+	{ // get the arpDirection toggle button and attach the event listener
+		toggleArpDirection_element = KammoGUI::SVGCanvas::ElementReference(this, "arpDirection");
+		toggleArpDirection_element.set_event_handler(button_on_event);
 	}
 	{ // get the scale selector and attach the event listener
 		selectScale_element = KammoGUI::SVGCanvas::ElementReference(this, "selectScale");

@@ -691,7 +691,7 @@ void MachineSequencer::Arpeggiator::Pattern::initiate_built_in() {
 MachineSequencer::Arpeggiator::Arpeggiator()
 	: phase(0), ticks_left(0), note(0), velocity(0), current_finger(0)
 	, pattern_index(0)
-	, pingpong_direction_forward(true), mode(arp_pingpong)
+	, pingpong_direction_forward(true), arp_direction(PadConfiguration::arp_pingpong)
 	, current_pattern(NULL), finger_count(0) {
 	for(int k = 0; k < MAX_ARP_FINGERS; k++) {
 		finger[k].counter = 0;
@@ -773,7 +773,10 @@ void MachineSequencer::Arpeggiator::disable_key(int key) {
 }
 
 void MachineSequencer::Arpeggiator::process_pattern(bool mute, MidiEventBuilder *_meb) {
-	if(current_pattern == NULL || current_pattern->length <= 0)
+	if(current_pattern == NULL
+	   || current_pattern->length <= 0
+	   || arp_direction == PadConfiguration::arp_off
+		)
 		return;
 
 	if(pattern_index >= current_pattern->length) {
@@ -787,15 +790,19 @@ void MachineSequencer::Arpeggiator::process_pattern(bool mute, MidiEventBuilder 
 	case 0:
 	{
 		if((!mute) && (finger_count > 0)) {
-			switch(mode) {
+			switch(arp_direction) {
+			case PadConfiguration::arp_off:
+				break;
 			default:
-			case arp_forward:
+			case PadConfiguration::arp_forward:
 				current_finger = (current_finger + 1) % finger_count;
 				break;
-			case arp_reverse:
-				current_finger = (current_finger - 1) % finger_count;
+			case PadConfiguration::arp_reverse:
+				current_finger--;
+				if(current_finger < 0)
+					current_finger = finger_count > 0 ? finger_count - 1 : 0;
 				break;
-			case arp_pingpong:
+			case PadConfiguration::arp_pingpong:
 				if(pingpong_direction_forward) {
 					if(current_finger + 1 >= finger_count) {
 						pingpong_direction_forward = false;
@@ -867,7 +874,16 @@ void MachineSequencer::Arpeggiator::process_pattern(bool mute, MidiEventBuilder 
 }
 
 void MachineSequencer::Arpeggiator::set_pattern(int id) {
+	if(id < 0) {
+		current_pattern = NULL;
+		return;
+	}
+
 	current_pattern = &Pattern::built_in[id]; // default
+}
+
+void MachineSequencer::Arpeggiator::set_direction(PadConfiguration::ArpeggioDirection dir) {
+	arp_direction = dir;
 }
 
 /*************************************
@@ -1249,8 +1265,8 @@ void MachineSequencer::Loop::copy_loop(const MachineSequencer::Loop *src) {
 
 MachineSequencer::PadConfiguration::PadConfiguration() : chord_mode(chord_off) {}
 
-MachineSequencer::PadConfiguration::PadConfiguration(PadMode _mode, int _scale, int _octave)
-	: mode(_mode), chord_mode(chord_off)
+MachineSequencer::PadConfiguration::PadConfiguration(ArpeggioDirection _arp_direction, int _scale, int _octave)
+	: arp_direction(_arp_direction), chord_mode(chord_off)
 	, scale(_scale), last_scale(-1)
 	, octave(_octave)
 	, arpeggio_pattern(0)
@@ -1259,7 +1275,7 @@ MachineSequencer::PadConfiguration::PadConfiguration(PadMode _mode, int _scale, 
 {}
 
 MachineSequencer::PadConfiguration::PadConfiguration(const PadConfiguration *parent)
-	: mode(parent->mode), chord_mode(parent->chord_mode)
+	: arp_direction(parent->arp_direction), chord_mode(parent->chord_mode)
 	, scale(parent->scale), last_scale(-1)
 	, octave(parent->octave)
 	, arpeggio_pattern(0)
@@ -1277,8 +1293,8 @@ void MachineSequencer::PadConfiguration::set_fine_controller(int id, int c) {
 	pad_controller_fine[id] = c;
 }
 
-void MachineSequencer::PadConfiguration::set_mode(PadMode _mode) {
-	mode = _mode;
+void MachineSequencer::PadConfiguration::set_arpeggio_direction(ArpeggioDirection _arp_direction) {
+	arp_direction = _arp_direction;
 }
 
 void MachineSequencer::PadConfiguration::set_arpeggio_pattern(int arp_pattern) {
@@ -1299,7 +1315,7 @@ void MachineSequencer::PadConfiguration::set_octave(int _octave) {
 
 void MachineSequencer::PadConfiguration::get_configuration_xml(std::ostringstream &stream) {
 	stream << "<c "
-	       << "m=\"" << (int)mode << "\" "
+	       << "m=\"" << (int)arp_direction << "\" "
 	       << "c=\"" << (int)chord_mode << "\" "
 	       << "s=\"" << scale << "\" "
 	       << "o=\"" << octave << "\" "
@@ -1317,9 +1333,9 @@ void MachineSequencer::PadConfiguration::load_configuration_from_xml(const KXMLD
 		c = pad_xml["c"];
 	} catch(...) { /* ignore */ }
 
-	int _mode = 0;
-	KXML_GET_NUMBER(c, "m", _mode, _mode);
-	mode = (PadMode)_mode;
+	int _arp_direction = 0;
+	KXML_GET_NUMBER(c, "m", _arp_direction, _arp_direction);
+	arp_direction = (ArpeggioDirection)_arp_direction;
 
 	int c_mode = 0;
 	KXML_GET_NUMBER(c, "c", c_mode, c_mode);
@@ -1635,7 +1651,7 @@ bool MachineSequencer::PadMotion::process_motion(MachineSequencer::MidiEventBuil
 			}
 		}
 
-		if(mode == pad_normal) {
+		if(arp_direction == arp_off) {
 			if(chord_mode != chord_off) {
 				for(int k = 0; k < MAX_PAD_CHORD; k++) {
 					if(last_chord[k] != chord[k]) {
@@ -1659,7 +1675,7 @@ bool MachineSequencer::PadMotion::process_motion(MachineSequencer::MidiEventBuil
 					_meb->queue_note_off(last_x, 0x7f);
 				}
 			}
-		} else if(mode == pad_arpeggiator) {
+		} else {
 			if(chord_mode != chord_off) {
 				for(int k = 0; k < MAX_PAD_CHORD; k++) {
 					if(last_chord[k] != -1) {
@@ -2022,7 +2038,7 @@ void MachineSequencer::PadSession::get_session_xml(std::ostringstream &stream) {
  *************************************/
 
 MachineSequencer::Pad::Pad()
-	: PadConfiguration(pad_arpeggiator, 0, 4)
+	: PadConfiguration(PadConfiguration::arp_off, 0, 4)
 	, current_session(NULL), do_record(false), do_quantize(false) {
 	padEventQueue = new moodycamel::ReaderWriterQueue<PadEvent>(100);
 }
@@ -2185,6 +2201,7 @@ void MachineSequencer::Pad::load_pad_from_xml(int project_interface_level, const
 		SATAN_ERROR("Pad::load_pad_from_xml() caught an unexpected exception.\n");
 	}
 	arpeggiator.set_pattern(arpeggio_pattern);
+	arpeggiator.set_direction(arp_direction);
 }
 
 void MachineSequencer::Pad::export_to_loop(int start_tick, int stop_tick, MachineSequencer::Loop *loop) {
@@ -2901,34 +2918,34 @@ static void build_arpeggio_pattern_id_list() {
 void MachineSequencer::set_pad_arpeggio_pattern(const std::string identity) {
 	build_arpeggio_pattern_id_list();
 
-	typedef struct {
-		MachineSequencer *thiz;
-		int id;
-	} Param;
-	Param param = {
-		.thiz = this,
-		.id = -1 // -1 == disable arpeggio
-	};
-
+	int arp_pattern_index = -1;
 	for(unsigned int k = 0; k < arpeggio_pattern_id_list.size(); k++) {
 		if(arpeggio_pattern_id_list[k] == identity) {
-			param.id = k;
+			arp_pattern_index = k;
 		}
 	}
 
 	machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-			if(p->id == -1) {
-				p->thiz->pad.set_mode(PadConfiguration::pad_normal);
-				p->thiz->pad.set_arpeggio_pattern(-1);
-			} else {
-				p->thiz->pad.set_mode(PadConfiguration::pad_arpeggiator);
-				p->thiz->pad.set_arpeggio_pattern(p->id);
-				p->thiz->pad.arpeggiator.set_pattern(p->id);
+		[this, arp_pattern_index] (void *d) {
+			if(arp_pattern_index == -1) {
+				pad.set_arpeggio_direction(PadConfiguration::arp_off);
+				pad.arpeggiator.set_direction(PadConfiguration::arp_off);
 			}
+
+			pad.set_arpeggio_pattern(arp_pattern_index);
+			pad.arpeggiator.set_pattern(arp_pattern_index);
 		},
-		&param, true);
+		NULL, true);
+}
+
+void MachineSequencer::set_pad_arpeggio_direction(PadConfiguration::ArpeggioDirection arp_direction) {
+	machine_operation_enqueue(
+		[this, arp_direction] (void *) {
+			SATAN_DEBUG("Arpeggio direction selected (%p): %d\n", &(pad), arp_direction);
+			pad.set_arpeggio_direction(arp_direction);
+			pad.arpeggiator.set_direction(arp_direction);
+		},
+		NULL, true);
 }
 
 void MachineSequencer::set_pad_chord_mode(PadConfiguration::ChordMode pconf) {

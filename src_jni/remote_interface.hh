@@ -520,9 +520,11 @@ namespace RemoteInterface {
 			ms_pad_release = 2,
 			ms_pad_no_event = 3
 		};
-		enum PadMode_t {
-			pad_normal = 0,
-			pad_arpeggiator = 1
+		enum ArpeggioDirection_t {
+			arp_off = 0,
+			arp_forward = 1,
+			arp_reverse = 2,
+			arp_pingpong = 3
 		};
 
 		enum ChordMode_t {
@@ -693,6 +695,7 @@ namespace RemoteInterface {
 		void pad_assign_midi_controller(PadAxis_t axis, const std::string &controller);
 		void pad_set_chord_mode(ChordMode_t chord_mode);
 		void pad_set_arpeggio_pattern(const std::string &arp_pattern);
+		void pad_set_arpeggio_direction(ArpeggioDirection_t arp_direction);
 		void pad_clear();
 		void pad_enqueue_event(int finger, PadEvent_t event_type, float ev_x, float ev_y, float ev_z);
 		void enqueue_midi_data(size_t len, const char* data);

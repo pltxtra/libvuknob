@@ -52,9 +52,10 @@ private:
 	std::string scale_name;
 
 	bool record, quantize, do_pitch_bend;
-	std::string mode, controller, pitch_bend_controller;
+	std::string arp_pattern, controller, pitch_bend_controller;
 
 	RemoteInterface::RIMachine::ChordMode_t chord_mode;
+	RemoteInterface::RIMachine::ArpeggioDirection_t arp_direction;
 
 	bool is_recording = false, is_playing = false;
 
@@ -79,9 +80,10 @@ private:
 	KammoGUI::SVGCanvas::ElementReference quantize_element;
 
 	KammoGUI::SVGCanvas::ElementReference selectMachine_element;
-	KammoGUI::SVGCanvas::ElementReference selectMode_element;
+	KammoGUI::SVGCanvas::ElementReference selectArpPattern_element;
 	KammoGUI::SVGCanvas::ElementReference toggleChord_element;
 	KammoGUI::SVGCanvas::ElementReference togglePitchBend_element;
+	KammoGUI::SVGCanvas::ElementReference toggleArpDirection_element;
 	KammoGUI::SVGCanvas::ElementReference selectScale_element;
 	KammoGUI::SVGCanvas::ElementReference selectController_element;
 	KammoGUI::SVGCanvas::ElementReference selectMenu_element;
@@ -89,7 +91,7 @@ private:
 	void refresh_scale_key_names();
 
 	void select_machine();
-	void select_mode();
+	void select_arp_pattern();
 	void select_scale();
 	void select_controller();
 	void select_menu();
@@ -107,6 +109,7 @@ private:
 	void toggle_record();
 	void toggle_quantize();
 	void toggle_chord();
+	void toggle_arp_direction();
 	void toggle_pitch_bend();
 
 	void switch_MachineSequencer(std::shared_ptr<RemoteInterface::RIMachine> mseq);
