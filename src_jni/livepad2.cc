@@ -756,7 +756,7 @@ void LivePad2::on_sensor_event(std::shared_ptr<KammoGUI::SensorEvent> event) {
 LivePad2::LivePad2(KammoGUI::SVGCanvas *cnv, std::string file_name)
 	: SVGDocument(file_name, cnv), octave(3), scale_index(0), scale_name("C- "), record(false), quantize(false)
 	, do_pitch_bend(false)
-	, arp_pattern("No Arpeggio"), controller("velocity")
+	, arp_pattern("built-in #0"), controller("velocity")
 	, chord_mode(RemoteInterface::RIMachine::chord_off)
 	, arp_direction(RemoteInterface::RIMachine::arp_off)
 	, listView(NULL), scale_editor(NULL)
