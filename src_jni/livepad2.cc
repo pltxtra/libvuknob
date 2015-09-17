@@ -379,6 +379,8 @@ void LivePad2::refresh_machine_settings() {
 		arp_direction = RemoteInterface::RIMachine::arp_off;
 	}
 
+	selectArpPattern_element.set_display(arp_direction == RemoteInterface::RIMachine::arp_off ? "none" : "inline");
+
 	std::string name = "mchn";
 	SATAN_DEBUG("Refresh machine settings, mseq\n");
 	if(mseq) {
@@ -696,8 +698,6 @@ void LivePad2::playback_state_changed(bool _is_playing) {
 		[this, _is_playing]() {
 			is_playing = _is_playing;
 			refresh_machine_settings();
-
-			selectArpPattern_element.set_display(is_playing ? "inline" : "none");
 
 			get_parent()->redraw();
 		}
