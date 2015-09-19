@@ -388,9 +388,10 @@ void LivePad2::refresh_machine_settings() {
 		mseq->pad_set_scale(scale_index);
 		mseq->pad_set_record(record);
 		mseq->pad_set_quantize(quantize);
-		mseq->pad_assign_midi_controller(RemoteInterface::RIMachine::pad_y_axis, controller);
+		mseq->pad_assign_midi_controller(RemoteInterface::RIMachine::pad_y_axis,
+						 controller);
 		mseq->pad_assign_midi_controller(RemoteInterface::RIMachine::pad_z_axis,
-						 pitch_bend_controller);
+						 do_pitch_bend ? pitch_bend_controller : "[none]");
 		mseq->pad_set_chord_mode(chord_mode);
 		mseq->pad_set_arpeggio_pattern(arp_pattern);
 		mseq->pad_set_arpeggio_direction(arp_direction);

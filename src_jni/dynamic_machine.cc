@@ -47,7 +47,7 @@
 #include "machine_sequencer.hh"
 #include "common.hh"
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 /*********************************************************
@@ -342,8 +342,10 @@ void DynamicMachine::Handle::parse_controller(const KXMLDoc &ctr_xml) {
 			KXML_GET_NUMBER(ctr_xml,"fine",fn,-1);
 
 			// clamp to 7 bit range
-			cr &= 127;
-			fn &= 127;
+			if(cr != -1)
+				cr &= 127;
+			if(fn != -1)
+				fn &= 127;
 		}
 	} catch(...) { /* ignore */ }
 
@@ -860,6 +862,8 @@ Machine::Controller *DynamicMachine::internal_get_controller(const std::string &
 		int crs, fn;
 		crs = dh->get_coarse_midi_controller(name);
 		fn = dh->get_fine_midi_controller(name);
+
+		SATAN_DEBUG("internal_get_controller() - %d, %d\n", crs, fn);
 
 		set_midi_controller(ctr, crs, fn);
 	}

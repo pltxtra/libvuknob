@@ -281,6 +281,8 @@ void MachineSequencer::MidiEventBuilder::queue_note_off(int note, int velocity, 
 void MachineSequencer::MidiEventBuilder::queue_controller(int controller, int value, int channel) {
 	MidiEvent *mev = MidiEventChainControler::pop_next_free_midi(3);
 
+	SATAN_DEBUG("queue_controller(%d, %d, %d)\n", controller, value, channel);
+
 	SET_MIDI_DATA_3(
 		mev,
 		(MIDI_CONTROL_CHANGE) | (channel & 0x0f),
@@ -1636,15 +1638,22 @@ bool MachineSequencer::PadMotion::process_motion(MachineSequencer::MidiEventBuil
 
 		for(auto k = 0; k < 2; k++) {
 			auto pcc = pad_controller_coarse[k];
+			auto pcf = pad_controller_fine[k];
 
-			if((pcc & (~0x127)) == 0) { // if value is in the range [0 127]
-				_meb->queue_controller(pad_controller_coarse[k], c_c[k]);
-				if(pad_controller_fine[k] != -1) {
-					_meb->queue_controller(pad_controller_fine[k], c_f[k]);
+			if((pcc & (~0x7f)) == 0) { // if value is in the range [0 127]
+				SATAN_DEBUG("pcc: %d -> c_c[%d] = %d\n",
+					    pcc, k, c_c[k]);
+
+				_meb->queue_controller(pcc, c_c[k]);
+				SATAN_DEBUG("  --- pcf = %d\n", pcf);
+				if(pcf != -1) {
+					_meb->queue_controller(pcf, c_f[k]);
 				}
 			} else if(pcc >= Machine::Controller::sc_special_first) {
 				switch(pcc) {
 				case Machine::Controller::sc_pitch_bend:
+					SATAN_DEBUG("pcc: %d -> pitch bend(%d): %d, %d\n",
+						    pcc, k, c_f[k], c_c[k]);
 					_meb->queue_pitch_bend(c_f[k], c_c[k], 0);
 					break;
 				}
@@ -2892,6 +2901,9 @@ void MachineSequencer::assign_pad_to_midi_controller(PadConfiguration::PadAxis p
 			} catch(...) {
 				/* ignore fault here */
 			}
+			SATAN_DEBUG("assign_pad_to_midi_controller() : c(%d), f(%d)\n",
+				    pad_controller_coarse,
+				    pad_controller_fine);
 			pad.set_coarse_controller(p_axis == PadConfiguration::pad_y_axis ? 0 : 1, pad_controller_coarse);
 			pad.set_fine_controller(p_axis == PadConfiguration::pad_y_axis ? 0 : 1, pad_controller_fine);
 		},
