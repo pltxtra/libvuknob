@@ -35,7 +35,7 @@
 
 #include <stddef.h>
 
-#define __DO_SATAN_DEBUG
+//#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 /*************************************
@@ -771,7 +771,9 @@ void MachineSequencer::Arpeggiator::disable_key(int key) {
 
 	sort_keys();
 
-	if(finger_count == 0) current_finger = 0;
+	if(finger_count == 0) {
+		current_finger = 0;
+	}
 }
 
 void MachineSequencer::Arpeggiator::process_pattern(bool mute, MidiEventBuilder *_meb) {
@@ -780,6 +782,11 @@ void MachineSequencer::Arpeggiator::process_pattern(bool mute, MidiEventBuilder 
 	   || arp_direction == PadConfiguration::arp_off
 		)
 		return;
+
+	if(mute || (finger_count == 0 && note != -1)) {
+		_meb->queue_note_off(note, velocity);
+		note = -1;
+	}
 
 	if(pattern_index >= current_pattern->length) {
 		pattern_index = 0;
@@ -791,7 +798,7 @@ void MachineSequencer::Arpeggiator::process_pattern(bool mute, MidiEventBuilder 
 	switch(phase) {
 	case 0:
 	{
-		if((!mute) && (finger_count > 0)) {
+		if((finger_count > 0)) {
 			switch(arp_direction) {
 			case PadConfiguration::arp_off:
 				break;
@@ -831,7 +838,7 @@ void MachineSequencer::Arpeggiator::process_pattern(bool mute, MidiEventBuilder 
 			// clamp note to [0 127]
 			note &= 0x7f;
 
-			_meb->queue_note_on(note, velocity);
+			if(!mute) _meb->queue_note_on(note, velocity);
 		} else {
 			note = -1;
 		}
@@ -1280,7 +1287,7 @@ MachineSequencer::PadConfiguration::PadConfiguration(const PadConfiguration *par
 	: arp_direction(parent->arp_direction), chord_mode(parent->chord_mode)
 	, scale(parent->scale), last_scale(-1)
 	, octave(parent->octave)
-	, arpeggio_pattern(0)
+	, arpeggio_pattern(parent->arpeggio_pattern)
 	, pad_controller_coarse {parent->pad_controller_coarse[0], parent->pad_controller_coarse[1]}
 	, pad_controller_fine {parent->pad_controller_fine[0], parent->pad_controller_fine[1] }
 {}
@@ -1542,6 +1549,9 @@ bool MachineSequencer::PadMotion::start_motion(int session_position) {
 			index = 0;
 			crnt_tick = -1; // we start at a negative index, it will be stepped up in process motion
 			last_x = -1;
+			arperator.reset();
+			arperator.set_direction(arp_direction);
+			arperator.set_pattern(arpeggio_pattern);
 			return true;
 		}
 	}
@@ -1583,10 +1593,11 @@ void MachineSequencer::PadMotion::build_chord(ChordMode chord_mode,
 	}
 }
 
-bool MachineSequencer::PadMotion::process_motion(MachineSequencer::MidiEventBuilder *_meb, MachineSequencer::Arpeggiator *arpeggiator) {
+bool MachineSequencer::PadMotion::process_motion(bool mute, MachineSequencer::MidiEventBuilder *_meb) {
 	// check if we have reached the end of the line
 	if(terminated && index >= (int)x.size()) {
 		index = -1; // reset index
+		arperator.process_pattern(mute, _meb);
 		return true;
 	}
 
@@ -1667,14 +1678,14 @@ bool MachineSequencer::PadMotion::process_motion(MachineSequencer::MidiEventBuil
 						if(last_chord[k] != -1) {
 							_meb->queue_note_off(last_chord[k], 0x7f);
 						}
-						if(chord[k] != -1) {
+						if(chord[k] != -1 && !mute) {
 							_meb->queue_note_on(chord[k], velocity);
 						}
 					}
 				}
 			} else {
 				if((!to_be_deleted) && (last_x != note) ) {
-					if((!terminated) || (index < (max - 1)))
+					if((!mute) && ((!terminated) || (index < (max - 1))))
 						_meb->queue_note_on(note, velocity);
 
 					if(last_x != -1)
@@ -1688,22 +1699,22 @@ bool MachineSequencer::PadMotion::process_motion(MachineSequencer::MidiEventBuil
 			if(chord_mode != chord_off) {
 				for(int k = 0; k < MAX_PAD_CHORD; k++) {
 					if(last_chord[k] != -1) {
-						arpeggiator->disable_key(last_chord[k]);
+						arperator.disable_key(last_chord[k]);
 					}
 					if(chord[k] != -1) {
-						chord[k] = arpeggiator->enable_key(chord[k], velocity);
+						chord[k] = arperator.enable_key(chord[k], velocity);
 					}
 				}
 			} else {
 				if(!to_be_deleted) {
 					if(last_x != -1) {
-						arpeggiator->disable_key(last_x);
+						arperator.disable_key(last_x);
 					}
 					if((!terminated) || (index < (max - 1))) {
-						note = arpeggiator->enable_key(note, velocity);
+						note = arperator.enable_key(note, velocity);
 					}
 				} else if( to_be_deleted || (terminated && (index == (max - 1)) ) ) {
-					arpeggiator->disable_key(last_x);
+					arperator.disable_key(last_x);
 				}
 			}
 		}
@@ -1715,6 +1726,8 @@ bool MachineSequencer::PadMotion::process_motion(MachineSequencer::MidiEventBuil
 		// step to next index
 		index++;
 	}
+
+	arperator.process_pattern(mute, _meb);
 
 	return false;
 }
@@ -1832,7 +1845,7 @@ void MachineSequencer::PadFinger::process_finger_events(const PadEvent &pe, int 
 }
 
 bool MachineSequencer::PadFinger::process_finger_motions(bool do_record, bool mute, int session_position,
-							 MidiEventBuilder *_meb, Arpeggiator *arpeggiator,
+							 MidiEventBuilder *_meb,
 							 bool quantize) {
 	PadMotion *top = next_motion_to_play;
 
@@ -1848,7 +1861,7 @@ bool MachineSequencer::PadFinger::process_finger_motions(bool do_record, bool mu
 
 	std::vector<PadMotion *>::iterator k = playing_motions.begin();
 	while(k != playing_motions.end()) {
-		if((*k)->process_motion(_meb, arpeggiator)) {
+		if((*k)->process_motion(mute, _meb)) {
 			if((*k) == current) {
 				if(do_record) {
 					PadMotion::record_motion(&recorded, current);
@@ -1980,7 +1993,6 @@ bool MachineSequencer::PadSession::start_play(int crnt_tick) {
 }
 
 bool MachineSequencer::PadSession::process_session(bool do_record, bool mute,
-						   Arpeggiator *arpeggiator,
 						   MidiEventBuilder*_meb,
 						   bool quantize) {
 	playback_position++;
@@ -1989,7 +2001,7 @@ bool MachineSequencer::PadSession::process_session(bool do_record, bool mute,
 	for(int _f = 0; _f < MAX_PAD_FINGERS; _f++) {
 		bool finger_completed =
 			finger[_f].process_finger_motions(do_record, mute, playback_position,
-							  _meb, arpeggiator,
+							  _meb,
 							  quantize);
 		session_completed = session_completed && finger_completed;
 
@@ -2057,8 +2069,6 @@ MachineSequencer::Pad::~Pad() {
 }
 
 void MachineSequencer::Pad::reset() {
-	arpeggiator.reset();
-
 	auto session_iterator = recorded_sessions.begin();
 	while(session_iterator != recorded_sessions.end()) {
 		if((*session_iterator) == current_session) {
@@ -2112,7 +2122,6 @@ void MachineSequencer::Pad::process_sessions(bool mute, int tick, MidiEventBuild
 		// check if in play, or if we should start it
 		if((*t)->start_play(tick)) {
 			if((*t)->process_session(do_record, no_sound,
-						 &arpeggiator,
 						 _meb, do_quantize)) {
 				SATAN_DEBUG(" --- session object will be deleted %p\n", (*t));
 				delete (*t);
@@ -2129,7 +2138,6 @@ void MachineSequencer::Pad::process_sessions(bool mute, int tick, MidiEventBuild
 void MachineSequencer::Pad::process(bool mute, int tick, MidiEventBuilder *_meb) {
 	process_events(tick);
 	process_sessions(mute, tick, _meb);
-	arpeggiator.process_pattern(mute, _meb);
 }
 
 void MachineSequencer::Pad::get_pad_xml(std::ostringstream &stream) {
@@ -2209,8 +2217,6 @@ void MachineSequencer::Pad::load_pad_from_xml(int project_interface_level, const
 	} catch(...) {
 		SATAN_ERROR("Pad::load_pad_from_xml() caught an unexpected exception.\n");
 	}
-	arpeggiator.set_pattern(arpeggio_pattern);
-	arpeggiator.set_direction(arp_direction);
 }
 
 void MachineSequencer::Pad::export_to_loop(int start_tick, int stop_tick, MachineSequencer::Loop *loop) {
@@ -2256,7 +2262,7 @@ void MachineSequencer::Pad::export_to_loop(int start_tick, int stop_tick, Machin
 			// process the active_sessions for export
 			auto session = active_sessions.begin();
 			while(session != active_sessions.end()) {
-				(void)(*session)->process_session(false, false, &arpeggiator, &pmxb, false);
+				(void)(*session)->process_session(false, false, &pmxb, false);
 				if((*session)->start_play(-1)) { // check if it's currently playing
 					session++;
 				} else { //  if not, erase it from the active vector
@@ -2264,9 +2270,6 @@ void MachineSequencer::Pad::export_to_loop(int start_tick, int stop_tick, Machin
 				}
 			}
 		}
-
-		// export arpeggiator data for this tick
-		arpeggiator.process_pattern(false, &pmxb);
 
 		// step no next tick
 		pmxb.step_tick();
@@ -2941,11 +2944,9 @@ void MachineSequencer::set_pad_arpeggio_pattern(const std::string identity) {
 		[this, arp_pattern_index] (void *d) {
 			if(arp_pattern_index == -1) {
 				pad.set_arpeggio_direction(PadConfiguration::arp_off);
-				pad.arpeggiator.set_direction(PadConfiguration::arp_off);
 			}
 
 			pad.set_arpeggio_pattern(arp_pattern_index);
-			pad.arpeggiator.set_pattern(arp_pattern_index);
 		},
 		NULL, true);
 }
@@ -2955,7 +2956,6 @@ void MachineSequencer::set_pad_arpeggio_direction(PadConfiguration::ArpeggioDire
 		[this, arp_direction] (void *) {
 			SATAN_DEBUG("Arpeggio direction selected (%p): %d\n", &(pad), arp_direction);
 			pad.set_arpeggio_direction(arp_direction);
-			pad.arpeggiator.set_direction(arp_direction);
 		},
 		NULL, true);
 }

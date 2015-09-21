@@ -113,7 +113,6 @@ public:
 	// declare comming classes
 	class Loop;
 	class Pad;
-	class Arpeggiator;
 	class NoteEntry;
 
 private:
@@ -333,114 +332,6 @@ public:
 	};
 
 private:
-	class LoopCreator {
-	public:
-		static Loop *create(const KXMLDoc &loop_xml);
-		static Loop *create();
-	};
-
-	class PadEvent {
-	public:
-		PadEvent();
-		PadEvent(int finger_id, PadEvent_t t, int x, int y, int z);
-
-		PadEvent_t t;
-		int finger, x, y, z;
-	};
-
-	class PadMotion : public PadConfiguration {
-	private:
-		int index; // when replaying a motion, this is used to keep track of where we are..
-		int crnt_tick; // number of ticks since we started this motion
-
-		int last_chord[MAX_PAD_CHORD];
-		int last_x;
-
-		std::vector<int> x;
-		std::vector<int> y;
-		std::vector<int> z;
-		std::vector<int> t; // relative number of ticks from the start_tick
-
-		int start_tick;
-
-		bool terminated, to_be_deleted;
-
-		// notes should be an array with the size of MAX_PAD_CHORD
-		// unused entries will be marked with a -1
-		void build_chord(ChordMode chord_mode, const int *scale_data, int scale_offset, int *notes, int pad_column);
-
-	public:
-		void get_padmotion_xml(int finger, std::ostringstream &stream);
-
-		PadMotion(Pad *parent_config,
-			  int sequence_position, int x, int y, int z);
-
-		// used to parse PadMotion xml when using project level < 5
-		PadMotion(Pad *parent_config,
-			  int &start_offset_return,
-			  const KXMLDoc &motion_xml);
-
-		// used to parse PadMotion xml when using project level >= 5
-		PadMotion(int project_interface_level, Pad *parent_config,
-			  const KXMLDoc &motion_xml);
-
-		void quantize();
-		void add_position(int x, int y, int z);
-		void terminate();
-		static void can_be_deleted_now(PadMotion *can_be_deleted);
-		static void delete_motion(PadMotion *to_be_deleted);
-
-		// returns true if the motion could start at the current position
-		bool start_motion(int session_position);
-
-		// resets a currently playing motion
-		void reset();
-
-		// returns true if the motion finished playing
-		bool process_motion(MidiEventBuilder *_meb, Arpeggiator *arpeggiator);
-
-		PadMotion *prev, *next;
-
-		static void record_motion(PadMotion **head, PadMotion *target);
-	};
-
-	class PadFinger {
-	private:
-		bool to_be_deleted;
-
-	public:
-		Pad *parent;
-
-		PadMotion *recorded;
-		PadMotion *next_motion_to_play;
-
-		std::vector<PadMotion *> playing_motions; // currently playing recorded motions
-		PadMotion *current; // current user controlled motion
-
-		PadFinger();
-		~PadFinger();
-
-		void start_from_the_top();
-
-		void process_finger_events(const PadEvent &pe, int session_position);
-
-		// Returns true if we've completed all the recorded motions for this finger
-		bool process_finger_motions(bool do_record, bool mute,
-					    int session_position,
-					    MidiEventBuilder *_meb, Arpeggiator *arpeggiator,
-					    bool quantize);
-
-		void reset();
-
-		// Designate a finger object for deletion.
-		void delete_pad_finger();
-
-		// Terminate all incomplete motions during recording
-		void terminate();
-	};
-
-public:
-
 #define MAX_ARP_FINGERS 5
 	class Arpeggiator {
 	public:
@@ -510,6 +401,116 @@ public:
 		void reset();
 	};
 
+	class LoopCreator {
+	public:
+		static Loop *create(const KXMLDoc &loop_xml);
+		static Loop *create();
+	};
+
+	class PadEvent {
+	public:
+		PadEvent();
+		PadEvent(int finger_id, PadEvent_t t, int x, int y, int z);
+
+		PadEvent_t t;
+		int finger, x, y, z;
+	};
+
+	class PadMotion : public PadConfiguration {
+	private:
+		int index; // when replaying a motion, this is used to keep track of where we are..
+		int crnt_tick; // number of ticks since we started this motion
+
+		int last_chord[MAX_PAD_CHORD];
+		int last_x;
+
+		std::vector<int> x;
+		std::vector<int> y;
+		std::vector<int> z;
+		std::vector<int> t; // relative number of ticks from the start_tick
+
+		Arpeggiator arperator;
+
+		int start_tick;
+
+		bool terminated, to_be_deleted;
+
+		// notes should be an array with the size of MAX_PAD_CHORD
+		// unused entries will be marked with a -1
+		void build_chord(ChordMode chord_mode, const int *scale_data, int scale_offset, int *notes, int pad_column);
+
+	public:
+		void get_padmotion_xml(int finger, std::ostringstream &stream);
+
+		PadMotion(Pad *parent_config,
+			  int sequence_position, int x, int y, int z);
+
+		// used to parse PadMotion xml when using project level < 5
+		PadMotion(Pad *parent_config,
+			  int &start_offset_return,
+			  const KXMLDoc &motion_xml);
+
+		// used to parse PadMotion xml when using project level >= 5
+		PadMotion(int project_interface_level, Pad *parent_config,
+			  const KXMLDoc &motion_xml);
+
+		void quantize();
+		void add_position(int x, int y, int z);
+		void terminate();
+		static void can_be_deleted_now(PadMotion *can_be_deleted);
+		static void delete_motion(PadMotion *to_be_deleted);
+
+		// returns true if the motion could start at the current position
+		bool start_motion(int session_position);
+
+		// resets a currently playing motion
+		void reset();
+
+		// returns true if the motion finished playing
+		bool process_motion(bool mute, MidiEventBuilder *_meb);
+
+		PadMotion *prev, *next;
+
+		static void record_motion(PadMotion **head, PadMotion *target);
+	};
+
+	class PadFinger {
+	private:
+		bool to_be_deleted;
+
+	public:
+		Pad *parent;
+
+		PadMotion *recorded;
+		PadMotion *next_motion_to_play;
+
+		std::vector<PadMotion *> playing_motions; // currently playing recorded motions
+		PadMotion *current; // current user controlled motion
+
+		PadFinger();
+		~PadFinger();
+
+		void start_from_the_top();
+
+		void process_finger_events(const PadEvent &pe, int session_position);
+
+		// Returns true if we've completed all the recorded motions for this finger
+		bool process_finger_motions(bool do_record, bool mute,
+					    int session_position,
+					    MidiEventBuilder *_meb,
+					    bool quantize);
+
+		void reset();
+
+		// Designate a finger object for deletion.
+		void delete_pad_finger();
+
+		// Terminate all incomplete motions during recording
+		void terminate();
+	};
+
+public:
+
 	class Loop {
 	private:
 		// during playback this is used to keep track of the
@@ -578,7 +579,6 @@ public:
 		// motions has been completed. If this returns true, you can delete this object.
 		bool process_session(
 			bool do_record, bool mute,
-			Arpeggiator *arpeggiator,
 			MidiEventBuilder *_meb,
 			bool quantize);
 
@@ -620,8 +620,6 @@ public:
 		void export_to_loop(int start_tick, int stop_tick, Loop *loop);
 
 		void reset();
-
-		Arpeggiator arpeggiator;
 
 	public: // actually public (lock protected)
 		void enqueue_event(int finger_id, PadEvent_t t, int x, int y, int z); // x, y, z should be 14 bit values
