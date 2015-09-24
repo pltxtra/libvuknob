@@ -706,8 +706,13 @@ MachineSequencer::Arpeggiator::Arpeggiator()
 
 void MachineSequencer::Arpeggiator::reset() {
 	SATAN_DEBUG("Arpeggiator reset.\n");
-	phase = ticks_left = current_finger = pattern_index = 0;
+	finger_count = phase = ticks_left = current_finger = pattern_index = 0;
 	note = -1;
+	for(int l = 0; l < MAX_ARP_FINGERS; l++) {
+		finger[l].key = -1;
+		finger[l].velocity = 0;
+		finger[l].counter = 0;
+	}
 }
 
 void MachineSequencer::Arpeggiator::swap_keys(ArpFinger &a, ArpFinger &b) {
@@ -760,8 +765,12 @@ void MachineSequencer::Arpeggiator::disable_key(int key) {
 			if(finger[k].counter == 0) {
 				finger_count--;
 
-				for(int l = k; l < finger_count; l++) {
+				int l;
+ 				for(l = k; l < finger_count; l++) {
 					finger[l] = finger[l + 1];
+				}
+ 				for(; l < MAX_ARP_FINGERS; l++) {
+					finger[l].key = -1;
 				}
 			}
 
