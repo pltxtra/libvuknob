@@ -325,6 +325,8 @@ extern "C" {
 	SAT_TAN_SCALAR_FTYPE(divFTYPE(x, ftoFTYPE(2.0f * M_PI)))
 
 #define SAT_POW_FTYPE(x,y) __satan_pow_function(x,y)
+#define SAT_LOG10_FTYPE(x) ftofp8p24(log10f(fp8p24tof(x)))
+#define SAT_EXP_FTYPE(x) ftofp8p24(expf(fp8p24tof(x)))
 
 #define ABS_FTYPE(x) ((((x & 0x80000000) >> 31) * (-x) + ((x ^ 0x80000000) >> 31)  * (x)))
 
@@ -347,13 +349,18 @@ extern "C" {
 #define SAT_COS_FTYPE(x) cos(x)
 #define SAT_TAN_FTYPE(x) tan(x)
 
-#define SAT_POW_FTYPE(x,y) pow(x,y)
+#define SAT_POW_FTYPE(x,y) powf(x,y)
+#define SAT_LOG10_FTYPE(x) log10f(x)
+#define SAT_EXP_FTYPE(x) expf(x)
 
 #define ABS_FTYPE(x) fabs(x)
 
 #define SAT_FLOOR(x) floorf(x)
 
 #endif
+
+#define SAM2DB(x) (mulFTYPE(ftoFTYPE(20.0f), SAT_LOG10_FTYPE(x)))
+#define DB2SAM(x) (SAT_POW_FTYPE(ftoFTYPE(10.0f), mulFTYPE(ftoFTYPE(0.05f), x)))
 
 #ifdef __cplusplus
 };

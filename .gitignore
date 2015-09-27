@@ -31,3 +31,5 @@ libkamoflage
 libsvgandroid
 prereqs
 *~
+*.mock
+src_jni/dynlib/hydraulic.wav

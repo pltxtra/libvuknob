@@ -75,7 +75,7 @@ int fill_sink(struct _MachineTable *mt,
 	      void *callback_data) {
 }
 
-void set_signal_defaults(struct _MachineTable *mt, 
+void set_signal_defaults(struct _MachineTable *mt,
 			 int dim,
 			 int len, int res,
 			 int frequency) {
@@ -91,7 +91,7 @@ SignalPointer *get_input_signal(struct _MachineTable *mt, const char *name) {
 		if(strcmp(s->name, name) == 0) {
 			return s;
 		}
-		
+
 		s = s->next;
 	}
 
@@ -108,7 +108,7 @@ SignalPointer *get_output_signal(struct _MachineTable *mt, const char *name) {
 		if(strcmp(s->name, name) == 0) {
 			return s;
 		}
-		
+
 		s = s->next;
 	}
 
@@ -125,7 +125,7 @@ SignalPointer *get_mocking_signal(struct _MachineTable *mt, const char *name) {
 		if(strcmp(s->name, name) == 0) {
 			return s;
 		}
-		
+
 		s = s->next;
 	}
 
@@ -149,7 +149,7 @@ struct signus static_signal = {
 	.data = (void *)static_signal_data,
 	.next = NULL
 };
-	
+
 SignalPointer *get_static_signal(int index) {
 	int k;
 	float value, t;
@@ -160,10 +160,10 @@ SignalPointer *get_static_signal(int index) {
 		t *= 10.0f;
 		t *= 2.0f * M_PI;
 		value = 32767.0f * sinf(t);
-		
+
 		static_signal_data[k] = value;
 	}
-	
+
 	return &static_signal;
 }
 
@@ -311,7 +311,7 @@ void *get_signal_buffer(SignalPointer *sp) {
 			p = &(p[offset]);
 			memcpy(s->data, p, sizeof(void *) * m->test_step_length);
 			printf("midi_in at %p\n", p);
-	
+
 		}
 			break;
 		}
@@ -343,7 +343,7 @@ typedef enum {
 
 bool __internal_satan_sine_table_initiated = false;
 float __internal_satan_sine_table[SAT_SIN_TABLE_LEN];
-FTYPE __internal_satan_sine_table_FTYPE[SAT_SIN_FTYPE_TABLE_LEN << 1]; 
+FTYPE __internal_satan_sine_table_FTYPE[SAT_SIN_FTYPE_TABLE_LEN << 1];
 #endif
 
 void get_math_tables(
@@ -371,7 +371,7 @@ void get_math_tables(
 		}
 		__internal_satan_sine_table_initiated = true;
 	}
-	
+
 	 *sine_table = __internal_satan_sine_table;
 	 *__pow_fun = satan_powfp8p24;
 	 *sine_table_FTYPE = __internal_satan_sine_table_FTYPE;
@@ -431,12 +431,13 @@ void init_mock_machine_table(MachineTable *mt) {
 
 }
 
-void validate_mock_signal(struct signus *s) {
+int validate_mock_signal(struct signus *s) {
 	int k;
 
 	for(k = 0; k < 16; k++) {
 		if((s->pad_a[k] != 0) || (s->pad_b[k] != 0)) {
-			printf("validation failed.\n");
+			printf("validation failed %p / %p.\n",
+			       &(s->pad_a[k]), &(s->pad_b[k]));
 			if(s == NULL) {
 				printf("     s pointer is NULL.\n");
 			} else {
@@ -446,9 +447,10 @@ void validate_mock_signal(struct signus *s) {
 					printf("   name: %s\n", s->name);
 				}
 			}
-			exit(0);
+			return -1;
 		}
 	}
+	return 0;
 }
 
 struct signus *create_mock_signal(
@@ -496,11 +498,11 @@ struct signus *create_mock_signal(
 			len = sizeof(void *);
 			break;
 		}
-		
-		s->pad_data = (uint8_t *)calloc(len * (m->test_step_length) + 32, sizeof(uint8_t));
+
+		s->pad_data = (uint8_t *)calloc(channels * len * (m->test_step_length) + 32, sizeof(uint8_t));
 		uint8_t *t = &(s->pad_data[16]);
 		s->pad_a = s->pad_data;
-		s->pad_b = &(s->pad_data[16 + len * (m->test_step_length)]);
+		s->pad_b = &(s->pad_data[16 + channels * len * (m->test_step_length)]);
 		s->data = (void *)t;
 	}
 
@@ -531,7 +533,7 @@ int prepare_mockery(struct mockery *m, int test_step_length, const char *machine
 
 	m->current_test_step;
 	m->test_step_length = test_step_length;
-	
+
 	return 0;
 }
 
@@ -543,7 +545,7 @@ void *get_controller(
 
 int create_mock_input_signal(
 	struct mockery *m, const char *name,
-	int dimension,	
+	int dimension,
 	int channels,
 	int resolution,
 	int frequency,
@@ -551,17 +553,17 @@ int create_mock_input_signal(
 	void *data_pointer) {
 
 	if(m == NULL) return -1;
-	
+
 	struct signus *s = create_mock_signal(name, dimension, channels, FTYPE_RESOLUTION, frequency, samples, data_pointer, m);
 	if(s == NULL)
 		return -1;
 
 	s->next = m->inputs;
 	m->inputs = s;
-	
+
 	printf("Set first input to %p (%s, %d, %d, %d, %d, %d, %p)\n", s,
 	       name, dimension, channels, FTYPE_RESOLUTION, frequency, samples, data_pointer);
-	
+
 	return 0;
 }
 
@@ -575,7 +577,7 @@ int create_mock_output_signal(
 	void *data_pointer) {
 
 	if(m == NULL) return -1;
-	
+
 	struct signus *s = create_mock_signal(name, dimension, channels, FTYPE_RESOLUTION, frequency, samples, data_pointer, m);
 	if(s == NULL)
 		return -1;
@@ -585,7 +587,7 @@ int create_mock_output_signal(
 
 	printf("Set first output to %p (%s, %d, %d, %d, %d, %d, %p)\n", s,
 	       name, dimension, channels, FTYPE_RESOLUTION, frequency, samples, data_pointer);
-	
+
 	return 0;
 }
 
@@ -599,7 +601,7 @@ int create_mock_intermediate_signal(
 	void *data_pointer) {
 
 	if(m == NULL) return -1;
-	
+
 	struct signus *s = create_mock_signal(name, dimension, channels, resolution, frequency, samples, data_pointer, m);
 	if(s == NULL)
 		return -1;
@@ -608,7 +610,7 @@ int create_mock_intermediate_signal(
 	m->intermediates = s;
 
 	printf("Set first intermediate to %p\n", s);
-	
+
 	return 0;
 }
 
@@ -622,45 +624,79 @@ void make_a_mockery(struct mockery *m, int steps) {
 			exit(0);
 		}
 	}
-	
-	int k;	
-	
-	for(k = 0; k < steps; k++) {
-		m->current_test_step = k;
-		execute(&(m->mt), m->machine_data);
 
+	int k;
+
+	for(k = 0; k < steps; k++) {
 		{
 			struct signus *out = m->outputs;
 			while(out) {
-				validate_mock_signal(out);
+				if(validate_mock_signal(out)) {
+					printf("Pre-execute validation of outputs failed...\n");
+					exit(1);
+				}
 				out = out->next;
 			}
 		}
 		{
 			struct signus *in = m->outputs;
 			while(in) {
-				validate_mock_signal(in);
+				if(validate_mock_signal(in)) {
+					printf("Pre-execute validation of inputs failed...\n");
+					exit(1);
+				}
 				in = in->next;
 			}
 		}
 		{
 			struct signus *inte = m->intermediates;
 			while(inte) {
-				validate_mock_signal(inte);
+				if(validate_mock_signal(inte)) {
+					printf("Pre-execute validation of intermediates failed...\n");
+					exit(1);
+				}
 				inte = inte->next;
 			}
 		}
+
+		m->current_test_step = k;
+		execute(&(m->mt), m->machine_data);
+
 		{
 			struct signus *out = m->outputs;
 			while(out) {
+				if(validate_mock_signal(out)) {
+					printf("Post-execute validation of outputs failed...\n");
+					exit(1);
+				}
 				copy_output_buffer(out);
 				out = out->next;
+			}
+		}
+		{
+			struct signus *in = m->outputs;
+			while(in) {
+				if(validate_mock_signal(in)) {
+					printf("Post-execute validation of inputs failed...\n");
+					exit(1);
+				}
+				in = in->next;
+			}
+		}
+		{
+			struct signus *inte = m->intermediates;
+			while(inte) {
+				if(validate_mock_signal(inte)) {
+					printf("Post-execute validation of intermediates failed...\n");
+					exit(1);
+				}
+				inte = inte->next;
 			}
 		}
 	}
 
 	print_all_stats();
-	
+
 	delete(m->machine_data);
 
 	printf("We made a mocking bird!\n");
@@ -676,7 +712,7 @@ void RIFF_prepare(RIFF_WAVE_FILE_t *rwf) {
 	rwf->read_only = 0;
 	rwf->fd = -1;
 	rwf->written_to_riff = 0;
-	
+
 	rwf->riff_header.RIFF[0] = 'R';
 	rwf->riff_header.RIFF[1] = 'I';
 	rwf->riff_header.RIFF[2] = 'F';
@@ -696,7 +732,7 @@ void RIFF_prepare(RIFF_WAVE_FILE_t *rwf) {
 	rwf->riff_header.fmt_size[1] = 0x00;
 	rwf->riff_header.fmt_size[2] = 0x00;
 	rwf->riff_header.fmt_size[3] = 0x00;
-		
+
 	// encode PCM = 0x0001 in little endian
 	rwf->riff_header.fmt_format[0] = 0x01;
 	rwf->riff_header.fmt_format[1] = 0x00;
@@ -761,7 +797,7 @@ int RIFF_open_file(RIFF_WAVE_FILE_t *rwf, const char *name) {
 		printf("Failed to open file...\n");
 		return -1;
 	}
-	
+
 	int status = read(rwf->fd,
 			  &(rwf->riff_header),
 			  sizeof(struct RIFF_WAVE_header));
@@ -772,30 +808,56 @@ int RIFF_open_file(RIFF_WAVE_FILE_t *rwf, const char *name) {
 	}
 
 	{
+		int skiplen =
+			((rwf->riff_header.fmt_size[3] << 24) & 0xff000000) |
+			((rwf->riff_header.fmt_size[2] << 16) & 0x00ff0000) |
+			((rwf->riff_header.fmt_size[1] <<  8) & 0x0000ff00) |
+			((rwf->riff_header.fmt_size[0] <<  0) & 0x000000ff);
+		if(skiplen > 0x10) {
+			int r;
+			r = lseek(rwf->fd, skiplen - 0x10, SEEK_CUR);
+			if(r == -1) return 0;
+		} else if(skiplen < 0x10) {
+			printf("Unexpected RIFF header...\n");
+			return -2;
+		}
+	}
+
+	{
 		int r;
 		struct RIFF_WAVE_chunk *chunk = &(rwf->data_chunk);
 		memset(chunk, 0, sizeof(struct RIFF_WAVE_chunk));
-		
+
 		r = read(rwf->fd, chunk, sizeof(struct RIFF_WAVE_chunk));
 		if(r != sizeof(struct RIFF_WAVE_chunk))
 			return 0;
-		while(!(rwf->data_chunk.iden[0] == 'd' &&
-			rwf->data_chunk.iden[1] == 'a' &&
-			rwf->data_chunk.iden[2] == 't' &&
-			rwf->data_chunk.iden[3] == 'a')) {
+		while(!(chunk->iden[0] == 'd' &&
+			chunk->iden[1] == 'a' &&
+			chunk->iden[2] == 't' &&
+			chunk->iden[3] == 'a')) {
+
 			int skiplen =
-				((rwf->data_chunk.leng[3] << 24) & 0xff000000) |
-				((rwf->data_chunk.leng[2] << 16) & 0x00ff0000) |
-				((rwf->data_chunk.leng[1] <<  8) & 0x0000ff00) |
-				((rwf->data_chunk.leng[0] <<  0) & 0x000000ff);
+				((chunk->leng[3] << 24) & 0xff000000) |
+				((chunk->leng[2] << 16) & 0x00ff0000) |
+				((chunk->leng[1] <<  8) & 0x0000ff00) |
+				((chunk->leng[0] <<  0) & 0x000000ff);
 			r = lseek(rwf->fd, skiplen, SEEK_CUR);
 			if(r == -1) return 0;
-			
+
+			printf("Skipped chunk %02x%02x%02x%02x - length: %d\n",
+			       chunk->iden[0],
+			       chunk->iden[1],
+			       chunk->iden[2],
+			       chunk->iden[3],
+			       skiplen);
+
 			r = read(rwf->fd, chunk, sizeof(struct RIFF_WAVE_chunk));
-			if(r != sizeof(struct RIFF_WAVE_chunk))
+			if(r != sizeof(struct RIFF_WAVE_chunk)) {
+				printf("Unexpected data chunk...\n");
 				return 0;
+			}
 		}
-	}	
+	}
 
 	rwf->channels =
 		((rwf->riff_header.fmt_channels[1]) << 8) |
@@ -809,7 +871,7 @@ int RIFF_open_file(RIFF_WAVE_FILE_t *rwf, const char *name) {
 
 	printf("WAV Channels: %d\n", rwf->channels);
 	printf("WAV Samples: %d\n", rwf->samples);
-	
+
 	return 0;
 }
 
@@ -826,14 +888,14 @@ void RIFF_close_file(RIFF_WAVE_FILE_t *rwf) {
 			rwf->data_chunk.leng[1] = (rwf->written_to_riff & 0x0000ff00) >> 8;
 			rwf->data_chunk.leng[2] = (rwf->written_to_riff & 0x00ff0000) >> 16;
 			rwf->data_chunk.leng[3] = (rwf->written_to_riff & 0xff000000) >> 24;
-			
+
 			rwf->written_to_riff += sizeof(struct RIFF_WAVE_header) + sizeof(struct RIFF_WAVE_chunk); // size of headers...
-			
+
 			rwf->riff_header.length[0] = (rwf->written_to_riff & 0x000000ff);
 			rwf->riff_header.length[1] = (rwf->written_to_riff & 0x0000ff00) >> 8;
 			rwf->riff_header.length[2] = (rwf->written_to_riff & 0x00ff0000) >> 16;
 			rwf->riff_header.length[3] = (rwf->written_to_riff & 0xff000000) >> 24;
-			
+
 			// rewrite header with correct size data
 			lseek(rwf->fd, 0, SEEK_SET);
 			int ignore_status = write(rwf->fd,
@@ -842,10 +904,10 @@ void RIFF_close_file(RIFF_WAVE_FILE_t *rwf) {
 			ignore_status = write(rwf->fd,
 					      &(rwf->data_chunk),
 					      sizeof(struct RIFF_WAVE_chunk));
-			
+
 			printf(" sinkRecord CLOSE file.\n"); fflush(0);
 		}
-		
+
 		close(rwf->fd);
 		rwf->fd = -1;
 	}
@@ -858,19 +920,19 @@ void RIFF_write_data(
 
 	if(rwf->fd != -1) {
 		int k;
-		
+
 		k = write(rwf->fd, data, size);
-		
+
 		rwf->written_to_riff += k;
 	}
 }
 
 void interleave(int16_t *destination, int offset, const FTYPE *in, int samples) {
 	int i;
-	for(i = 0; i < samples; i++) {		
+	for(i = 0; i < samples; i++) {
 		FTYPE tmp = in[i];
 		int32_t out;
-		
+
 		if(tmp < itoFTYPE(-1)) tmp = itoFTYPE(-1);
 		if(tmp > itoFTYPE(1)) tmp = itoFTYPE(1);
 
@@ -881,7 +943,7 @@ void interleave(int16_t *destination, int offset, const FTYPE *in, int samples) 
 		tmp *= 32767.0f;
 		out = tmp;
 #endif
-		
+
 		destination[i * 2 + offset] = (int16_t)out;
 	}
 }
@@ -901,7 +963,49 @@ void write_wav(const FTYPE *left, const FTYPE *right, int samples, const char *f
 
 	// Write to file
 	RIFF_write_data(&rwf, mixed_signal, samples * 2);
-	
+
+	// Close file
+	RIFF_close_file(&rwf);
+}
+
+void convert_to_16bit(int16_t *destination, const FTYPE *in, int samples) {
+	int i, c;
+	for(i = 0; i < samples; i++) {
+		for(c = 0; c < 2; c++) {
+			FTYPE tmp = in[i * 2 + c];
+			int32_t out;
+
+			if(tmp < itoFTYPE(-1)) tmp = itoFTYPE(-1);
+			if(tmp > itoFTYPE(1)) tmp = itoFTYPE(1);
+
+#ifdef __SATAN_USES_FXP
+			out = (tmp << 7);
+			out = (out & 0xffff0000) >> 16;
+#else
+			tmp *= 32767.0f;
+			out = tmp;
+#endif
+
+			destination[i * 2 + c] = (int16_t)out;
+		}
+	}
+}
+
+void write_stereo_wav(const FTYPE *stereo, int samples, const char *fname) {
+//	int16_t mixed_signal[samples * 2];
+	int16_t *mixed_signal = (int16_t *)malloc(sizeof(int16_t) * samples * 2);
+
+	// prepare, create and open the RIFF/WAV file
+	RIFF_WAVE_FILE_t rwf;
+	RIFF_prepare(&rwf);
+	RIFF_create_file(&rwf, fname);
+
+	// interleave the two signals and convert to int16_t
+	convert_to_16bit(mixed_signal, stereo, samples);
+
+	// Write to file
+	RIFF_write_data(&rwf, mixed_signal, samples * 2);
+
 	// Close file
 	RIFF_close_file(&rwf);
 }
@@ -918,18 +1022,32 @@ void convert_pcm_to_mock_signal(
 
 	int k;
 
-	if(d_ch == 1) {
+	if(d_ch == p_ch) {
 		for(k = 0; k < ms; k++) {
 			float x;
+			int c;
 
-			x = pcm_d[k * p_ch];
+			for(c = 0; c < d_ch; c++) {
+				x = pcm_d[k * p_ch + c];
+				x /= 32768.0f;
 
-			x /= 32768.0f;
+				destination[k * d_ch + c] = ftoFTYPE(x);
+			}
+		}
+	} else if(p_ch == 1) {
+		for(k = 0; k < ms; k++) {
+			float x;
+			int c;
 
-			destination[k] = ftoFTYPE(x);
+			for(c = 0; c < d_ch; c++) {
+				x = pcm_d[k];
+				x /= 32768.0f;
+
+				destination[k * d_ch + c] = ftoFTYPE(x);
+			}
 		}
 	} else {
-		printf("MULTICHANNEL NOT SUPPORTED YET.\n");
+		printf("CHANNEL CONVERSION NOT SUPPORTED YET.\n");
 		exit(0);
 	}
 }
@@ -937,7 +1055,7 @@ void convert_pcm_to_mock_signal(
 void convert_pcm_to_static_signal(int16_t *pcm_d, int p_ch, int p_sm) {
 	static_signal.data = pcm_d;
 	static_signal.chan = p_ch;
-	static_signal.sam = p_sm;	
+	static_signal.sam = p_sm;
 }
 
 int plot_wave(const char *fname, int first_index, int length) {

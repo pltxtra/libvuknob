@@ -26,6 +26,15 @@
  * Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
+/***
+ * Compression algorithm based on compressor.cpp
+ * as found in 'qaac - CLI QuickTime AAC/ALAC encoder'
+ * on github.
+ *
+ * qaac is in the Public Domain.
+ *
+ ***/
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #else
@@ -44,15 +53,17 @@
 USE_SATANS_MATH
 
 typedef struct _XpData {
-	float comp, dry;
+	// settings
+	float comp, dry, decay;
+	float threshold_float, knee_width, ratio;
+	float attack, release; // milliseconds
 
-	// target amplitude, current amplitude
-	FTYPE target_a, current_a;
+	// calculated values
+        FTYPE threshold, threshold_lo, threshold_hi, slope, knee_factor;
+	FTYPE smooth_a, smooth_r;
 
-	float decay; // how fast will the amplitude decay, in seconds
-	
 	float freq;
-	
+
 } XpData;
 
 void *init(MachineTable *mt, const char *name) {
@@ -62,16 +73,24 @@ void *init(MachineTable *mt, const char *name) {
 
 	data->dry = 0.0;
 	data->comp = -0.2;
+	data->decay = 0.2;
 	data->freq = 44100.0;
 
-	data->decay = 0.25;
-	
+	data->threshold_float = -4.5f;
+	data->knee_width = 0.4f;
+	data->ratio = 2.25f;
+	data->attack = 1.5f;
+	data->release = 2.25f;
+
+	data->smooth_a = 0.0f;
+	data->smooth_r = 0.0f;
+
 	SETUP_SATANS_MATH(mt);
 
 	/* return pointer to instance data */
 	return (void *)data;
 }
- 
+
 void *get_controller_ptr(MachineTable *mt, void *data,
 			 const char *name,
 			 const char *group) {
@@ -93,15 +112,36 @@ void reset(MachineTable *mt, void *data) {
 	return; /* nothing to do... */
 }
 
+static FTYPE calc_gain(XpData *xd, FTYPE dB) {
+        if (dB < xd->threshold_lo)
+		return ftoFTYPE(0.0f);
+        else if (dB > xd->threshold_hi)
+		return mulFTYPE(xd->slope, (dB - xd->threshold));
+        else {
+		FTYPE delta = dB - xd->threshold_lo;
+		delta = mulFTYPE(delta, delta);
+		return mulFTYPE(delta, xd->knee_factor);
+        }
+}
+
+static FTYPE smooth(XpData *xd, FTYPE x, FTYPE alpha_a, FTYPE alpha_r) {
+	FTYPE r = mulFTYPE(alpha_r, xd->smooth_r) + mulFTYPE(itoFTYPE(1) - alpha_r, x);
+	xd->smooth_r = x < r ? x : r;
+
+	xd->smooth_a = mulFTYPE(alpha_a, xd->smooth_a) + mulFTYPE(itoFTYPE(1) - alpha_a, xd->smooth_r);
+
+	return xd->smooth_a;
+}
+
 void execute(MachineTable *mt, void *data) {
 	XpData *xd = (XpData *)data;
 
-	SignalPointer *s = mt->get_input_signal(mt, "Stereo");
+      	SignalPointer *s = mt->get_input_signal(mt, "Stereo");
 	SignalPointer *os = mt->get_output_signal(mt, "Stereo");
 
 	if(os == NULL)
 		return;
-	
+
 	FTYPE *ou = mt->get_signal_buffer(os);
 	int ol = mt->get_signal_samples(os);
 	int oc = mt->get_signal_channels(os);
@@ -114,56 +154,54 @@ void execute(MachineTable *mt, void *data) {
 				ou[t * oc + c] = itoFTYPE(0);
 			}
 		}
-		return;		
+		return;
 	}
 
-		
+
 	FTYPE *in = mt->get_signal_buffer(s);
 	int ic = mt->get_signal_channels(s);
-	
+
 	xd->freq = mt->get_signal_frequency(os);
 
-	int c;
-	int i;
+	xd->slope = ftoFTYPE((1.0f - xd->ratio) / xd->ratio);
 
-	FTYPE d, dry_fp, comp_fp;
-	dry_fp = ftoFTYPE(xd->dry);
-	comp_fp = ftoFTYPE(xd->comp);
+	xd->knee_factor = divFTYPE(xd->slope, ftoFTYPE(xd->knee_width * 2.0f));
 
-	float decay_samples_f = 1.0f / ((float)(xd->decay) * (xd->freq));
+	xd->threshold = ftoFTYPE(xd->threshold_float);
+	xd->threshold_lo = xd->threshold - ftoFTYPE(xd->knee_width / 2.0f);
+	xd->threshold_hi = xd->threshold + ftoFTYPE(xd->knee_width / 2.0f);
 
-	FTYPE decay_samples = ftoFTYPE(decay_samples_f);
+	FTYPE alpha_a =
+		ftoFTYPE(
+			xd->attack > 0.0f ? expf(-1.0f / (xd->attack * xd->freq / 1000.0f)) : 0.0f
+			);
+	FTYPE alpha_r =
+		ftoFTYPE(
+			xd->release > 0.0 ? expf(-1.0f / (xd->release * xd->freq / 1000.0f)) : 0.0f
+			);
 
-	FTYPE a_step_per_sample;
+	int c,i;
 
 	for(i = 0; i < ol; i++) {
+		// get amplitude at current position
+		FTYPE amp = ftoFTYPE(0.0f);
 		for(c = 0; c < oc; c++) {
-			d = in[i * ic + c];
-			if(d < 0) d = -d;
-		   
-			xd->target_a = d;
-
-			if(xd->target_a > xd->current_a) {
-				xd->current_a = xd->target_a;
-				a_step_per_sample = ftoFTYPE(0.0);
-			} else {
-				a_step_per_sample = mulFTYPE(-(xd->current_a), decay_samples);
-			}
-
-			
-			d = 
-				mulFTYPE(in[i * ic + c], dry_fp) +
-				mulFTYPE(
-					(itoFTYPE(1) - dry_fp),
-					mulFTYPE(
-						in[i * ic + c],
-						SAT_POW_FTYPE(xd->current_a, comp_fp))
-					);
-						
-			ou[i * oc + c] = d;
-
-			xd->current_a = xd->current_a + a_step_per_sample;
+			FTYPE absv = ABS_FTYPE(in[i * ic + c]);
+			amp = amp > absv ? amp : absv;
 		}
+
+		// convert to dB
+		amp = SAM2DB(amp);
+
+		// calculate the gain
+		FTYPE gain = calc_gain(xd, amp);
+
+		// smooth the gain and convert from dB
+		gain = DB2SAM(smooth(xd, gain, alpha_a, alpha_r));
+
+		// apply gain
+		for(c = 0; c < oc; c++)
+			ou[i * oc + c] = mulFTYPE(gain, in[i * ic + c]);
 	}
 }
 
