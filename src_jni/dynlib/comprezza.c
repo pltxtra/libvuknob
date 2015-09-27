@@ -54,9 +54,10 @@ USE_SATANS_MATH
 
 typedef struct _XpData {
 	// settings
-	float comp, dry, decay;
+	float dry;
 	float threshold_float, knee_width, ratio;
 	float attack, release; // milliseconds
+	float in_gain, out_gain; // dB
 
 	// calculated values
         FTYPE threshold, threshold_lo, threshold_hi, slope, knee_factor;
@@ -71,19 +72,13 @@ void *init(MachineTable *mt, const char *name) {
 	XpData *data = (XpData *)malloc(sizeof(XpData));
 	memset(data, 0, sizeof(XpData));
 
+	// default parameters
 	data->dry = 0.0;
-	data->comp = -0.2;
-	data->decay = 0.2;
-	data->freq = 44100.0;
-
 	data->threshold_float = -4.5f;
 	data->knee_width = 0.4f;
 	data->ratio = 2.25f;
 	data->attack = 1.5f;
 	data->release = 2.25f;
-
-	data->smooth_a = 0.0f;
-	data->smooth_r = 0.0f;
 
 	SETUP_SATANS_MATH(mt);
 
@@ -97,13 +92,28 @@ void *get_controller_ptr(MachineTable *mt, void *data,
 	XpData *xd = (XpData *)data;
 
 	if(strcmp("comp", name) == 0)
-		return &(xd->comp);
+		return &(xd->threshold);
+
+	if(strcmp("width", name) == 0)
+		return &(xd->knee_width);
+
+	if(strcmp("ratio", name) == 0)
+		return &(xd->ratio);
+
+	if(strcmp("attack", name) == 0)
+		return &(xd->attack);
+
+	if(strcmp("decay", name) == 0)
+		return &(xd->release);
 
 	if(strcmp("dry", name) == 0)
 		return &(xd->dry);
 
-	if(strcmp("decay", name) == 0)
-		return &(xd->decay);
+	if(strcmp("input_gain", name) == 0)
+		return &(xd->in_gain);
+
+	if(strcmp("output_gain", name) == 0)
+		return &(xd->out_gain);
 
 	return NULL;
 }
@@ -112,7 +122,7 @@ void reset(MachineTable *mt, void *data) {
 	return; /* nothing to do... */
 }
 
-static FTYPE calc_gain(XpData *xd, FTYPE dB) {
+static inline FTYPE calc_gain(XpData *xd, FTYPE dB) {
         if (dB < xd->threshold_lo)
 		return ftoFTYPE(0.0f);
         else if (dB > xd->threshold_hi)
@@ -124,7 +134,7 @@ static FTYPE calc_gain(XpData *xd, FTYPE dB) {
         }
 }
 
-static FTYPE smooth(XpData *xd, FTYPE x, FTYPE alpha_a, FTYPE alpha_r) {
+static inline FTYPE smooth(XpData *xd, FTYPE x, FTYPE alpha_a, FTYPE alpha_r) {
 	FTYPE r = mulFTYPE(alpha_r, xd->smooth_r) + mulFTYPE(itoFTYPE(1) - alpha_r, x);
 	xd->smooth_r = x < r ? x : r;
 
@@ -180,28 +190,51 @@ void execute(MachineTable *mt, void *data) {
 			xd->release > 0.0 ? expf(-1.0f / (xd->release * xd->freq / 1000.0f)) : 0.0f
 			);
 
-	int c,i;
+	FTYPE ing = DB2SAM(ftoFTYPE(xd->in_gain));
+	FTYPE outg = DB2SAM(ftoFTYPE(xd->out_gain));
+
+	int i;
 
 	for(i = 0; i < ol; i++) {
+		// get the two current samples
+		FTYPE left, right;
+
+		left = mulFTYPE(ing, in[i * ic + 0]);
+		right = mulFTYPE(ing, in[i * ic + 1]);
+
 		// get amplitude at current position
-		FTYPE amp = ftoFTYPE(0.0f);
-		for(c = 0; c < oc; c++) {
-			FTYPE absv = ABS_FTYPE(in[i * ic + c]);
-			amp = amp > absv ? amp : absv;
-		}
+		FTYPE amp_l = ABS_FTYPE(left);
+		FTYPE amp_r = ABS_FTYPE(right);
+		FTYPE amp = amp_l > amp_r ? amp_l : amp_r;
 
 		// convert to dB
 		amp = SAM2DB(amp);
 
-		// calculate the gain
+		// calculate the compressor gain
 		FTYPE gain = calc_gain(xd, amp);
 
 		// smooth the gain and convert from dB
 		gain = DB2SAM(smooth(xd, gain, alpha_a, alpha_r));
 
-		// apply gain
-		for(c = 0; c < oc; c++)
-			ou[i * oc + c] = mulFTYPE(gain, in[i * ic + c]);
+		// apply compressor gain
+		ou[i * oc + 0] =
+			mulFTYPE(ftoFTYPE(1.0) - xd->dry,
+				 mulFTYPE(gain, left)
+				)
+			+
+			mulFTYPE(xd->dry, left)
+			;
+		ou[i * oc + 1] =
+			mulFTYPE(ftoFTYPE(1.0) - xd->dry,
+				 mulFTYPE(gain, right)
+				)
+			+
+			mulFTYPE(xd->dry, right)
+			;
+
+		// apply output gain
+		ou[i * oc + 0] *= outg;
+		ou[i * oc + 1] *= outg;
 	}
 }
 
