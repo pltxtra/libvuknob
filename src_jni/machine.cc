@@ -1762,6 +1762,15 @@ void Machine::calculate_samples_per_tick() {
 
 }
 
+void Machine::reset_global_playback_parameters(int playback_position) {
+	__next_sequence_position = playback_position;
+	__current_tick = 0;
+
+	for(int d = 0; d < _MAX_D; d++) {
+		__next_tick_at[d] = 0;
+	}
+}
+
 void Machine::calculate_next_tick_at_and_sequence_position() {
 
 	int d;
@@ -2018,12 +2027,8 @@ void Machine::rewind() {
 	Machine::machine_operation_enqueue(
 		[] (void *this_is_null_and_ignored) {
 			reset_all_machines();
-			if(__do_loop) {
-				__next_sequence_position = __loop_start;
-			} else {
-				__next_sequence_position = 0;
-			}
-			__current_tick = 0;
+			reset_global_playback_parameters(__do_loop ? __loop_start : 0);
+			__resume_sequence_position = __next_sequence_position;
 		},
 		NULL, false);
 }
@@ -2173,7 +2178,7 @@ void Machine::play() {
 	Machine::machine_operation_enqueue(
 		[] (void *d) {
 			is_playing = true;
-			__next_sequence_position = __resume_sequence_position;
+			reset_global_playback_parameters(__resume_sequence_position);
 			reset_all_machines();
 		},
 		NULL, false);

@@ -67,6 +67,8 @@ using namespace std;
 #include "satan_project_entry.hh"
 #include "common.hh"
 
+#include "remote_interface.hh"
+
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
@@ -78,6 +80,9 @@ static void refresh_SATAN(void *ignored) {
 	KammoGUI::get_widget((KammoGUI::Widget **)&ue, "refreshProject");
 	if(ue != NULL)
 		trigger_user_event(ue);
+
+	auto gco = RemoteInterface::GlobalControlObject::get_global_control_object();
+	if(gco) gco->rewind();
 }
 
 template<class charT, class Traits>
@@ -89,9 +94,9 @@ static void load_lcf_file(std::basic_istream<charT, Traits> &stream) {
 
 	std::cout << "Time to stream that devil!\n"; fflush(0);
 	stream >> satanproject;
-	
+
 	std::cout << "Type: " << satanproject.get_name() << "\n"; fflush(0);
-	
+
 	// indicate that we are loading, so that machines can reduce their chatter...
 	Machine::set_load_state(true);
 
@@ -118,11 +123,11 @@ static void busy_load_project_file(std::string lcf_fname, std::string owd, std::
 	fstream lcf_handle;
 	lcf_handle.open(lcf_fname.c_str(), fstream::in);
 
-	if(!lcf_handle.fail()) {		
+	if(!lcf_handle.fail()) {
 		try {
-			SATAN_DEBUG_("\n\n*************** LOADING PROJECT FILE ****************\n\n"); 
+			SATAN_DEBUG_("\n\n*************** LOADING PROJECT FILE ****************\n\n");
 			load_lcf_file(lcf_handle);
-			SATAN_DEBUG_("\n\n*************** PROJECT LOADED ****************\n\n"); 
+			SATAN_DEBUG_("\n\n*************** PROJECT LOADED ****************\n\n");
 		} catch(jException e) {
 			jInformer::inform(e.message);
 		} catch(...) {
@@ -135,7 +140,7 @@ static void busy_load_project_file(std::string lcf_fname, std::string owd, std::
 	if(owd != "") {
 		if(chdir(owd.c_str()))
 			SATAN_DEBUG_("\n\n\n!!! FAILED TO CHANGE DIRECTORY in loadsave.cc (4) !!!\n\n\n");
-	
+
 		// Remove storage directory
 		if(!remove_directory(dirpath)) {
 			throw jException(
@@ -146,7 +151,7 @@ static void busy_load_project_file(std::string lcf_fname, std::string owd, std::
 }
 
 static void busy_unpack_and_load(void *data) {
-	struct __busy_load_data *bld = (struct __busy_load_data *)data;	
+	struct __busy_load_data *bld = (struct __busy_load_data *)data;
 	std::string archive_path = bld->archive_path;
 	std::string archive_name = bld->archive_name;
 	delete bld; bld = NULL;
@@ -157,7 +162,7 @@ static void busy_unpack_and_load(void *data) {
 	// remember working directory
 	char old_wd[2048];
 	char *owd;
-	
+
 	owd = getcwd(old_wd, sizeof(old_wd));
 	if(owd == NULL) {
 		throw jException("Path name too long, I'm sorry dave.",
@@ -166,7 +171,7 @@ static void busy_unpack_and_load(void *data) {
 
 	// define lcf-file name
 	std::string lcf_fname = archive_path;
-	
+
 	// try to uncompress storage directory
 	std::ostringstream cmd_line;
 
@@ -179,10 +184,10 @@ static void busy_unpack_and_load(void *data) {
 		// and a user is highly unlikely to exhaust the available numbers during a run of Satan...
 		std::stringstream stream;
 		static int counter = 0;
-		stream << "/sdcard/satan_unpack_" << counter++ << "/"; 
-		
+		stream << "/sdcard/satan_unpack_" << counter++ << "/";
+
 		std::string unpack_path = stream.str();
-		
+
 		std::vector<std::string> args;
 		args.push_back(std::string("-C"));
 		args.push_back(unpack_path);
@@ -205,7 +210,7 @@ static void busy_unpack_and_load(void *data) {
 				"wrong format? No cleanup done, sorry.",
 				jException::sanity_error);
 		}
-	
+
 		lcf_fname = "lcf.xml";
 #ifdef ANDROID
 	} catch(...) {
@@ -217,8 +222,8 @@ static void busy_unpack_and_load(void *data) {
 			<< "load it as a pure lcf xml file.\n";
 		owd = NULL;
 	}
-		
-	busy_load_project_file(lcf_fname, owd, dirpath);	
+
+	busy_load_project_file(lcf_fname, owd, dirpath);
 }
 
 static void load_project_file(const std::string &archive_path, const std::string &archive_name) {
@@ -269,16 +274,16 @@ virtual void on_user_event(KammoGUI::UserEvent *ev, std::map<std::string, void *
 #ifdef ANDROID
 		try {
 			std::string path, file;
-			
+
 			file = "EXAMPLE_ONE";
 			path = KAMOFLAGE_ANDROID_ROOT_DIRECTORY;
 			path += "/app_nativedata/Examples/" + file;
-			
-			load_project_file(path, file);			
+
+			load_project_file(path, file);
 		} catch(jException e) {
 			std::cout << "exception caught: " << e.message << "\n";
 			throw;
-		}		
+		}
 #endif
 	}
 }

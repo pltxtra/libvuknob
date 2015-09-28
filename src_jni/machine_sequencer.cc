@@ -2708,6 +2708,7 @@ void MachineSequencer::fill_buffers() {
 }
 
 void MachineSequencer::reset() {
+	current_loop = NULL;
 	pad.reset();
 }
 

@@ -765,6 +765,7 @@ private:
 	static void internal_dereference_machine(Machine *m);
 
 	static void calculate_samples_per_tick();
+	static void reset_global_playback_parameters(int playback_position);
 	static void calculate_next_tick_at_and_sequence_position();
 	static void trigger_periodic_functions();
 
