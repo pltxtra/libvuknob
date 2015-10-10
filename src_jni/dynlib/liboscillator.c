@@ -67,13 +67,13 @@ void los_glide_frequency(oscillator_t *oscillator, FTYPE target_frequency, FTYPE
 		oscillator->voltage_step_base = target_frequency;
 	} else {
 		oscillator->glide_target_frequency = target_frequency;
-		
+
 		// because of resolutions issues with fixed point math (when FTYPE is fp8p24)
 		// we can not step the voltage_step variable every sample, the step is too small
 		// to be represented using fp8p24. To solve that we do a little non audible trick -
 		// we step only every 100 samples. We divide the time variable by 100.
 		// Then we use the glide_count variable to count the samples.
-		oscillator->voltage_step_glide_step = 
+		oscillator->voltage_step_glide_step =
 			mulFTYPE(target_frequency - oscillator->voltage_step_base,
 				 divFTYPE(__LOS_Fs_INVERSE_FTYPE, divFTYPE(time, itoFTYPE(100)))
 				);
@@ -117,17 +117,20 @@ void los_step_oscillator(oscillator_t *oscillator,
 			oscillator->voltage_step_base = oscillator->glide_target_frequency;
 		}
 	}
-	
+
+	frequency_modulator_voltage =
+		SAT_POW_FTYPE(itoFTYPE(2),
+			      divFTYPE(frequency_modulator_voltage, itoFTYPE(12))
+			);
+
 	FTYPE voltage_step =
-		oscillator->voltage_step_base + mulFTYPE(
-			frequency_modulator_voltage,
-			oscillator->frequency_modulator_depth);
+		mulFTYPE(oscillator->voltage_step_base, frequency_modulator_voltage);
 
 	oscillator->amplitude =
 		oscillator->amplitude_base + mulFTYPE(
 			amplitude_modulator_voltage,
 			oscillator->amplitude_modulator_depth);
-	
+
 	oscillator->voltage += voltage_step;
 	if(oscillator->voltage > itoFTYPE(1)) {
 		oscillator->voltage -= itoFTYPE(1);

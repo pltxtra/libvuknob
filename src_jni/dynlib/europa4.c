@@ -51,16 +51,25 @@ USE_SATANS_MATH
 // define how often we recalculate the filters
 #define FILTER_RECALC_PERIOD 1024
 
+// maximum LFO setting (must match .xml-file)
+#define MAX_LFO_SETTING 3.0f
+
+// when VCO-2 range type is LowFrequency we lock it to
+// a specific frequency - no matter the current tone
+#define VCO_2_LOW_FREQUENCY 15.0f
+
 // +4 since we need four "spare" ones for VCO modulation
 // +24 since we can set the "vco_X_range" from 0 to +24
 #define NOTE_TABLE_LENGTH 256 + 4 + 24
-FTYPE note_table[NOTE_TABLE_LENGTH];
+static FTYPE note_table[NOTE_TABLE_LENGTH];
+
+static FTYPE vco_2_low_frequency;
 
 typedef struct europa4_voice {
 	FTYPE velocity;
 
 	FILTER_RECALC_PART;
-	
+
 	oscillator_t vco_1;
 	oscillator_t vco_2;
 
@@ -74,7 +83,7 @@ typedef struct europa4_voice {
 	xPassFilterMono_t *lfo_lpf; // used to filter in noise mode
 
 	FTYPE unison_detune;
-	
+
 	struct europa4_voice *next_voice;
 } e4voice_t;
 
@@ -82,11 +91,11 @@ typedef struct europa4_key {
 	FTYPE velocity;
 
 	int key;
-	
+
 	e4voice_t *voice[E4_NR_VOICES]; // voices tied to this key
 
 	int unison_voices; // how many voices are we using for this key, in unison mode
-	
+
 	struct europa4_key *next_key;
 } e4key_t;
 
@@ -99,7 +108,7 @@ typedef struct europa4_instance {
 
 	// in unison mode we also need to chain voices
 	e4voice_t *free_voice;
-	
+
 	FTYPE general_mix;
 	FTYPE general_volume;
 	int last_general_mode; // we must reset all voices in case we do a change of the general_mode parameter. We use the last_general_mode to keep track of this.
@@ -115,6 +124,7 @@ typedef struct europa4_instance {
 	int vco_1_pulse;
 	int vco_1_pulse_mode;
 	int vco_1_range;
+	FTYPE vco_1_vco2_ring_mod;
 	FTYPE vco_1_cross_mod_manual;
 	FTYPE vco_1_cross_mod_env_1;
 
@@ -124,6 +134,8 @@ typedef struct europa4_instance {
 	int vco_2_pulse;
 	int vco_2_pulse_mode;
 	int vco_2_range;
+	FTYPE vco_2_fine_tune;
+	int vco_2_range_type;
 
 	int vcf_mode;
 	FTYPE vcf_cutoff;
@@ -136,6 +148,7 @@ typedef struct europa4_instance {
 	int lfo_wave;
 	FTYPE lfo_frequency;
 	int lfo_sync_to_key_press;
+	int lfo_envelope;
 
 	FTYPE vca_env_2;
 	FTYPE vca_lfo;
@@ -172,7 +185,7 @@ int init_voice(MachineTable *mt, e4voice_t *v) {
 	if(v->lpf == NULL) return -1;
 	v->hpf = create_xPassFilterMono(mt, 1);
 	if(v->hpf == NULL) return -1;
-	v->lfo_lpf = create_xPassFilterMono(mt, 1);
+	v->lfo_lpf = create_xPassFilterMono(mt, 0);
 	if(v->lfo_lpf == NULL) return -1;
 	return 0;
 }
@@ -218,7 +231,7 @@ void *init(MachineTable *mt, const char *name) {
 			ctrl2cutoff_table[k] = ftoFTYPE(y);
 		}
 	}
-	
+
 	/* Allocate and initiate instance data here */
 	europa4_t *europa4 = (europa4_t *)malloc(sizeof(europa4_t));;
 	if(!europa4) return NULL;
@@ -231,7 +244,7 @@ void *init(MachineTable *mt, const char *name) {
 	tmt_E = create_TimeMeasure("E Timer", 100);
 	tmt_F = create_TimeMeasure("F Timer", 100);
 #endif
-	
+
 	memset(europa4, 0, sizeof(europa4_t));
 
 	int k;
@@ -255,9 +268,10 @@ void *init(MachineTable *mt, const char *name) {
 
 	europa4->lfo_frequency = ftoFTYPE(0.5f);
 	europa4->lfo_sync_to_key_press = 1;
+	europa4->lfo_envelope = 0;
 
 	europa4->vca_env_2 = ftoFTYPE(1.0f);
-	
+
 	europa4->env_1_attack = ftoFTYPE(0.01f);
 	europa4->env_1_decay = ftoFTYPE(0.01f);
 	europa4->env_1_sustain = ftoFTYPE(0.5f);
@@ -282,7 +296,7 @@ void *init(MachineTable *mt, const char *name) {
 
 	europa4->pwm_pwm = ftoFTYPE(0.2f);
 	europa4->pwm_pw = ftoFTYPE(0.5f);
-	
+
 	/* return pointer to instance data */
 	return (void *)europa4;
 
@@ -291,7 +305,7 @@ fail:
 
 	return NULL;
 }
- 
+
 void *get_controller_ptr(MachineTable *mt, void *void_europa4,
 			 const char *name,
 			 const char *group) {
@@ -315,6 +329,7 @@ void *get_controller_ptr(MachineTable *mt, void *void_europa4,
 		if(strcmp("Pulse", name) == 0) return &(europa4->vco_1_pulse);
 		if(strcmp("Pulse Mode", name) == 0) return &(europa4->vco_1_pulse_mode);
 		if(strcmp("Range", name) == 0) return &(europa4->vco_1_range);
+		if(strcmp("VCO-2 Ring Mod", name) == 0) return &(europa4->vco_1_vco2_ring_mod);
 		if(strcmp("Cross Mod Manual", name) == 0) return &(europa4->vco_1_cross_mod_manual);
 		if(strcmp("Cross Mod Env 1", name) == 0) return &(europa4->vco_1_cross_mod_env_1);
 	}
@@ -326,6 +341,8 @@ void *get_controller_ptr(MachineTable *mt, void *void_europa4,
 		if(strcmp("Pulse", name) == 0) return &(europa4->vco_2_pulse);
 		if(strcmp("Pulse Mode", name) == 0) return &(europa4->vco_2_pulse_mode);
 		if(strcmp("Range", name) == 0) return &(europa4->vco_2_range);
+		if(strcmp("FineTune", name) == 0) return &(europa4->vco_2_fine_tune);
+		if(strcmp("RangeType", name) == 0) return &(europa4->vco_2_range_type);
 	}
 
 	if(strcmp("VCF", group) == 0) {
@@ -342,6 +359,7 @@ void *get_controller_ptr(MachineTable *mt, void *void_europa4,
 		if(strcmp("Wave", name) == 0) return &(europa4->lfo_wave);
 		if(strcmp("Frequency", name) == 0) return &(europa4->lfo_frequency);
 		if(strcmp("Sync to key press", name) == 0) return &(europa4->lfo_sync_to_key_press);
+		if(strcmp("Envelope", name) == 0) return &(europa4->lfo_envelope);
 	}
 
 	if(strcmp("VCA", group) == 0) {
@@ -376,7 +394,7 @@ void *get_controller_ptr(MachineTable *mt, void *void_europa4,
 		if(strcmp("Sustain", name) == 0) return &(europa4->env_2_sustain);
 		if(strcmp("Release", name) == 0) return &(europa4->env_2_release);
 	}
-	
+
 	return NULL;
 }
 
@@ -416,12 +434,13 @@ void calc_note_freq() {
 		f = 440.0 * pow(2.0, (n - 69) / 12.0);
 		note_table[n] = LOS_CALC_FREQUENCY(f);
 	}
+	vco_2_low_frequency = LOS_CALC_FREQUENCY(VCO_2_LOW_FREQUENCY);
 }
 
 inline void trigger_voice_envelope(envelope_t *env, int Fs,
 				   FTYPE a, FTYPE d, FTYPE s, FTYPE r) {
 	envelope_init(env, Fs);
-	
+
 	envelope_set_attack(env, a);
 	envelope_set_hold(env, ftoFTYPE(0.001));
 	envelope_set_decay(env, d);
@@ -435,25 +454,20 @@ inline void set_voice_to_key(europa4_t *europa4, e4voice_t *voice, int key, int 
 	int v1_key = key + europa4->vco_1_range;
 	int v2_key = key + europa4->vco_2_range;
 	FTYPE frequency_1 = note_table[v1_key];
-	FTYPE frequency_1_modulation = note_table[v1_key + 4] - frequency_1;
 	FTYPE frequency_2 = note_table[v2_key];
-	FTYPE frequency_2_modulation = note_table[v2_key + 4] - frequency_2;
-
-	los_set_frequency_modulator_depth(&(voice->vco_1), frequency_1_modulation);
-	los_set_frequency_modulator_depth(&(voice->vco_2), frequency_2_modulation);
 
 #ifdef THIS_IS_A_MOCKERY
 	printf("modulation: %f, frequency: %f\n",
 	       FTYPEtof(frequency_1_modulation),
 	       FTYPEtof(frequency_1));
 #endif
-	
+
 	if(do_glide) {
 		los_glide_frequency(
 			&(voice->vco_1),
 			frequency_1,
 			glide_time);
-		
+
 		los_glide_frequency(
 			&(voice->vco_2),
 			frequency_2,
@@ -462,10 +476,19 @@ inline void set_voice_to_key(europa4_t *europa4, e4voice_t *voice, int key, int 
 		los_set_base_frequency(
 			&(voice->vco_1),
 			frequency_1);
-		
+
 		los_set_base_frequency(
 			&(voice->vco_2),
 			frequency_2);
+	}
+
+	// if VCO-2 range is set to low frequency - we will set it again now
+	// but to a lower one - static
+	if(europa4->vco_2_range_type == 1) {
+		los_set_base_frequency(
+			&(voice->vco_2),
+			vco_2_low_frequency
+			);
 	}
 }
 
@@ -477,7 +500,7 @@ void execute(MachineTable *mt, void *void_europa4) {
 		reset(mt, europa4);
 		europa4->last_general_mode = europa4->general_mode;
 	}
-	
+
 	SignalPointer *outsig = NULL;
 	SignalPointer *insig = NULL;
 
@@ -496,7 +519,7 @@ void execute(MachineTable *mt, void *void_europa4) {
 		(FTYPE *)mt->get_signal_buffer(outsig);
 	int out_l = mt->get_signal_samples(outsig);
 	int Fs = mt->get_signal_frequency(outsig);
-	
+
 	los_set_Fs(mt, Fs);
 	libfilter_set_Fs(Fs);
 
@@ -512,12 +535,13 @@ void execute(MachineTable *mt, void *void_europa4) {
 	FTYPE vco_mod_env_1 = (europa4->vco_mod_env_1);
 	FTYPE glide_time = (europa4->glide_time);
 
-	FTYPE vco_1_cross_mod_manual = (europa4->vco_1_cross_mod_manual);
-	FTYPE vco_1_cross_mod_env_1 = (europa4->vco_1_cross_mod_env_1);
-	
+	FTYPE vco_1_vco2_ring_mod = (europa4->vco_1_vco2_ring_mod);
+	FTYPE vco_1_cross_mod_manual = mulFTYPE(itoFTYPE(24), europa4->vco_1_cross_mod_manual);
+	FTYPE vco_1_cross_mod_env_1 = mulFTYPE(itoFTYPE(24), europa4->vco_1_cross_mod_env_1);
+
 	FTYPE vca_env_2 = (europa4->vca_env_2);
 	FTYPE vca_lfo = (europa4->vca_lfo);
-	
+
 	FTYPE vcf_cutoff = mulFTYPE(europa4->vcf_cutoff, ftoFTYPE(0.45)); // 45% of Fs
 	FTYPE vcf_resonance = europa4->vcf_resonance;
 	FTYPE vcf_env = mulFTYPE(ftoFTYPE(0.999), europa4->vcf_env);
@@ -526,7 +550,7 @@ void execute(MachineTable *mt, void *void_europa4) {
 
 	FTYPE pwm_pw = (europa4->pwm_pw);
 	FTYPE pwm_pwm = (europa4->pwm_pwm);
-	
+
 	FTYPE env1_a, env1_d, env1_s, env1_r;
 	env1_a = europa4->env_1_attack;
 	env1_d = europa4->env_1_decay;
@@ -563,41 +587,40 @@ void execute(MachineTable *mt, void *void_europa4) {
 	FTYPE *int_out_b =
 		(FTYPE *)mt->get_signal_buffer(int_sig_b);
 #endif
-	
+
 	// pre-calculate filter coefficients, and other frame statics
 	{
 		int l;
 		for(l = 0; l < E4_NR_VOICES; l++) {
 			e4voice_t *v = &(europa4->voice[l]);
-			
+
 			los_set_base_frequency(
 				&(v->lfo),
 				mulFTYPE(lfo_frequency, _10Hz));
-			
-			xPassFilterMonoSetCutoff(v->lfo_lpf, mulFTYPE(lfo_frequency, ftoFTYPE(0.45f))); // 45% of Fs
+
+			xPassFilterMonoSetCutoff(v->lfo_lpf,
+						 mulFTYPE(lfo_frequency,
+							  ftoFTYPE(0.45f / MAX_LFO_SETTING))); // 45% of Fs
 			xPassFilterMonoSetResonance(v->lfo_lpf, ftoFTYPE(0.0f));
 			xPassFilterMonoRecalc(v->lfo_lpf);
-						
-			los_set_frequency_modulator_depth(&(v->vco_1), _10Hz);	
-			los_set_frequency_modulator_depth(&(v->vco_2), _10Hz);
 		}
 	}
-	
+
 #ifdef THIS_IS_A_MOCKERY
 	FTYPE max_mock = itoFTYPE(0);
 	start_measure(tmt_A);
 #endif
-	int t; 
-	for(t = 0; t < out_l; t++) {		
+	int t;
+	for(t = 0; t < out_l; t++) {
 		MidiEvent *mev = (MidiEvent *)midi_in[t];
 #ifdef THIS_IS_A_MOCKERY
-		if(mev) 
+		if(mev)
 			printf(" midi event %d at %d\n", mev->data[0] & 0xf0, t);
 #endif
 
 		if(
 			(mev != NULL)
-			&&	
+			&&
 			((mev->data[0] & 0xf0) == MIDI_CONTROL_CHANGE)
 			&&
 			((mev->data[0] & 0x0f) == europa4->midi_channel)
@@ -609,7 +632,7 @@ void execute(MachineTable *mt, void *void_europa4) {
 			FTYPE valu = ctrl2cutoff_table[mev->data[2]];
 #endif
 			europa4->vcf_cutoff = ftoFTYPE(0.01f) + mulFTYPE(ftoFTYPE(0.94f), valu);
-			
+
 			vcf_cutoff = mulFTYPE(europa4->vcf_cutoff, ftoFTYPE(0.45)); // 45% of Fs
 		}
 
@@ -621,12 +644,12 @@ void execute(MachineTable *mt, void *void_europa4) {
 			) {
 			int key = mev->data[1];
 			int velocity = mev->data[2];
-				
+
 			if(europa4->free_key) {
 				e4key_t *nfree = europa4->free_key->next_key;
 				europa4->free_key->next_key = europa4->active_key;
 				europa4->active_key = europa4->free_key;
-				europa4->free_key = nfree;				
+				europa4->free_key = nfree;
 
 				e4key_t *new_key = europa4->active_key;
 				new_key->key = key;
@@ -643,7 +666,7 @@ void execute(MachineTable *mt, void *void_europa4) {
 				if(europa4->general_mode == 1) {
 					// unison mode
 					FTYPE unison_detune = mulFTYPE(europa4->general_detune, ftoFTYPE(0.25f)); // 0.25 because we only want one half note detune... otherwise we will get 4.
-					
+
 					// first count active keys
 					int actives = 0;
 					e4key_t *a = europa4->active_key;
@@ -653,7 +676,7 @@ void execute(MachineTable *mt, void *void_europa4) {
 
 					// calculate voices / key
 					int voices_per_key = E4_NR_VOICES / actives;
-					
+
 					// if voices_per_key is less than the unison_voices counter for each key, deactivate these voices
 					a = europa4->active_key;
 					while(a != NULL) {
@@ -667,10 +690,10 @@ void execute(MachineTable *mt, void *void_europa4) {
 
 									a->voice[v]->next_voice = europa4->free_voice;
 									europa4->free_voice = a->voice[v];
-									
+
 									a->voice[v] = NULL;
 								}
-							}							
+							}
 						}
 						a->unison_voices = voices_per_key;
 						a = a->next_key;
@@ -687,22 +710,22 @@ void execute(MachineTable *mt, void *void_europa4) {
 								new_key->voice[v] = voice;
 								europa4->free_voice = voice->next_voice;
 								voice->next_voice = NULL;
-								
+
 								voice->velocity = unison_velocity;
 								unison_velocity = divFTYPE(unison_velocity, itoFTYPE(2));
-						
+
 								trigger_voice_envelope(&(voice->env_1),
 										       Fs,
 										       env1_a, env1_d, env1_s, env1_r);
-								
+
 								trigger_voice_envelope(&(voice->env_2),
 										       Fs,
 										       env2_a, env2_d, env2_s, env2_r);
-								
+
 								set_voice_to_key(europa4,
 										 voice, new_key->key,
 										 0, itoFTYPE(0));
-								
+
 								if(europa4->lfo_sync_to_key_press)
 									los_reset_oscillator(&(voice->lfo));
 
@@ -720,7 +743,7 @@ void execute(MachineTable *mt, void *void_europa4) {
 					if(europa4->general_mode == 0 && new_key->next_key != NULL && europa4->glide_mode) {
  						new_key->voice[0] = new_key->next_key->voice[0];
 						new_key->next_key->voice[0] = NULL;
-						
+
 						set_voice_to_key(europa4,
 								 new_key->voice[0], new_key->key,
 								 europa4->glide_mode,
@@ -739,11 +762,11 @@ void execute(MachineTable *mt, void *void_europa4) {
 							new_key->voice[0] = &(europa4->voice[k]);
 						}
 						new_key->voice[0]->velocity = new_key->velocity;
-						
+
 						trigger_voice_envelope(&(new_key->voice[0]->env_1),
 								       Fs,
 								       env1_a, env1_d, env1_s, env1_r);
-						
+
 						trigger_voice_envelope(&(new_key->voice[0]->env_2),
 								       Fs,
 								       env2_a, env2_d, env2_s, env2_r);
@@ -764,10 +787,10 @@ void execute(MachineTable *mt, void *void_europa4) {
 									 0, itoFTYPE(0));
 
 						}
-						
+
 						if(europa4->lfo_sync_to_key_press)
 							los_reset_oscillator(&(new_key->voice[0]->lfo));
-				
+
 					}
 				}
 			}
@@ -787,7 +810,7 @@ void execute(MachineTable *mt, void *void_europa4) {
 					printf("\n"); // line feed
 					k = k->next_key;
 				}
-				
+
 			}
 #endif
 		}
@@ -809,9 +832,9 @@ void execute(MachineTable *mt, void *void_europa4) {
 				printf("NOTE OFF (BEFORE):\n");
 				while(k != NULL) {
 					int u;
-					
+
 					printf("Active key: %d\n", k->key);
-					
+
 					printf("   "); // indentation
 					for(u = 0; u < E4_NR_VOICES; u++) {
 						if(k->voice[u]) {
@@ -821,13 +844,13 @@ void execute(MachineTable *mt, void *void_europa4) {
 					printf("\n"); // line feed
 					k = k->next_key;
 				}
-				
+
 			}
 			{
 				int l;
 				for(l = 0; l < E4_NR_VOICES; l++) {
 					e4voice_t *v = &(europa4->voice[l]);
-					
+
 					// if both envelopes are non-active, skip processing this voice
 					if(
 						(!envelope_is_active(&(v->env_1)))
@@ -848,7 +871,7 @@ void execute(MachineTable *mt, void *void_europa4) {
 						// points to the next one before we proceed.
 						prev_key->next_key = crnt_key->next_key;
 					}
-					
+
 					if(europa4->general_mode != 1) {
 						// solo or polyphony mode
 						if(crnt_key->voice[0] != NULL) {
@@ -861,7 +884,7 @@ void execute(MachineTable *mt, void *void_europa4) {
 										 crnt_key->voice[0],
 										 crnt_key->next_key->key,
 										 europa4->glide_mode, glide_time);
-								
+
 								crnt_key->next_key->voice[0] = crnt_key->voice[0];
 							} else {
 								// if we cannot pass to the next
@@ -883,25 +906,25 @@ void execute(MachineTable *mt, void *void_europa4) {
 
 								crnt_key->voice[v]->next_voice = europa4->free_voice;
 								europa4->free_voice = crnt_key->voice[v];
-								
+
 								crnt_key->voice[v] = NULL;
 							}
 						}
 					}
 
-					
+
 					// if curnt_key is first in line, we must
 					// set the active_key to the next in chain..
-					if(europa4->active_key == crnt_key) 
-						europa4->active_key = 
+					if(europa4->active_key == crnt_key)
+						europa4->active_key =
 							crnt_key->next_key;
-					
+
 					// put it back in the free key chain.
 					crnt_key->next_key = europa4->free_key;
 					europa4->free_key = crnt_key;
-					
+
 					crnt_key = NULL;
-				} else {					
+				} else {
 					prev_key = crnt_key;
 					crnt_key = crnt_key->next_key;
 				}
@@ -912,9 +935,9 @@ void execute(MachineTable *mt, void *void_europa4) {
 				printf("NOTE OFF (AFTER):\n");
 				while(k != NULL) {
 					int u;
-					
+
 					printf("Active key: %d\n", k->key);
-					
+
 					printf("   "); // indentation
 					for(u = 0; u < E4_NR_VOICES; u++) {
 						if(k->voice[u]) {
@@ -924,12 +947,12 @@ void execute(MachineTable *mt, void *void_europa4) {
 					printf("\n"); // line feed
 					k = k->next_key;
 				}
-				
+
 			}
 #endif
-						
+
 		}
-		
+
 		// set the current output sample to 0
 		out[t] = itoFTYPE(0);
 
@@ -946,10 +969,10 @@ void execute(MachineTable *mt, void *void_europa4) {
 					(!envelope_is_active(&(v->env_2)))
 					) {
 					continue;
-				} 
-				
+				}
+
 				// otherwise, process it hereafter!
-				
+
 				FTYPE vco_1 = itoFTYPE(0), vco_2 = itoFTYPE(0);
 				FTYPE lfo = itoFTYPE(0);
 				FTYPE env_1 = itoFTYPE(0), env_2 = itoFTYPE(0);
@@ -964,13 +987,13 @@ void execute(MachineTable *mt, void *void_europa4) {
 						env_1 = itoFTYPE(1) - env_1;
 					}
 				}
-				
+
 				{ // process ENV 2
 					env_2 = envelope_get_sample(&(v->env_2));
 					envelope_step(&(v->env_2));
 				}
 
-				
+
 				{ // process LFO
 					switch(europa4->lfo_wave) {
 					case 0:
@@ -988,12 +1011,23 @@ void execute(MachineTable *mt, void *void_europa4) {
 						lfo = xPassFilterMonoGet(v->lfo_lpf);
 						break;
 					}
+					switch(europa4->lfo_envelope) {
+					case 0:
+						/* no-operation */
+						break;
+					case 1:
+						lfo = mulFTYPE(lfo, env_1);
+						break;
+					case 2:
+						lfo = mulFTYPE(lfo, env_2);
+						break;
+					}
 					los_step_oscillator(&(v->lfo), itoFTYPE(0), itoFTYPE(0));
 				}
 
 				{ // calculate PWM here
 					FTYPE mod = itoFTYPE(1);
-					
+
 					if(europa4->pwm_selector == 0) { // LFO
 						mod = divFTYPE(lfo + itoFTYPE(1),
 							       itoFTYPE(2));
@@ -1004,27 +1038,21 @@ void execute(MachineTable *mt, void *void_europa4) {
 						mulFTYPE(
 							pwm_pwm,
 							mod);
-					
+
 					mod = mulFTYPE(mod, pwm_pw);
 					pwm = mulFTYPE(mod, ftoFTYPE(0.5f));
 				}
 
 				FTYPE vco_mod_BASE;
-				
+
 				vco_mod_BASE = mulFTYPE(lfo, vco_mod_lfo);
 				if(europa4->env_1_polarity)
 					vco_mod_BASE += mulFTYPE(env_1, vco_mod_env_1);
 				else
 					vco_mod_BASE += mulFTYPE(env_1 - itoFTYPE(1), vco_mod_env_1);
 
-				
+
 				{ // process VCO-2
-					FTYPE vco_mod = itoFTYPE(0);
-
-					if(europa4->vco_mod_vco_2) {
-						vco_mod += vco_mod_BASE;
-					}
-
 					FTYPE saw = los_get_alternate_sample(&(v->vco_2), los_src_saw);
 					if(europa4->vco_2_sin)
 						vco_2 += los_get_alternate_sample(&(v->vco_2), los_src_sin);
@@ -1043,30 +1071,43 @@ void execute(MachineTable *mt, void *void_europa4) {
 								&(v->vco_2), los_src_square);
 						}
 					}
-					
-					if(europa4->general_mode == 1) { // unison mode
-						los_step_oscillator(&(v->vco_2), vco_mod + v->unison_detune, itoFTYPE(0));
+
+					if(europa4->vco_2_range_type == 0) {
+						FTYPE vco_mod = itoFTYPE(0);
+
+						if(europa4->vco_mod_vco_2) {
+							vco_mod += vco_mod_BASE;
+						}
+
+						vco_mod += europa4->vco_2_fine_tune;
+
+						if(europa4->general_mode == 1) { // unison mode
+							los_step_oscillator(&(v->vco_2),
+									    vco_mod + v->unison_detune,
+									    itoFTYPE(0));
+						} else {
+							los_step_oscillator(&(v->vco_2), vco_mod, itoFTYPE(0));
+						}
 					} else {
-						los_step_oscillator(&(v->vco_2), vco_mod, itoFTYPE(0));
+						los_step_oscillator(&(v->vco_2), itoFTYPE(0), itoFTYPE(0));
 					}
-					
+
 #ifdef THIS_IS_A_MOCKERY
 					if(l == 0) {
 						int_out_a[t] = mulFTYPE(ftoFTYPE(0.5f), vco_2);
 					}
 #endif
-//					vco_2 = mulFTYPE(v->velocity, mulFTYPE(vco_2, env_2));
 				}
 
 				{ // process VCO-1
 					FTYPE vco_mod = itoFTYPE(0);
-
 					if(europa4->vco_mod_vco_1) {
 						vco_mod += vco_mod_BASE;
 					}
 
-					vco_mod += mulFTYPE(vco_2, vco_1_cross_mod_manual);
-					vco_mod += mulFTYPE(vco_2, vco_1_cross_mod_env_1);
+					FTYPE xmod_env1 = mulFTYPE(vco_1_cross_mod_env_1, env_1);
+					vco_mod += mulFTYPE(vco_2 + itoFTYPE(1), vco_1_cross_mod_manual);
+					vco_mod += mulFTYPE(vco_2 + itoFTYPE(1), xmod_env1);
 
 					FTYPE saw = los_get_alternate_sample(&(v->vco_1), los_src_saw);
 					if(europa4->vco_1_sin)
@@ -1086,13 +1127,20 @@ void execute(MachineTable *mt, void *void_europa4) {
 								&(v->vco_1), los_src_square);
 						}
 					}
+
+					FTYPE ring_mod = mulFTYPE(vco_1, vco_2);
+
+					vco_1 = mulFTYPE(vco_1_vco2_ring_mod, ring_mod)
+						+
+						mulFTYPE(1 - vco_1_vco2_ring_mod, vco_1);
+
 					if(europa4->general_mode == 1) { // unison mode
-						los_step_oscillator(&(v->vco_1), vco_mod + v->unison_detune, itoFTYPE(0));
+						los_step_oscillator(&(v->vco_1),
+								    vco_mod + v->unison_detune, itoFTYPE(0));
 					} else {
 						los_step_oscillator(&(v->vco_1), vco_mod, itoFTYPE(0));
 					}
 
-//					vco_1 = mulFTYPE(v->velocity, mulFTYPE(vco_1, env_1));
 				}
 
 				{ // process VCF parameters
@@ -1106,14 +1154,14 @@ void execute(MachineTable *mt, void *void_europa4) {
 
 						cutoff = mulFTYPE(vcf_cutoff,
 								  itoFTYPE(1) - vcf_env + mulFTYPE(env, vcf_env));
-					       
+
 						kybd_env = mulFTYPE(vcf_kybd, v->velocity);
 						kybd_env = itoFTYPE(1) - vcf_kybd + kybd_env;
-						
+
 						lfo_env = divFTYPE(lfo + itoFTYPE(1), itoFTYPE(2)); // make it vary from 0 to 1
 						lfo_env = mulFTYPE(vcf_lfo, lfo_env);
 						lfo_env = itoFTYPE(1) - vcf_lfo + lfo_env;
-												
+
 						cutoff = mulFTYPE(lfo_env, cutoff);
 						cutoff = mulFTYPE(kybd_env, cutoff);
 
@@ -1132,7 +1180,7 @@ void execute(MachineTable *mt, void *void_europa4) {
 
 					ve2 = ve2 - vca_env_2 + mulFTYPE(vca_env_2, env_2);
 					vlf = vlf - vca_lfo + mulFTYPE(vca_lfo, lfo);
-					
+
 					vca = mulFTYPE(v->velocity, mulFTYPE(ve2, vlf));
 				}
 
@@ -1154,7 +1202,7 @@ void execute(MachineTable *mt, void *void_europa4) {
 						xPassFilterMonoPut(v->hpf, output_v);
 						output_v = xPassFilterMonoGet(v->hpf);
 					}
-					
+
 #ifdef THIS_IS_A_MOCKERY
 					if(l == 0) {
 						int_out_b[t] = mulFTYPE(ftoFTYPE(0.9f), output_v);
@@ -1173,7 +1221,7 @@ void execute(MachineTable *mt, void *void_europa4) {
 						(!envelope_is_active(&(v->env_2)))
 						) {
 						printf(" !!!! voice %p ended by autonomy.\n", v);
-					} 
+					}
 				}
 #endif
 			}

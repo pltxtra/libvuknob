@@ -41,6 +41,7 @@
   <enum value="1" name="PWM" />
 </controller>
 <controller group="VCO-1" name="Range" type="integer" min="0" max="24" />
+<controller group="VCO-1" name="VCO-2 Ring Mod" type="FTYPE" min="0.0" max="1.0" step="0.01" />
 <controller group="VCO-1" name="Cross Mod Manual" type="FTYPE" min="0.0" max="1.0" step="0.01" />
 <controller group="VCO-1" name="Cross Mod Env 1" type="FTYPE" min="0.0" max="1.0" step="0.01" />
 
@@ -65,6 +66,11 @@
   <enum value="1" name="PWM" />
 </controller>
 <controller group="VCO-2" name="Range" type="integer" min="0" max="24" />
+<controller group="VCO-2" name="FineTune" type="FTYPE" min="-0.5" max="0.5" step="0.01" />
+<controller group="VCO-2" name="RangeType" type="enumerated">
+  <enum value="0" name="Normal" />
+  <enum value="1" name="LowFrequency" />
+</controller>
 
 <controller group="LFO" name="Wave" type="enumerated">
   <enum value="0" name="sin" />
@@ -72,10 +78,15 @@
   <enum value="2" name="sqr" />
   <enum value="3" name="noise" />
 </controller>
-<controller group="LFO" name="Frequency" type="FTYPE" min="0.0" max="1.0" step="0.01" />
+<controller group="LFO" name="Frequency" type="FTYPE" min="0.0" max="3.0" step="0.01" />
 <controller group="LFO" name="Sync to key press" type="enumerated">
   <enum value="0" name="No" />
   <enum value="1" name="Yes" />
+</controller>
+<controller group="LFO" name="Envelope" type="enumerated">
+  <enum value="0" name="Disabled" />
+  <enum value="1" name="ENV-1" />
+  <enum value="2" name="ENV-2" />
 </controller>
 
 <controller group="VCA" name="ENV-2" type="FTYPE" min="0.0" max="1.0" step="0.01" />
@@ -130,4 +141,3 @@
 <controller group="VCF" name="KYBD" type="FTYPE" min="0.0" max="1.0" step="0.01" />
 
 </machine>
- 

@@ -31,7 +31,7 @@
 
 void envelope_reset(envelope_t *env) {
 	env->amplitude = itoFTYPE(0);
-	env->phase = 0; 
+	env->phase = 0;
 	env->phase_level = itoFTYPE(0);
 }
 
@@ -44,13 +44,13 @@ void envelope_init(envelope_t *env, int Fs) {
 		env->Fs_i = ftoFTYPE(inverse);
 
 		envelope_reset(env);
-	}	
+	}
 }
 
 void envelope_set_attack(envelope_t *env, FTYPE seconds) {
 	if(seconds == itoFTYPE(0))
 		env->attack_level_step = itoFTYPE(1); // this will indicate that we skip the envelope attack phase
-	else 
+	else
 		env->attack_level_step = divFTYPE(env->Fs_i, seconds);
 }
 
@@ -114,13 +114,13 @@ FTYPE envelope_get_sample(envelope_t *env) {
 
 inline void envelope_step(envelope_t *env) {
 	switch(env->phase) {
-	case 0: // no action		
+	case 0: // no action
 		break;
 
 	case 1: // attack phase
 		env->amplitude += env->attack_amp_step;
 		env->phase_level += env->attack_level_step;
-		
+
 		if(env->phase_level >= itoFTYPE(1)) {
 			env->phase_level = itoFTYPE(0);
 			env->phase = 2; // go to hold phase
@@ -138,7 +138,7 @@ inline void envelope_step(envelope_t *env) {
 	case 3: // decay phase
 		env->amplitude += env->decay_amp_step;
 		env->phase_level += env->decay_level_step;
-		
+
 		if(env->phase_level >= itoFTYPE(1)) {
 			env->phase_level = itoFTYPE(0);
 			env->phase = 4; // go to sustain phase
@@ -148,11 +148,11 @@ inline void envelope_step(envelope_t *env) {
 	case 4: // sustain phase
 		// do nothing, wait for release
 		break;
-		
+
 	case 5: // release phase
 		env->amplitude += env->release_amp_step;
 		env->phase_level += env->release_level_step;
-		
+
 		if(env->phase_level >= itoFTYPE(1)) {
 			env->amplitude = itoFTYPE(0);
 			env->phase_level = itoFTYPE(0);
@@ -164,5 +164,5 @@ inline void envelope_step(envelope_t *env) {
 }
 
 int envelope_is_active(envelope_t *env) {
-	return env->phase == 0 ? 0 : -1; 
+	return env->phase == 0 ? 0 : -1;
 }

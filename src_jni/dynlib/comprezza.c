@@ -52,6 +52,8 @@
 
 USE_SATANS_MATH
 
+#include "libfilter.c"
+
 typedef struct _XpData {
 	// settings
 	float dry;
@@ -62,6 +64,9 @@ typedef struct _XpData {
 	// calculated values
         FTYPE threshold, threshold_lo, threshold_hi, slope, knee_factor;
 	FTYPE smooth_a, smooth_r;
+
+	struct delayLineMono *left_delay;
+	struct delayLineMono *right_delay;
 
 	float freq;
 
@@ -81,6 +86,9 @@ void *init(MachineTable *mt, const char *name) {
 	data->release = 2.25f;
 
 	SETUP_SATANS_MATH(mt);
+
+	data->left_delay = create_delayLineMono(30);
+	data->right_delay = create_delayLineMono(30);
 
 	/* return pointer to instance data */
 	return (void *)data;
@@ -202,6 +210,10 @@ void execute(MachineTable *mt, void *data) {
 		left = mulFTYPE(ing, in[i * ic + 0]);
 		right = mulFTYPE(ing, in[i * ic + 1]);
 
+		// put into delay line
+		delayLineMonoPut(xd->left_delay, left);
+		delayLineMonoPut(xd->right_delay, right);
+
 		// get amplitude at current position
 		FTYPE amp_l = ABS_FTYPE(left);
 		FTYPE amp_r = ABS_FTYPE(right);
@@ -215,6 +227,10 @@ void execute(MachineTable *mt, void *data) {
 
 		// smooth the gain and convert from dB
 		gain = DB2SAM(smooth(xd, gain, alpha_a, alpha_r));
+
+		// get data from delay line
+		left = delayLineMonoGet(xd->left_delay);
+		right = delayLineMonoGet(xd->right_delay);
 
 		// apply compressor gain
 		ou[i * oc + 0] =
@@ -239,6 +255,12 @@ void execute(MachineTable *mt, void *data) {
 }
 
 void delete(void *data) {
-	/* free instance data here */
-	free(data);
+	if(data) {
+		XpData *xd = (XpData *)data;
+		if(xd->left_delay) delayLineMonoFree(xd->left_delay);
+		if(xd->right_delay) delayLineMonoFree(xd->right_delay);
+
+		/* free instance data here */
+		free(data);
+	}
 }
