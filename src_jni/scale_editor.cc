@@ -299,10 +299,10 @@ void ScaleEditor::on_resize() {
 	}
 
 	{ // calculate transform for the main part of the document
-		double scaling = FingerScaler::fit_to_fingers(canvas_w_inches, canvas_h_inches,
-							      canvas_w, canvas_h,
-							      8, 8,
-							      document_size.width, document_size.height);
+		double scaling = fit_to_inches(
+			&root,
+			8.0 * INCHES_PER_FINGER,
+			8.0 * INCHES_PER_FINGER);
 
 		// calculate translation
 		double translate_x = (canvas_w - document_size.width * scaling) / 2.0;

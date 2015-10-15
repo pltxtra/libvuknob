@@ -109,7 +109,11 @@ void envelope_release(envelope_t *env) {
 }
 
 FTYPE envelope_get_sample(envelope_t *env) {
-	return env->amplitude;
+	env->amplitude_mem =
+		mulFTYPE(ftoFTYPE(0.95f), env->amplitude_mem)
+		+
+		mulFTYPE(ftoFTYPE(0.05f), env->amplitude);
+	return env->amplitude_mem;
 }
 
 inline void envelope_step(envelope_t *env) {

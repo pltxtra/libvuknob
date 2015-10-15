@@ -54,6 +54,10 @@ USE_SATANS_MATH
 // maximum LFO setting (must match .xml-file)
 #define MAX_LFO_SETTING 3.0f
 
+// smoothing factors
+#define LFO_SMOOTH_FACTOR 0.9f
+#define VCO_SMOOTH_FACTOR 0.9f
+
 // when VCO-2 range type is LowFrequency we lock it to
 // a specific frequency - no matter the current tone
 #define VCO_2_LOW_FREQUENCY 15.0f
@@ -83,6 +87,11 @@ typedef struct europa4_voice {
 	xPassFilterMono_t *lfo_lpf; // used to filter in noise mode
 
 	FTYPE unison_detune;
+
+	// smoothing memory
+	FTYPE vco_1_mem;
+	FTYPE vco_2_mem;
+	FTYPE lfo_mem;
 
 	struct europa4_voice *next_voice;
 } e4voice_t;
@@ -1023,6 +1032,12 @@ void execute(MachineTable *mt, void *void_europa4) {
 						break;
 					}
 					los_step_oscillator(&(v->lfo), itoFTYPE(0), itoFTYPE(0));
+
+					v->lfo_mem =
+						mulFTYPE(ftoFTYPE(LFO_SMOOTH_FACTOR), v->lfo_mem)
+						+
+						mulFTYPE(ftoFTYPE(1.0f - LFO_SMOOTH_FACTOR), lfo);
+					lfo = v->lfo_mem;
 				}
 
 				{ // calculate PWM here
@@ -1091,6 +1106,12 @@ void execute(MachineTable *mt, void *void_europa4) {
 					} else {
 						los_step_oscillator(&(v->vco_2), itoFTYPE(0), itoFTYPE(0));
 					}
+
+					v->vco_2_mem =
+						mulFTYPE(ftoFTYPE(VCO_SMOOTH_FACTOR), v->vco_2_mem)
+						+
+						mulFTYPE(ftoFTYPE(1.0f - VCO_SMOOTH_FACTOR), vco_2);
+					vco_2 = v->vco_2_mem;
 
 #ifdef THIS_IS_A_MOCKERY
 					if(l == 0) {

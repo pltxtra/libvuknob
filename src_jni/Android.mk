@@ -122,6 +122,8 @@ numeric_keyboard.cc numeric_keyboard.hh \
 top_menu.cc top_menu.hh \
 livepad2.cc livepad2.hh \
 pncsequencer.cc pncsequencer.hh \
+sequencer.cc sequencer.hh \
+timelines.cc timelines.hh \
 machine_sequencer.cc machine_sequencer.hh \
 midi_export.cc midi_export.hh \
 midi_export_gui.cc \
@@ -152,6 +154,7 @@ connection_list.cc connection_list.hh \
 scale_editor.cc scale_editor.hh \
 scales.cc scales.hh \
 serialize.cc serialize.hh \
+fling_animation.cc fling_animation.hh \
 time_measure.cc
 
 LOCAL_STATIC_LIBRARIES := cpufeatures libvorbis libogg libvorbisenc libkissfft

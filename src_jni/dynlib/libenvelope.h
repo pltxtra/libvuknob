@@ -35,20 +35,21 @@
 typedef struct __libenvelope_struct {
 	int Fs;
 	FTYPE Fs_i; // 1.0f / Fs
-	
+
 	FTYPE amplitude; /* current generated amplitude between 0 and 1 */
+	FTYPE amplitude_mem; // for smoothing
 
 	FTYPE phase_modulation_depth;
-	
+
 	int phase; // attack, hold, decay, sustain or release phase
 	FTYPE phase_level; // zero at start of each phase, increasing by step. When 1 is reached, proceed to next phase. (sustain phase is never levt, until envelope_release is called..)
-	
+
 	FTYPE attack_level_step;
-	FTYPE hold_level_step;	
+	FTYPE hold_level_step;
 	FTYPE decay_level_step;
 	FTYPE release_level_step;
 
-	FTYPE attack_amp_step;	
+	FTYPE attack_amp_step;
 	FTYPE decay_amp_step;
 	FTYPE release_amp_step;
 
@@ -69,7 +70,7 @@ inline void envelope_release(envelope_t *env);
 
 inline FTYPE envelope_get_sample(envelope_t *env);
 
-inline void envelope_step(envelope_t *env); 
+inline void envelope_step(envelope_t *env);
 
 inline int envelope_is_active(envelope_t *env);
 

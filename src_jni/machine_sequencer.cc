@@ -1637,7 +1637,7 @@ bool MachineSequencer::PadMotion::process_motion(bool mute, MachineSequencer::Mi
 
 	int max = (int)x.size();
 
-	while( (t[index] <= crnt_tick) && (index < max) ) {
+	while( (index < max) && (t[index] <= crnt_tick) ) {
 		int pad_column = (x[index] >> 7) >> 4; // first right shift 7 for "coarse" data, then shift by 4 to get wich of the 8 columns we are in..
 		int note = octave * 12 + scale_data[pad_column + scale_offset];
 		int chord[MAX_PAD_CHORD];
