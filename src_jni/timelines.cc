@@ -1,6 +1,6 @@
 /*
- * VuKNOB
- * (C) 2014 by Anton Persson
+ * vu|KNOB
+ * (C) 2015 by Anton Persson
  *
  * http://www.vuknob.com/
  *
@@ -305,7 +305,6 @@ void TimeLines::set_prefix_string(const std::string &_prefix) {
 }
 
 void TimeLines::on_render() {
-	SATAN_DEBUG("TimeLines::on_render()\n");
 	// calcualte current space between minor lines, given the current zoom factor
 	double minor_spacing = horizontal_zoom_factor * minor_width;
 

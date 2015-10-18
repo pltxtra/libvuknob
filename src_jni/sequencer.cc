@@ -1,6 +1,6 @@
 /*
- * VuKNOB
- * (C) 2014 by Anton Persson
+ * vu|KNOB
+ * (C) 2015 by Anton Persson
  *
  * http://www.vuknob.com/
  *
@@ -31,8 +31,69 @@
 #include "machine.hh"
 #include "common.hh"
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
+
+/***************************
+ *
+ *  Class Sequencer::Sequence
+ *
+ ***************************/
+
+Sequencer::Sequence::Sequence(KammoGUI::SVGCanvas::ElementReference elref,
+			      std::shared_ptr<RemoteInterface::RIMachine> _ri_machine,
+			      int _offset)
+	: KammoGUI::SVGCanvas::ElementReference(elref)
+	, ri_machine(_ri_machine)
+	, offset(_offset)
+{
+	SATAN_DEBUG("Sequencer::Sequence::Sequence()\n");
+	set_display("inline");
+
+	find_child_by_class("machineId").set_text_content(ri_machine->get_sibling_name());
+
+}
+
+void Sequencer::Sequence::on_move() {
+}
+
+void Sequencer::Sequence::on_attach(std::shared_ptr<RemoteInterface::RIMachine> src_machine,
+				    const std::string src_output,
+				    const std::string dst_input) {
+}
+
+void Sequencer::Sequence::on_detach(std::shared_ptr<RemoteInterface::RIMachine> src_machine,
+				    const std::string src_output,
+				    const std::string dst_input) {
+}
+
+void Sequencer::Sequence::set_graphic_scaling(double graphic_scaling_factor,
+					      double single_vertical_offset) {
+	// initiate transform_t
+	KammoGUI::SVGCanvas::SVGMatrix transform_t;
+
+	transform_t.init_identity();
+	transform_t.translate(0.0, (double)(1 + offset) * single_vertical_offset);
+	transform_t.scale(graphic_scaling_factor, graphic_scaling_factor);
+
+	SATAN_DEBUG("offset: %d\n", offset);
+
+	set_transform(transform_t);
+}
+
+auto Sequencer::Sequence::create_sequence(
+	KammoGUI::SVGCanvas::ElementReference &root,
+	KammoGUI::SVGCanvas::ElementReference &sequence_graphic_template,
+	std::shared_ptr<RemoteInterface::RIMachine> ri_machine,
+	int offset) -> std::shared_ptr<Sequence> {
+
+	KammoGUI::SVGCanvas::ElementReference new_graphic =
+		root.add_element_clone(ri_machine->get_name(), sequence_graphic_template);
+
+	SATAN_DEBUG("Sequencer::Sequence::create_sequence()\n");
+
+	return std::make_shared<Sequence>(new_graphic, ri_machine, offset);
+}
 
 /***************************
  *
@@ -41,17 +102,66 @@
  ***************************/
 
 Sequencer::Sequencer(KammoGUI::SVGCanvas* cnvs)
-	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/empty.svg"), cnvs) {
-}
+	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/sequencerMachine.svg"), cnvs) {
+	sequence_graphic_template = KammoGUI::SVGCanvas::ElementReference(this, "sequencerMachineTemplate");
+	root = KammoGUI::SVGCanvas::ElementReference(this);
 
-Sequencer::~Sequencer() {
+	sequence_graphic_template.set_display("none");
 }
 
 void Sequencer::on_resize() {
+	get_canvas_size(canvas_w, canvas_h);
+	get_canvas_size_inches(canvas_w_inches, canvas_h_inches);
+
+	double tmp;
+
+	tmp = canvas_w_inches / INCHES_PER_FINGER;
+	canvas_width_fingers = (int)tmp;
+	tmp = canvas_h_inches / INCHES_PER_FINGER;
+	canvas_height_fingers = (int)tmp;
+
+	tmp = canvas_w / ((double)canvas_width_fingers);
+	finger_width = tmp;
+	tmp = canvas_h / ((double)canvas_height_fingers);
+	finger_height = tmp;
+
+	KammoGUI::SVGCanvas::SVGRect document_size;
+
+	// get data
+	root.get_viewport(document_size);
+
+	double scaling = finger_height / document_size.height;
+
+	for(auto m2s : machine2sequence) {
+		m2s.second->set_graphic_scaling(scaling, document_size.height);
+	}
 }
 
 void Sequencer::on_render() {
-	SATAN_DEBUG("Sequencer::on_render()\n");
+}
+
+void Sequencer::ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
+	// we don't want to show non MachineSequener objects
+	if(ri_machine->get_machine_type() != "MachineSequencer") return;
+
+	int new_offset = (int)machine2sequence.size();
+	SATAN_DEBUG("new_offset is %d\n", new_offset);
+
+	KammoGUI::SVGCanvas::ElementReference layer(this, "layer1");
+	machine2sequence[ri_machine] =
+		Sequence::create_sequence(
+			layer, sequence_graphic_template,
+			ri_machine, new_offset);
+}
+
+void Sequencer::ri_machine_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
+	// we don't have any non MachineSequener objects on file
+	if(ri_machine->get_machine_type() != "MachineSequencer") return;
+
+	auto seq = machine2sequence.find(ri_machine);
+	if(seq != machine2sequence.end()) {
+		machine2sequence.erase(seq);
+	}
 }
 
 /***************************
@@ -68,8 +178,10 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		KammoGUI::SVGCanvas *cnvs = (KammoGUI::SVGCanvas *)wid;
 		cnvs->set_bg_color(1.0, 1.0, 1.0);
 
-		static auto current_sequencer = new Sequencer(cnvs);
 		static auto current_timelines = new TimeLines(cnvs);
+		static auto current_sequencer = std::make_shared<Sequencer>(cnvs);
+
+		RemoteInterface::RIMachine::register_ri_machine_set_listener(current_sequencer);
 	}
 }
 

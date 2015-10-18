@@ -31,8 +31,12 @@
 #include "corner_button.hh"
 #include "connection_list.hh"
 
-class Connector : public KammoGUI::SVGCanvas::SVGDocument, public KammoGUI::ScaleGestureDetector::OnScaleGestureListener,
-		  public RemoteInterface::RIMachine::RIMachineSetListener {
+class Connector
+	: public KammoGUI::SVGCanvas::SVGDocument
+	, public KammoGUI::ScaleGestureDetector::OnScaleGestureListener
+	, public RemoteInterface::RIMachine::RIMachineSetListener
+{
+
 private:
 	class MachineGraphic;
 
