@@ -110,52 +110,53 @@ wavloader.cc wavloader.hh \
 signal.cc signal.hh \
 machine.cc machine.hh machine_project_entry.cc \
 dynamic_machine.cc dynamic_machine.hh \
-load_ui.cc save_ui.cc \
-new_project_ui.cc \
-project_info_entry.cc \
-controller_handler.cc \
-controller_envelope.cc controller_envelope.hh \
 general_tools.cc \
-canvas_widget.cc canvas_widget.hh \
-logo_screen.cc logo_screen.hh \
-numeric_keyboard.cc numeric_keyboard.hh \
-top_menu.cc top_menu.hh \
-livepad2.cc livepad2.hh \
-pncsequencer.cc pncsequencer.hh \
-sequencer.cc sequencer.hh \
-timelines.cc timelines.hh \
 machine_sequencer.cc machine_sequencer.hh \
 midi_export.cc midi_export.hh \
-midi_export_gui.cc \
-file_request_ui.cc \
-advanced_file_request_ui.cc \
 vuknob_android_audio.cc vuknob_android_audio.hh \
 fixedpointmathlib.cc \
 satan_project_entry.cc satan_project_entry.hh \
 graph_project_entry.cc graph_project_entry.hh \
-license_view.cc \
-information_catcher.cc information_catcher.hh \
-vorbis_export_ui.cc \
 vorbis_encoder.cc vorbis_encoder.hh \
-share_ui.cc share_ui.hh \
-samples_editor_ng.cc \
-machine_selector_ui.cc \
-whistle_ui.cc \
 whistle_analyzer.cc \
 async_operations.cc \
-svg_loader.cc svg_loader.hh \
-tracker.cc tracker.hh \
-scale_slider.cc scale_slider.hh \
-listview.cc listview.hh \
-connector.cc connector.hh \
 remote_interface.cc remote_interface.hh \
-corner_button.cc corner_button.hh \
-connection_list.cc connection_list.hh \
-scale_editor.cc scale_editor.hh \
 scales.cc scales.hh \
 serialize.cc serialize.hh \
-fling_animation.cc fling_animation.hh \
-time_measure.cc
+time_measure.cc \
+\
+ui_code/information_catcher.cc ui_code/information_catcher.hh \
+ui_code/license_view.cc \
+ui_code/vorbis_export_ui.cc \
+ui_code/whistle_ui.cc \
+ui_code/svg_loader.cc ui_code/svg_loader.hh \
+ui_code/tracker.cc ui_code/tracker.hh \
+ui_code/scale_slider.cc ui_code/scale_slider.hh \
+ui_code/listview.cc ui_code/listview.hh \
+ui_code/connector.cc ui_code/connector.hh \
+ui_code/share_ui.cc ui_code/share_ui.hh \
+ui_code/samples_editor_ng.cc \
+ui_code/machine_selector_ui.cc \
+ui_code/load_ui.cc ui_code/save_ui.cc \
+ui_code/new_project_ui.cc \
+ui_code/project_info_entry.cc \
+ui_code/controller_handler.cc \
+ui_code/controller_envelope.cc ui_code/controller_envelope.hh \
+ui_code/canvas_widget.cc ui_code/canvas_widget.hh \
+ui_code/logo_screen.cc ui_code/logo_screen.hh \
+ui_code/numeric_keyboard.cc ui_code/numeric_keyboard.hh \
+ui_code/top_menu.cc ui_code/top_menu.hh \
+ui_code/livepad2.cc ui_code/livepad2.hh \
+ui_code/pncsequencer.cc ui_code/pncsequencer.hh \
+ui_code/sequencer.cc ui_code/sequencer.hh \
+ui_code/timelines.cc ui_code/timelines.hh \
+ui_code/midi_export_gui.cc \
+ui_code/file_request_ui.cc \
+ui_code/advanced_file_request_ui.cc \
+ui_code/fling_animation.cc ui_code/fling_animation.hh \
+ui_code/corner_button.cc ui_code/corner_button.hh \
+ui_code/connection_list.cc ui_code/connection_list.hh \
+ui_code/scale_editor.cc ui_code/scale_editor.hh
 
 LOCAL_STATIC_LIBRARIES := cpufeatures libvorbis libogg libvorbisenc libkissfft
 LOCAL_LDLIBS += -ldl -llog

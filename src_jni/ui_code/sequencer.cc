@@ -67,13 +67,17 @@ void Sequencer::Sequence::on_detach(std::shared_ptr<RemoteInterface::RIMachine> 
 				    const std::string dst_input) {
 }
 
-void Sequencer::Sequence::set_graphic_scaling(double graphic_scaling_factor,
-					      double single_vertical_offset) {
+void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
+						 double width, double height,
+						 double canvas_w, double canvas_h) {
+	find_child_by_class("seqBackground").set_rect_coords(
+		width, 0, canvas_w, height);
+
 	// initiate transform_t
 	KammoGUI::SVGCanvas::SVGMatrix transform_t;
 
 	transform_t.init_identity();
-	transform_t.translate(0.0, (double)(1 + offset) * single_vertical_offset);
+	transform_t.translate(0.0, (double)(1 + offset) * height);
 	transform_t.scale(graphic_scaling_factor, graphic_scaling_factor);
 
 	SATAN_DEBUG("offset: %d\n", offset);
@@ -133,7 +137,10 @@ void Sequencer::on_resize() {
 	double scaling = finger_height / document_size.height;
 
 	for(auto m2s : machine2sequence) {
-		m2s.second->set_graphic_scaling(scaling, document_size.height);
+		m2s.second->set_graphic_parameters(
+			scaling,
+			document_size.width, document_size.height,
+			canvas_w, canvas_h);
 	}
 }
 

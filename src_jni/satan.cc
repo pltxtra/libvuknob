@@ -35,7 +35,7 @@
 
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
-#include "information_catcher.hh"
+#include "ui_code/information_catcher.hh"
 
 #include "machine_sequencer.hh"
 #include "remote_interface.hh"

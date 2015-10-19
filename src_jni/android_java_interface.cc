@@ -1,5 +1,5 @@
 /*
- * vuKNOB (c) 2015 by Anton Persson
+ * vu|KNOB (c) 2015 by Anton Persson
  *
  * -------------------------------------------------
  *
@@ -37,6 +37,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <kamogui.hh>
 
 #include "android_java_interface.hh"
 

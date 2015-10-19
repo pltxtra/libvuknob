@@ -35,9 +35,10 @@
 #include <iostream>
 #include <string>
 #include <set>
+#include <map>
+#include <jni.h>
 
 #include <jngldrum/jthread.hh>
-#include <kamogui.hh>
 
 class AndroidJavaInterface{
 private:

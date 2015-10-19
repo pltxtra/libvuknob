@@ -48,8 +48,9 @@ private:
 				       const std::string src_output,
 				       const std::string dst_input) override;
 
-		void set_graphic_scaling(double graphic_scaling_factor,
-					 double single_vertical_offset);
+		void set_graphic_parameters(double graphic_scaling_factor,
+					    double width, double height,
+					    double canvas_w, double canvas_h);
 
 		Sequence(
 			KammoGUI::SVGCanvas::ElementReference elref,
