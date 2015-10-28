@@ -21,6 +21,8 @@
 #define COMMON_HH
 
 #include <set>
+#include <vector>
+#include <stack>
 #include <stdint.h>
 #include <stdexcept>
 
@@ -78,6 +80,33 @@ public:
 			throw IDFreedTwice();
 
 		available_ids.insert(id);
+	}
+};
+
+template <class T>
+class ObjectAllocator {
+private:
+	std::vector<T> allocated_objects;
+	std::stack<T*> free_objects;
+
+public:
+	T* allocate() {
+		T* retval = NULL;
+		if(free_objects.size() > 0) {
+			retval = free_objects.top();
+			free_objects.pop();
+		} else {
+			T new_obj;
+			auto last_index = allocated_objects.size();
+			allocated_objects.push_back(new_obj);
+			retval = &(allocated_objects.data()[last_index]);
+		}
+
+		return retval;
+	}
+
+	void recycle(T* obj) {
+		free_objects.push(obj);
 	}
 };
 

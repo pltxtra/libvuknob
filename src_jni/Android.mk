@@ -148,7 +148,6 @@ ui_code/numeric_keyboard.cc ui_code/numeric_keyboard.hh \
 ui_code/top_menu.cc ui_code/top_menu.hh \
 ui_code/livepad2.cc ui_code/livepad2.hh \
 ui_code/pncsequencer.cc ui_code/pncsequencer.hh \
-ui_code/sequencer.cc ui_code/sequencer.hh \
 ui_code/timelines.cc ui_code/timelines.hh \
 ui_code/midi_export_gui.cc \
 ui_code/file_request_ui.cc \
@@ -161,6 +160,97 @@ ui_code/scale_editor.cc ui_code/scale_editor.hh
 LOCAL_STATIC_LIBRARIES := cpufeatures libvorbis libogg libvorbisenc libkissfft
 LOCAL_LDLIBS += -ldl -llog
 LOCAL_SHARED_LIBRARIES := libsvgandroid libkamoflage libpathvariable
+
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_CPP_EXTENSION := .cc
+LOCAL_MODULE    := vuknob_server
+
+ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
+	LOCAL_CFLAGS += -D__SATAN_USES_FLOATS -mfloat-abi=softfp -mfpu=neon
+else
+	LOCAL_CFLAGS += -D__SATAN_USES_FXP -DFIXED_POINT=32
+endif # TARGET_ARCH_ABI == armeabi-v7a
+
+LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CONFIG_H \
+-Ijni/libkamoflage/ \
+-I../libsvgandroid/src_jni/ \
+-I../libsvgandroid/src_jni/libsvg \
+-I../libsvgandroid/prereqs/include \
+-I../libkamoflage/android/src_jni/libkamoflage/ \
+-I../libkamoflage/android/src_jni/ \
+-I../prereqs/include/ \
+-I../build/ \
+-Wall \
+-D__RI__SERVER_SIDE
+
+LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
+LOCAL_SRC_FILES := \
+engine_code/sequence.cc engine_code/sequence.hh
+
+LOCAL_SHARED_LIBRARIES := libvuknob
+
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_CPP_EXTENSION := .cc
+LOCAL_MODULE    := vuknob_client
+
+ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
+	LOCAL_CFLAGS += -D__SATAN_USES_FLOATS -mfloat-abi=softfp -mfpu=neon
+else
+	LOCAL_CFLAGS += -D__SATAN_USES_FXP -DFIXED_POINT=32
+endif # TARGET_ARCH_ABI == armeabi-v7a
+
+LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CONFIG_H \
+-Ijni/libkamoflage/ \
+-I../libsvgandroid/src_jni/ \
+-I../libsvgandroid/src_jni/libsvg \
+-I../libsvgandroid/prereqs/include \
+-I../libkamoflage/android/src_jni/libkamoflage/ \
+-I../libkamoflage/android/src_jni/ \
+-I../prereqs/include/ \
+-I../build/ \
+-Wall \
+-D__RI__CLIENT_SIDE
+
+LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
+LOCAL_SRC_FILES := \
+engine_code/sequence.cc engine_code/sequence.hh
+
+LOCAL_SHARED_LIBRARIES := libvuknob
+
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_CPP_EXTENSION := .cc
+LOCAL_MODULE    := vuknob_ui
+
+ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
+	LOCAL_CFLAGS += -D__SATAN_USES_FLOATS -mfloat-abi=softfp -mfpu=neon
+else
+	LOCAL_CFLAGS += -D__SATAN_USES_FXP -DFIXED_POINT=32
+endif # TARGET_ARCH_ABI == armeabi-v7a
+
+LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CONFIG_H \
+-Ijni/libkamoflage/ \
+-I../libsvgandroid/src_jni/ \
+-I../libsvgandroid/src_jni/libsvg \
+-I../libsvgandroid/prereqs/include \
+-I../libkamoflage/android/src_jni/libkamoflage/ \
+-I../libkamoflage/android/src_jni/ \
+-I../prereqs/include/ \
+-I../build/ \
+-Wall \
+-D__RI__CLIENT_SIDE
+
+LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
+LOCAL_SRC_FILES := \
+ui_code/sequencer.cc ui_code/sequencer.hh
+
+LOCAL_LDLIBS += -ldl -llog
+LOCAL_SHARED_LIBRARIES := libsvgandroid libkamoflage libpathvariable libvuknob libvuknob_client
 
 include $(BUILD_SHARED_LIBRARY)
 

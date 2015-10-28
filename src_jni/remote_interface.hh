@@ -39,10 +39,75 @@
 #include <mutex>
 #include <asio.hpp>
 #include <thread>
+#include <utility>
 
 #include "common.hh"
 
 #define RI_LOOP_NOT_SET -1
+
+#ifdef __RI__SERVER_SIDE
+#define __RI__CURRENT_NAMESPACE ServerSpace
+#define SERVER_SIDE_HANDLER(_name,_key)					\
+	static constexpr const char* _name = _key;			\
+	void handle_##_name(RemoteInterface::Context *context,		\
+			    RemoteInterface::MessageHandler *src,	\
+			    const RemoteInterface::Message& msg)
+#define CLIENT_SIDE_HANDLER(_name,_key)					\
+	static constexpr const char* _name = _key;
+#define SERVER_REG_HANDLER(_class,_name)				\
+	register_handler(_name,						\
+			 std::bind(&_class::handle_##_name, this,	\
+				   std::placeholders::_1,		\
+				   std::placeholders::_2,		\
+				   std::placeholders::_3))
+#define CLIENT_REG_HANDLER(_class,_name)
+
+#define SERVER_CODE(__A)			\
+	namespace RemoteInterface {		\
+	namespace ServerSpace {			\
+	__A					\
+	}; }
+#define CLIENT_CODE(__A)
+#define SERVER_N_CLIENT_CODE(__A)		\
+	namespace RemoteInterface {		\
+	namespace ServerSpace {			\
+	__A					\
+	}; }
+
+#endif
+
+#ifdef __RI__CLIENT_SIDE
+#define __RI__CURRENT_NAMESPACE ClientSpace
+#define SERVER_SIDE_HANDLER(_name,_key)					\
+	static constexpr const char* _name = _key;
+#define CLIENT_SIDE_HANDLER(_name,_key)					\
+	static constexpr const char* _name = _key;			\
+	void handle_##_name(RemoteInterface::Context *context,		\
+			    RemoteInterface::MessageHandler *src,	\
+			    const RemoteInterface::Message& msg)
+#define SERVER_REG_HANDLER(_class,_name)
+#define CLIENT_REG_HANDLER(_class,_name)				\
+	register_handler(_name,						\
+			 std::bind(&_class::handle_##_name, this,	\
+				   std::placeholders::_1,		\
+				   std::placeholders::_2,		\
+				   std::placeholders::_3))
+#define SERVER_CODE(__A)
+#define CLIENT_CODE(__A) \
+	namespace RemoteInterface {		\
+	namespace ClientSpace {			\
+	__A \
+	}; }
+#define SERVER_N_CLIENT_CODE(__A) \
+	namespace RemoteInterface {		\
+	namespace ClientSpace {			\
+	__A \
+	}; }
+
+#define BEGIN_CLIENT(__A)
+#define END_CLIENT
+
+#endif
 
 namespace RemoteInterface {
 	class Server;
@@ -51,6 +116,7 @@ namespace RemoteInterface {
 	class MessageHandler;
 	class Context;
 	class BaseObject;
+
 
 	static inline std::string encode_byte_array(size_t len, const char *data) {
 		std::string result;
@@ -345,11 +411,18 @@ namespace RemoteInterface {
 
 		void register_handler(const std::string& command_id,
 				      std::function<void(Context *context, MessageHandler *src, const Message& msg)> handler);
-		void send_message_to_server(const std::string &command_id,
-					    std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback,
-					    std::function<void(const Message *reply_message)> reply_received_callback);
-		void send_message_to_server(const std::string &command_id,
-					    std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback);
+		void send_message(const std::string &command_id,
+				  std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback,
+				  std::function<void(const Message *reply_message)> reply_received_callback);
+		void send_message_to_server(
+			const std::string &command_id,
+			std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback,
+			std::function<void(const Message *reply_message)> reply_received_callback);
+		void send_message(const std::string &command_id,
+				  std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback);
+		void send_message_to_server(
+			const std::string &command_id,
+			std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback);
 
 		virtual void post_constructor_client() override; // called after the constructor has been called
 		virtual void process_message(Server *context, MessageHandler *src,

@@ -596,6 +596,19 @@ namespace RemoteInterface {
 		virtual void on_connection_dropped() override {}
 	};
 
+	void SimpleBaseObject::send_message(
+		const std::string &command_id,
+		std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback,
+		std::function<void(const Message *reply_message)> reply_received_callback) {
+
+		send_object_message(
+			[command_id, create_msg_callback](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("commandid", command_id);
+				create_msg_callback(msg_to_send);
+			},
+			reply_received_callback);
+	}
+
 	void SimpleBaseObject::send_message_to_server(
 		const std::string &command_id,
 		std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback,
@@ -626,6 +639,18 @@ namespace RemoteInterface {
 				},
 				reply_received_callback);
 		}
+	}
+
+	void SimpleBaseObject::send_message(
+		const std::string &command_id,
+		std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback) {
+
+		send_object_message(
+			[command_id, create_msg_callback](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("commandid", command_id);
+				create_msg_callback(msg_to_send);
+			}
+			);
 	}
 
 	void SimpleBaseObject::send_message_to_server(
