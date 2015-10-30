@@ -44,7 +44,8 @@ using namespace std;
 #include "satan_project_entry.hh"
 #include "logo_screen.hh"
 #include "svg_loader.hh"
-#include "remote_interface.hh"
+#include "../engine_code/server.hh"
+#include "../engine_code/client.hh"
 #include "controller_handler.hh"
 
 #ifdef ANDROID
@@ -171,7 +172,7 @@ void LogoScreen::start_vuknob(bool start_with_jam_view) {
 
 	// if the selected port is equal to -1, default to the local host & port
 	if(selected_port == -1) {
-		selected_port = RemoteInterface::Server::start_server();
+		selected_port = __RI_start_server();
 		selected_server = "localhost";
 	}
 
@@ -183,8 +184,8 @@ void LogoScreen::start_vuknob(bool start_with_jam_view) {
 	}
 
 	// connect to the selected server
-	RemoteInterface::Client::start_client(selected_server, selected_port,
-					      remote_interface_disconnected, failure_response);
+	RemoteInterface::ClientSpace::Client::start_client(selected_server, selected_port,
+							   remote_interface_disconnected, failure_response);
 
 	// just show main UI
 	{
@@ -206,7 +207,7 @@ void LogoScreen::start_vuknob(bool start_with_jam_view) {
 void LogoScreen::select_server(std::function<void()> on_select_callback) {
 	server_list.clear();
 
-	if(RemoteInterface::Server::is_running()) {
+	if(__RI_server_is_running()) {
 		server_list.add_row("localhost");
 	}
 
@@ -230,7 +231,7 @@ void LogoScreen::select_server(std::function<void()> on_select_callback) {
 							     selected_port = srv->second.second;
 						     } else {
 							     selected_server = "localhost";
-							     selected_port = RemoteInterface::Server::start_server(); // get the port number (the server is probably already started anyways..)
+							     selected_port = __RI_start_server(); // get the port number (the server is probably already started anyways..)
 						     }
 						     SATAN_DEBUG("Selected server ip/port: %s : %d",
 								 selected_server.c_str(), selected_port);
@@ -257,7 +258,7 @@ void LogoScreen::element_on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 		} else if(e_ref == ctx->network_element) {
 			ctx->select_server([]{});
 		} else if(e_ref == ctx->start_element) {
-			if(RemoteInterface::Server::is_running()) {
+			if(__RI_server_is_running()) {
 				try {
 					ctx->start_vuknob(false);
 				} catch(const std::exception& e) {
@@ -344,7 +345,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 
 	// if using the OLD logo screen - start up local VuKNOB server here
 	if(wid->get_id() == "logoScreenOld") {
-		int port_number = RemoteInterface::Server::start_server();
+		int port_number = __RI_start_server();
 #ifdef ANDROID
 		AndroidJavaInterface::announce_service(port_number);
 #endif

@@ -36,6 +36,8 @@
 #include "svg_loader.hh"
 #include "scales.hh"
 
+#include "../engine_code/client.hh"
+
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
@@ -920,7 +922,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		cnvs->set_bg_color(1.0, 1.0, 1.0);
 
 		static auto lpad = std::make_shared<LivePad2>(cnvs, SVGLoader::get_svg_path("/livePad2.svg"));
-		RemoteInterface::Client::register_ri_machine_set_listener(lpad);
+		RemoteInterface::ClientSpace::Client::register_ri_machine_set_listener(lpad);
 		RemoteInterface::GlobalControlObject::register_playback_state_listener(lpad);
 		KammoGUI::SensorEvent::register_listener(lpad);
 	}

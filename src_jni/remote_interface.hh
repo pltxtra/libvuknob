@@ -49,7 +49,7 @@
 #define __RI__CURRENT_NAMESPACE ServerSpace
 #define SERVER_SIDE_HANDLER(_name,_key)					\
 	static constexpr const char* _name = _key;			\
-	void handle_##_name(RemoteInterface::Context *context,		\
+	void handle_##_name(RemoteInterface::Context* context,		\
 			    RemoteInterface::MessageHandler *src,	\
 			    const RemoteInterface::Message& msg)
 #define CLIENT_SIDE_HANDLER(_name,_key)					\
@@ -62,17 +62,26 @@
 				   std::placeholders::_3))
 #define CLIENT_REG_HANDLER(_class,_name)
 
-#define SERVER_CODE(__A)			\
+#define SERVER_CODE(...)			\
 	namespace RemoteInterface {		\
 	namespace ServerSpace {			\
-	__A					\
+		__VA_ARGS__			\
 	}; }
-#define CLIENT_CODE(__A)
-#define SERVER_N_CLIENT_CODE(__A)		\
+#define CLIENT_CODE(...)
+#define SERVER_N_CLIENT_CODE(...)		\
 	namespace RemoteInterface {		\
 	namespace ServerSpace {			\
-	__A					\
+		__VA_ARGS__			\
 	}; }
+
+#define SERVER_CODE_START			\
+	namespace RemoteInterface {		\
+	namespace ServerSpace {
+#define SERVER_CODE_END				\
+	}; }
+
+#define ON_SERVER(_A) _A
+#define ON_CLIENT(_A)
 
 #endif
 
@@ -82,7 +91,7 @@
 	static constexpr const char* _name = _key;
 #define CLIENT_SIDE_HANDLER(_name,_key)					\
 	static constexpr const char* _name = _key;			\
-	void handle_##_name(RemoteInterface::Context *context,		\
+	void handle_##_name(RemoteInterface::Context* context,		\
 			    RemoteInterface::MessageHandler *src,	\
 			    const RemoteInterface::Message& msg)
 #define SERVER_REG_HANDLER(_class,_name)
@@ -92,31 +101,60 @@
 				   std::placeholders::_1,		\
 				   std::placeholders::_2,		\
 				   std::placeholders::_3))
-#define SERVER_CODE(__A)
-#define CLIENT_CODE(__A) \
+#define SERVER_CODE(...)
+#define CLIENT_CODE(...) \
 	namespace RemoteInterface {		\
 	namespace ClientSpace {			\
-	__A \
+		__VA_ARGS__			\
 	}; }
-#define SERVER_N_CLIENT_CODE(__A) \
+#define SERVER_N_CLIENT_CODE(...) \
 	namespace RemoteInterface {		\
 	namespace ClientSpace {			\
-	__A \
+		__VA_ARGS__			\
 	}; }
 
-#define BEGIN_CLIENT(__A)
-#define END_CLIENT
+#define CLIENT_CODE_START			\
+	namespace RemoteInterface {		\
+	namespace ServerSpace {
+#define CLIENT_CODE_END				\
+	}; }
+
+#define ON_SERVER(_A)
+#define ON_CLIENT(_A) _A
 
 #endif
 
-namespace RemoteInterface {
-	class Server;
-	class Client;
+/***************************
+ *
+ *  RemoteInterface definitions
+ *
+ ***************************/
 
+#define VUKNOB_MAX_UDP_SIZE 512
+
+#define __MSG_CREATE_OBJECT -1
+#define __MSG_FLUSH_ALL_OBJECTS -2
+#define __MSG_DELETE_OBJECT -3
+#define __MSG_FAILURE_RESPONSE -4
+#define __MSG_PROTOCOL_VERSION -5
+#define __MSG_REPLY -6
+#define __MSG_CLIENT_ID -7
+
+// Factory names
+#define __FCT_HANDLELIST		"HandleList"
+#define __FCT_GLOBALCONTROLOBJECT	"GloCtrlObj"
+#define __FCT_RIMACHINE			"RIMachine"
+#define __FCT_SAMPLEBANK	        "SampleBank"
+
+#define __VUKNOB_PROTOCOL_VERSION__ 9
+
+//#define VUKNOB_UDP_SUPPORT
+//#define VUKNOB_UDP_USE
+
+namespace RemoteInterface {
 	class MessageHandler;
 	class Context;
 	class BaseObject;
-
 
 	static inline std::string encode_byte_array(size_t len, const char *data) {
 		std::string result;
@@ -183,7 +221,7 @@ namespace RemoteInterface {
 		};
 
 		Message();
-		Message(Context *context);
+		Message(Context* context);
 
 		void set_reply_handler(std::function<void(const Message *reply_msg)> reply_received_callback);
 		void reply_to(const Message *reply_msg);
@@ -197,7 +235,7 @@ namespace RemoteInterface {
 		asio::streambuf::const_buffers_type get_data();
 
 	private:
-		Context *context;
+		Context* context;
 
 		mutable bool encoded;
 		mutable uint32_t body_length;
@@ -231,11 +269,21 @@ namespace RemoteInterface {
 	private:
 		std::deque<Message *> available_messages;
 
+		std::thread::id __context_thread_id;
+
 	protected:
 		std::thread io_thread;
 		asio::io_service io_service;
 
 	public:
+		class ContextNotConnected : public std::runtime_error {
+		public:
+			ContextNotConnected()
+				: runtime_error("RemoteInterface::Context not connected to client/server.")
+				{}
+			virtual ~ContextNotConnected() {}
+		};
+
 		class FailureResponse : public std::runtime_error {
 		public:
 			std::string response_message;
@@ -253,6 +301,11 @@ namespace RemoteInterface {
 		std::shared_ptr<Message> acquire_message();
 		std::shared_ptr<Message> acquire_reply(const Message &originator);
 		void recycle_message(Message *used_message);
+
+		void run_context() {
+			__context_thread_id = std::this_thread::get_id();
+			io_service.run();
+		}
 	};
 
 	class MessageHandler : public std::enable_shared_from_this<MessageHandler> {
@@ -326,11 +379,9 @@ namespace RemoteInterface {
 		};
 
 		BaseObject(const Factory *factory, const Message &serialized);
-
-		// used to create server side objects - which will then be serialized into messages and sent to all the clients.
 		BaseObject(int32_t new_obj_id, const Factory *factory);
 
-		Context *context;
+		Context* context;
 		std::mutex base_object_mutex;
 
 		void send_object_message(std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback, bool via_udp = false);
@@ -371,13 +422,13 @@ namespace RemoteInterface {
 		int32_t get_obj_id();
 		auto get_type() -> ObjectType;
 
-		void set_context(Context *context);
+		void set_context(Context* context);
 
 		virtual void post_constructor_client() = 0; // called after the constructor has been called
-		virtual void process_message(Server *context, MessageHandler *src, const Message &msg) = 0; // server side processing
-		virtual void process_message(Client *context, const Message &msg) = 0; // client side processing
+		virtual void process_message_server(Context* context, MessageHandler* src, const Message &msg) = 0; // server side processing
+		virtual void process_message_client(Context* context, MessageHandler* src, const Message &msg) = 0; // client side processing
 		virtual void serialize(std::shared_ptr<Message> &target) = 0;
-		virtual void on_delete(Client *context) = 0; // called on client side when it's about to be deleted
+		virtual void on_delete(Context* context) = 0; // called on client side when it's about to be deleted
 
 		static std::shared_ptr<BaseObject> create_object_from_message(const Message &msg);
 		static std::shared_ptr<BaseObject> create_object_on_server(int32_t new_obj_id, const std::string &type);
@@ -397,7 +448,7 @@ namespace RemoteInterface {
 	class SimpleBaseObject : public BaseObject {
 	private:
 		std::map<std::string,
-			 std::function<void(Context *context, MessageHandler *src, const Message& msg)> > command2function;
+			 std::function<void(Context* context, MessageHandler *src, const Message& msg)> > command2function;
 
 	public:
 		class HandlerAlreadyRegistered : public std::runtime_error {
@@ -410,7 +461,7 @@ namespace RemoteInterface {
 		SimpleBaseObject(int32_t new_obj_id, const Factory* factory);
 
 		void register_handler(const std::string& command_id,
-				      std::function<void(Context *context, MessageHandler *src, const Message& msg)> handler);
+				      std::function<void(Context* context, MessageHandler *src, const Message& msg)> handler);
 		void send_message(const std::string &command_id,
 				  std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback,
 				  std::function<void(const Message *reply_message)> reply_received_callback);
@@ -425,11 +476,14 @@ namespace RemoteInterface {
 			std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback);
 
 		virtual void post_constructor_client() override; // called after the constructor has been called
-		virtual void process_message(Server *context, MessageHandler *src,
-					     const Message &msg) override; // server side processing
-		virtual void process_message(Client *context, const Message &msg) override; // client side processing
+		virtual void process_message_server(Context* context,
+						    MessageHandler *src,
+						    const Message &msg) override; // server side processing
+		virtual void process_message_client(Context* context,
+						    MessageHandler *src,
+						    const Message &msg) override; // client side processing
 		virtual void serialize(std::shared_ptr<Message> &target) override;
-		virtual void on_delete(Client *context) override; // called on client side when it's about to be deleted
+		virtual void on_delete(Context* context) override; // called on client side when it's about to be deleted
 	};
 
 	class HandleList : public BaseObject {
@@ -448,10 +502,14 @@ namespace RemoteInterface {
 		static HandleListFactory handlelist_factory;
 
 		virtual void post_constructor_client(); // called after the constructor has been called
-		virtual void process_message(Server *context, MessageHandler *src, const Message &msg); // server side processing
-		virtual void process_message(Client *context, const Message &msg); // client side processing
+		virtual void process_message_server(Context* context,
+						    MessageHandler *src,
+						    const Message &msg); // server side processing
+		virtual void process_message_client(Context* context,
+						    MessageHandler *src,
+						    const Message &msg); // client side processing
 		virtual void serialize(std::shared_ptr<Message> &target);
-		virtual void on_delete(Client *context); // called on client side when it's about to be deleted
+		virtual void on_delete(Context* context); // called on client side when it's about to be deleted
 
 	public:
 		class FailedToCreateMachine : public std::runtime_error {
@@ -478,10 +536,14 @@ namespace RemoteInterface {
 		};
 
 		virtual void post_constructor_client() override; // called after the constructor has been called
-		virtual void process_message(Server *context, MessageHandler *src, const Message &msg) override; // server side processing
-		virtual void process_message(Client *context, const Message &msg) override; // client side processing
+		virtual void process_message_server(Context* context,
+						    MessageHandler *src,
+						    const Message &msg) override; // server side processing
+		virtual void process_message_client(Context* context,
+						    MessageHandler *src,
+						    const Message &msg) override; // client side processing
 		virtual void serialize(std::shared_ptr<Message> &target) override;
-		virtual void on_delete(Client *context) override; // called on client side when it's about to be deleted
+		virtual void on_delete(Context* context) override; // called on client side when it's about to be deleted
 
 		void parse_serialized_arp_patterns(std::vector<std::string> &retval, const std::string &serialized_arp_patterns);
 		void serialize_arp_patterns(std::shared_ptr<Message> &target);
@@ -572,10 +634,14 @@ namespace RemoteInterface {
 		void load_sample(int bank_index, const std::string &serverside_file_path);
 
 		virtual void post_constructor_client() override;
-		virtual void process_message(Server *context, MessageHandler *src, const Message &msg) override;
-		virtual void process_message(Client *context, const Message &msg) override;
+		virtual void process_message_server(Context* context,
+						    MessageHandler *src,
+						    const Message &msg) override;
+		virtual void process_message_client(Context* context,
+						    MessageHandler *src,
+						    const Message &msg) override;
 		virtual void serialize(std::shared_ptr<Message> &target) override;
-		virtual void on_delete(Client *context) override;
+		virtual void on_delete(Context* context) override;
 
 		static std::shared_ptr<SampleBank> get_bank(const std::string name); // empty string or "<global>" => global SampleBank
 	};
@@ -697,7 +763,9 @@ namespace RemoteInterface {
 			std::string get_serialized_controller();
 		private:
 			std::function<
-			void(std::function<void(std::shared_ptr<Message> &msg_to_send)> )
+			void(
+				std::function<void(std::shared_ptr<Message> &msg_to_send)>
+				)
 			>  send_obj_message;
 
 			template <class SerderClassT>
@@ -778,10 +846,14 @@ namespace RemoteInterface {
 
 	public:
 		virtual void post_constructor_client(); // called after the constructor has been called
-		virtual void process_message(Server *context, MessageHandler *src, const Message &msg); // server side processing
-		virtual void process_message(Client *context, const Message &msg); // client side processing
+		virtual void process_message_server(Context* context,
+						    MessageHandler *src,
+						    const Message &msg); // server side processing
+		virtual void process_message_client(Context* context,
+						    MessageHandler *src,
+						    const Message &msg); // client side processing
 		virtual void serialize(std::shared_ptr<Message> &target);
-		virtual void on_delete(Client *context); // called on client side when it's about to be deleted
+		virtual void on_delete(Context* context); // called on client side when it's about to be deleted
 
 	private:
 		class ServerSideControllerContainer : public IDAllocator {
@@ -843,8 +915,8 @@ namespace RemoteInterface {
 
 		void process_setctrl_val_message(MessageHandler *src, const Message &msg);
 
-		void process_attach_message(Context *context, const Message &msg);
-		void process_detach_message(Context *context, const Message &msg);
+		void process_attach_message(Context* context, const Message &msg);
+		void process_detach_message(Context* context, const Message &msg);
 
 		void parse_serialized_midi_ctrl_list(std::string serialized);
 		void parse_serialized_connections_data(std::string serialized);
@@ -865,147 +937,6 @@ namespace RemoteInterface {
 		static std::shared_ptr<RIMachine> get_by_name(const std::string &name);
 		static std::shared_ptr<RIMachine> get_sink();
 	};
-
-	class Client : public Context, public MessageHandler {
-	private:
-		std::map<int32_t, std::shared_ptr<BaseObject> > all_objects;
-
-		int32_t client_id = -1;
-
-		// code for handling messages waiting for a reply
-		int32_t next_reply_id = 0;
-		std::map<int32_t, std::shared_ptr<Message> > msg_waiting_for_reply;
-
-		std::map<std::string, std::string> handle2hint;
-
-		asio::ip::tcp::resolver resolver;
-		asio::ip::udp::resolver udp_resolver;
-		std::function<void()> disconnect_callback;
-		std::function<void(const std::string &fresp)> failure_response_callback;
-
-		Client(const std::string &server_host,
-		       int server_port,
-		       std::function<void()> disconnect_callback,
-		       std::function<void(const std::string &failure_response)> failure_response_callback);
-
-		void flush_all_objects();
-
-		static std::shared_ptr<Client> client;
-		static std::mutex client_mutex;
-
-	public: // public singleton interface
-		static void start_client(const std::string &server_host, int server_port,
-					 std::function<void()> disconnect_callback,
-					 std::function<void(const std::string &failure_response)> failure_response_callback);
-		static void disconnect();
-
-		static void register_ri_machine_set_listener(std::weak_ptr<RIMachine::RIMachineSetListener> ri_mset_listener);
-
-	public:
-		virtual void on_message_received(const Message &msg) override;
-		virtual void on_connection_dropped() override;
-
-		virtual void distribute_message(std::shared_ptr<Message> &msg, bool via_udp) override;
-		virtual std::shared_ptr<BaseObject> get_object(int32_t objid) override;
-
-		class ClientNotConnected : public std::runtime_error {
-		public:
-			ClientNotConnected() : runtime_error("RemoteInterface::Client not connected to server.") {}
-			virtual ~ClientNotConnected() {}
-		};
-
-	};
-
-	class Server : public Context, public Machine::MachineSetListener, public std::enable_shared_from_this<Server> {
-	private:
-		/**** begin service objects data and logic ****/
-
-		std::map<int32_t, std::shared_ptr<BaseObject> > all_objects;
-
-		int32_t last_obj_id; // I am making an assumption here that last_obj_id will not be counted up more than 1/sec. This gives that time until overflow for a session will be more than 20000 days. If this assumption does not hold, an error state will be communicated to the user.
-
-		std::map<Machine *, std::shared_ptr<RIMachine> > machine2rimachine;
-
-		int32_t reserve_new_obj_id();
-		void create_object_from_factory(const std::string &factory_type,
-						std::function<void(std::shared_ptr<BaseObject> nuobj)> new_object_init_callback);
-		void delete_object(std::shared_ptr<BaseObject> obj2delete);
-
-		virtual void project_loaded() override; // MachineSetListener interface
-		virtual void machine_registered(Machine *m_ptr) override; // MachineSetListener interface
-		virtual void machine_unregistered(Machine *m_ptr) override; // MachineSetListener interface
-		virtual void machine_input_attached(Machine *source, Machine *destination,
-						    const std::string &output_name,
-						    const std::string &input_name) override; // MachineSetListener interface
-		virtual void machine_input_detached(Machine *source, Machine *destination,
-						    const std::string &output_name,
-						    const std::string &input_name) override; // MachineSetListener interface
-
-		std::shared_ptr<HandleList> handle_list;
-
-		/**** end service objects data and logic ****/
-
-		class ClientAgent : public MessageHandler {
-		private:
-			int32_t id;
-			Server *server;
-
-			void send_handler_message();
-		public:
-			ClientAgent(int32_t id, asio::ip::tcp::socket _socket, Server *server);
-			void start();
-
-			void disconnect();
-
-			int32_t get_id() { return id; }
-
-			virtual void on_message_received(const Message &msg) override;
-			virtual void on_connection_dropped() override;
-		};
-		friend class ClientAgent;
-
-		typedef std::shared_ptr<ClientAgent> ClientAgent_ptr;
-		std::map<int32_t, ClientAgent_ptr> client_agents;
-		int32_t next_client_agent_id = 0;
-
-		asio::ip::tcp::acceptor acceptor;
-		asio::ip::tcp::socket acceptor_socket;
-		int current_port;
-
-		std::shared_ptr<asio::ip::udp::socket> udp_socket;
-		Message udp_read_msg;
-		asio::ip::udp::endpoint udp_endpoint;
-
-		void do_accept();
-		void drop_client(std::shared_ptr<ClientAgent> client_agent);
-		void do_udp_receive();
-
-		void disconnect_clients();
-		void create_service_objects();
-		void add_create_object_header(std::shared_ptr<Message> &target, std::shared_ptr<BaseObject> obj);
-		void add_destroy_object_header(std::shared_ptr<Message> &target, std::shared_ptr<BaseObject> obj);
-		void send_protocol_version_to_new_client(std::shared_ptr<MessageHandler> client_agent);
-		void send_client_id_to_new_client(std::shared_ptr<ClientAgent> client_agent);
-		void send_all_objects_to_new_client(std::shared_ptr<MessageHandler> client_agent);
-
-		int get_port();
-
-		Server(const asio::ip::tcp::endpoint& endpoint);
-
-		void route_incomming_message(ClientAgent *src, const Message &msg);
-
-		static std::shared_ptr<Server> server;
-		static std::mutex server_mutex;
-
-	public:
-		static int start_server(); // will start a server and return the port number. If the server is already started, it will just return the port number.
-		static bool is_running();
-		static void stop_server();
-
-		virtual void distribute_message(std::shared_ptr<Message> &msg, bool via_udp = false) override;
-		virtual std::shared_ptr<BaseObject> get_object(int32_t objid) override;
-	};
-
 };
 
 #endif

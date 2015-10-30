@@ -32,6 +32,12 @@
 LOCAL_PATH := $(call my-dir)
 LOCAL_PATH_RESTORE := $(call my-dir)
 
+ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
+	FLOAT_CFLAGS += -D__SATAN_USES_FLOATS -mfloat-abi=softfp -mfpu=neon
+else
+	FLOAT_CFLAGS += -D__SATAN_USES_FXP -DFIXED_POINT=32
+endif # TARGET_ARCH_ABI == armeabi-v7a
+
 include $(CLEAR_VARS)
 LOCAL_CPP_EXTENSION := .cc
 LOCAL_MODULE    := pathvariable
@@ -65,13 +71,7 @@ include $(PREBUILT_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := libkissfft
-
-ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
-	LOCAL_CFLAGS += -mfloat-abi=softfp -mfpu=neon
-else
-	LOCAL_CFLAGS += -DFIXED_POINT=32
-endif # TARGET_ARCH_ABI == armeabi-v7a
-
+LOCAL_CFLAGS += $(FLOAT_CFLAGS)
 LOCAL_SRC_FILES =\
 kiss_fft.c kiss_fftr.c
 include $(BUILD_STATIC_LIBRARY)
@@ -82,12 +82,7 @@ LOCAL_CPP_EXTENSION := .cc
 
 LOCAL_MODULE    := vuknob
 
-ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
-	LOCAL_CFLAGS += -D__SATAN_USES_FLOATS -mfloat-abi=softfp -mfpu=neon
-else
-	LOCAL_CFLAGS += -D__SATAN_USES_FXP -DFIXED_POINT=32
-endif # TARGET_ARCH_ABI == armeabi-v7a
-
+LOCAL_CFLAGS += $(FLOAT_CFLAGS)
 LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CONFIG_H \
 -Ijni/libkamoflage/ \
 -I../libsvgandroid/src_jni/ \
@@ -103,7 +98,6 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 
 LOCAL_SRC_FILES := \
-satan.cc \
 android_java_interface.cc android_java_interface.hh \
 static_signal_preview.cc static_signal_preview.hh \
 wavloader.cc wavloader.hh \
@@ -133,20 +127,16 @@ ui_code/svg_loader.cc ui_code/svg_loader.hh \
 ui_code/tracker.cc ui_code/tracker.hh \
 ui_code/scale_slider.cc ui_code/scale_slider.hh \
 ui_code/listview.cc ui_code/listview.hh \
-ui_code/connector.cc ui_code/connector.hh \
 ui_code/share_ui.cc ui_code/share_ui.hh \
 ui_code/samples_editor_ng.cc \
 ui_code/machine_selector_ui.cc \
 ui_code/load_ui.cc ui_code/save_ui.cc \
 ui_code/new_project_ui.cc \
 ui_code/project_info_entry.cc \
-ui_code/controller_handler.cc \
 ui_code/controller_envelope.cc ui_code/controller_envelope.hh \
 ui_code/canvas_widget.cc ui_code/canvas_widget.hh \
-ui_code/logo_screen.cc ui_code/logo_screen.hh \
 ui_code/numeric_keyboard.cc ui_code/numeric_keyboard.hh \
 ui_code/top_menu.cc ui_code/top_menu.hh \
-ui_code/livepad2.cc ui_code/livepad2.hh \
 ui_code/pncsequencer.cc ui_code/pncsequencer.hh \
 ui_code/timelines.cc ui_code/timelines.hh \
 ui_code/midi_export_gui.cc \
@@ -167,12 +157,7 @@ include $(CLEAR_VARS)
 LOCAL_CPP_EXTENSION := .cc
 LOCAL_MODULE    := vuknob_server
 
-ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
-	LOCAL_CFLAGS += -D__SATAN_USES_FLOATS -mfloat-abi=softfp -mfpu=neon
-else
-	LOCAL_CFLAGS += -D__SATAN_USES_FXP -DFIXED_POINT=32
-endif # TARGET_ARCH_ABI == armeabi-v7a
-
+LOCAL_CFLAGS += $(FLOAT_CFLAGS)
 LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CONFIG_H \
 -Ijni/libkamoflage/ \
 -I../libsvgandroid/src_jni/ \
@@ -187,8 +172,10 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 
 LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 LOCAL_SRC_FILES := \
+engine_code/server.cc engine_code/server.hh \
 engine_code/sequence.cc engine_code/sequence.hh
 
+LOCAL_LDLIBS += -ldl -llog
 LOCAL_SHARED_LIBRARIES := libvuknob
 
 include $(BUILD_SHARED_LIBRARY)
@@ -197,12 +184,7 @@ include $(CLEAR_VARS)
 LOCAL_CPP_EXTENSION := .cc
 LOCAL_MODULE    := vuknob_client
 
-ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
-	LOCAL_CFLAGS += -D__SATAN_USES_FLOATS -mfloat-abi=softfp -mfpu=neon
-else
-	LOCAL_CFLAGS += -D__SATAN_USES_FXP -DFIXED_POINT=32
-endif # TARGET_ARCH_ABI == armeabi-v7a
-
+LOCAL_CFLAGS += $(FLOAT_CFLAGS)
 LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CONFIG_H \
 -Ijni/libkamoflage/ \
 -I../libsvgandroid/src_jni/ \
@@ -217,8 +199,10 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 
 LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 LOCAL_SRC_FILES := \
+engine_code/client.cc engine_code/client.hh \
 engine_code/sequence.cc engine_code/sequence.hh
 
+LOCAL_LDLIBS += -ldl -llog
 LOCAL_SHARED_LIBRARIES := libvuknob
 
 include $(BUILD_SHARED_LIBRARY)
@@ -227,12 +211,7 @@ include $(CLEAR_VARS)
 LOCAL_CPP_EXTENSION := .cc
 LOCAL_MODULE    := vuknob_ui
 
-ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
-	LOCAL_CFLAGS += -D__SATAN_USES_FLOATS -mfloat-abi=softfp -mfpu=neon
-else
-	LOCAL_CFLAGS += -D__SATAN_USES_FXP -DFIXED_POINT=32
-endif # TARGET_ARCH_ABI == armeabi-v7a
-
+LOCAL_CFLAGS += $(FLOAT_CFLAGS)
 LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CONFIG_H \
 -Ijni/libkamoflage/ \
 -I../libsvgandroid/src_jni/ \
@@ -247,10 +226,15 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 
 LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 LOCAL_SRC_FILES := \
+satan.cc \
+ui_code/logo_screen.cc ui_code/logo_screen.hh \
+ui_code/controller_handler.cc \
+ui_code/livepad2.cc ui_code/livepad2.hh \
+ui_code/connector.cc ui_code/connector.hh \
 ui_code/sequencer.cc ui_code/sequencer.hh
 
 LOCAL_LDLIBS += -ldl -llog
-LOCAL_SHARED_LIBRARIES := libsvgandroid libkamoflage libpathvariable libvuknob libvuknob_client
+LOCAL_SHARED_LIBRARIES := libsvgandroid libkamoflage libpathvariable libvuknob libvuknob_server libvuknob_client
 
 include $(BUILD_SHARED_LIBRARY)
 

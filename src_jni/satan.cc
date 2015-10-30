@@ -38,7 +38,8 @@
 #include "ui_code/information_catcher.hh"
 
 #include "machine_sequencer.hh"
-#include "remote_interface.hh"
+#include "engine_code/server.hh"
+#include "engine_code/client.hh"
 
 #ifdef ANDROID
 #include "android_java_interface.hh"
@@ -64,9 +65,9 @@ virtual void on_click(KammoGUI::Widget *wid) {
 #endif
 
 	SATAN_ERROR("stopping server..\n");
-	RemoteInterface::Server::stop_server();
+	__RI_stop_server();
 	SATAN_ERROR("disconnecting client..\n");
-	RemoteInterface::Client::disconnect();
+	RemoteInterface::ClientSpace::Client::disconnect();
 	SATAN_ERROR("exit application..\n");
 	Machine::exit_application();
 }

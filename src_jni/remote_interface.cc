@@ -46,33 +46,6 @@
 
 /***************************
  *
- *  Local definitions
- *
- ***************************/
-
-#define VUKNOB_MAX_UDP_SIZE 512
-
-#define __MSG_CREATE_OBJECT -1
-#define __MSG_FLUSH_ALL_OBJECTS -2
-#define __MSG_DELETE_OBJECT -3
-#define __MSG_FAILURE_RESPONSE -4
-#define __MSG_PROTOCOL_VERSION -5
-#define __MSG_REPLY -6
-#define __MSG_CLIENT_ID -7
-
-// Factory names
-#define __FCT_HANDLELIST		"HandleList"
-#define __FCT_GLOBALCONTROLOBJECT	"GloCtrlObj"
-#define __FCT_RIMACHINE			"RIMachine"
-#define __FCT_SAMPLEBANK	        "SampleBank"
-
-#define __VUKNOB_PROTOCOL_VERSION__ 9
-
-//#define VUKNOB_UDP_SUPPORT
-//#define VUKNOB_UDP_USE
-
-/***************************
- *
  *  Class RemoteInterface::Message
  *
  ***************************/
@@ -149,7 +122,7 @@ bool RemoteInterface::Message::decode_header() {
 	is >> header;
 	sscanf(header.c_str(), "%08x", &body_length);
 
-//	SATAN_DEBUG("decode_header()-> [%s]\n", header.c_str());
+	SATAN_DEBUG("decode_header()-> [%s]\n", header.c_str());
 
 	return true;
 }
@@ -160,11 +133,11 @@ bool RemoteInterface::Message::decode_body() {
 	std::string key, val;
 
 	std::getline(is, key, '=');
-//	SATAN_DEBUG("decode_body()\n");
+	SATAN_DEBUG("decode_body()\n");
 	while(!is.eof() && key != "") {
-//		SATAN_DEBUG("   key: %s\n", key.c_str());
+		SATAN_DEBUG("   key: %s\n", key.c_str());
 		std::getline(is, val, ';');
-//		SATAN_DEBUG("     -> val: %s\n", val.c_str());
+		SATAN_DEBUG("     -> val: %s\n", val.c_str());
 		if(key != "") {
 			key2val[Serialize::decode_string(key)] = Serialize::decode_string(val);
 		}
@@ -184,7 +157,7 @@ void RemoteInterface::Message::encode() const {
 	ostrm << header;
 
 	int checksum = 0;
-//	SATAN_DEBUG("encode() header -> [%s]\n", header);
+	SATAN_DEBUG("encode() header -> [%s]\n", header);
 	// add body
 	for(auto k2v : key2val) {
 		auto enc_key = k2v.first;
@@ -192,10 +165,10 @@ void RemoteInterface::Message::encode() const {
 
 		ostrm << enc_key << "=" << enc_val << ";";
 
-//		SATAN_DEBUG("   encode: [%s] -> [%s]\n", enc_key.c_str(), enc_val.c_str());
+		SATAN_DEBUG("   encode: [%s] -> [%s]\n", enc_key.c_str(), enc_val.c_str());
 		checksum += 2 + enc_key.size() + enc_val.size();
 	}
-//	SATAN_DEBUG("data2send[%d] =? checksum[%d] ?\n", data2send, checksum);
+	SATAN_DEBUG("data2send[%d] =? checksum[%d] ?\n", data2send, checksum);
 
 	data2send += header_length; // add header length to the total data size
 }
@@ -229,22 +202,33 @@ RemoteInterface::Context::~Context() {
 }
 
 void RemoteInterface::Context::post_action(std::function<void()> f, bool do_synch) {
-	if(do_synch) {
+	auto ttid = std::this_thread::get_id();
+	if(ttid != __context_thread_id && do_synch) {
 		std::mutex mtx;
 		std::condition_variable cv;
-		bool ready = false;
+		std::atomic<bool> ready(false);
 
+		static int32_t sync_id = 0;
+		int32_t this_sync_id = sync_id;
+
+		SATAN_DEBUG("Context::post_action() doing sync for %d (%p)\n", this_sync_id, &io_service);
 		io_service.dispatch(
-			[&ready, &mtx, &cv, &f]() {
+			[&ready, &mtx, &cv, &f, this_sync_id]() {
+				SATAN_DEBUG("Context::post_action() calling operation for %d\n", this_sync_id);
 				f();
+				SATAN_DEBUG("Context::post_action() operation for %d finished\n", this_sync_id);
 				std::unique_lock<std::mutex> lck(mtx);
 				ready = true;
 				cv.notify_all();
+				SATAN_DEBUG("Context::post_action() waiter %d notified\n", this_sync_id);
 			}
 			);
 
+		SATAN_DEBUG("Context::post_action() waiting for lock %d\n", this_sync_id);
 		std::unique_lock<std::mutex> lck(mtx);
 		while (!ready) cv.wait(lck);
+		SATAN_DEBUG("Context::post_action() woke up for lock %d\n", this_sync_id);
+		sync_id++;
 	} else {
 		io_service.dispatch(f);
 	}
@@ -308,9 +292,11 @@ void RemoteInterface::MessageHandler::do_read_body() {
 			if(!ec && read_msg.decode_body()) {
 
 				try {
+					SATAN_DEBUG("MessageHandler::do_read_body() - message received..\n");
 					on_message_received(read_msg);
 				} catch (Message::NoSuchKey& e) {
-					SATAN_ERROR("do_read_body() caught an NoSuchKey exception: %s\n", e.keyname);
+					SATAN_ERROR("do_read_body() caught an NoSuchKey exception: %s\n",
+						    e.keyname);
 					on_connection_dropped();
 				} catch (std::exception& e) {
 					SATAN_ERROR("do_read_body() caught an exception: %s\n", e.what());
@@ -326,11 +312,13 @@ void RemoteInterface::MessageHandler::do_read_body() {
 }
 
 void RemoteInterface::MessageHandler::do_write() {
+	SATAN_DEBUG("MessageHandler::do_write()... queing async write..\n");
 	auto self(shared_from_this());
 	asio::async_write(
 		my_socket,
 		write_msgs.front()->get_data(),
 		[this, self](std::error_code ec, std::size_t length) {
+			SATAN_DEBUG("MessageHandler::do_write()... async write completed!\n");
 			if (!ec) {
 				write_msgs.pop_front();
 				if (!write_msgs.empty()) {
@@ -341,6 +329,7 @@ void RemoteInterface::MessageHandler::do_write() {
 			}
 		}
 		);
+	SATAN_DEBUG("MessageHandler::do_write()... async write queued..\n");
 }
 
 void RemoteInterface::MessageHandler::do_write_udp(std::shared_ptr<Message> &msg) {
@@ -366,6 +355,8 @@ void RemoteInterface::MessageHandler::start_receive() {
 
 void RemoteInterface::MessageHandler::deliver_message(std::shared_ptr<Message> &msg, bool via_udp) {
 	msg->encode();
+
+	SATAN_DEBUG("MessageHandler::deliver_message() - msg encoded..\n");
 
 	if(via_udp && my_udp_socket &&
 	   (msg->get_body_length() <= VUKNOB_MAX_UDP_SIZE)) {
@@ -479,7 +470,7 @@ void RemoteInterface::BaseObject::send_object_message(std::function<void(std::sh
 								    e.what());
 							throw;
 						} catch(...) {
-							SATAN_ERROR("RemoteInterface::Client::send_object_message() - "
+							SATAN_ERROR("RemoteInterface::BaseObject::send_object_message() - "
 								    "failed to process server reply, unknown exception.\n");
 							throw;
 						}
@@ -687,24 +678,28 @@ namespace RemoteInterface {
 	void SimpleBaseObject::post_constructor_client() {
 	}
 
-	void SimpleBaseObject::process_message(Server *context, MessageHandler *src, const Message &msg) {
+	void SimpleBaseObject::process_message_server(Context* context,
+						      MessageHandler *src,
+						      const Message &msg) {
 		std::string command_id = msg.get_value("commandid");
 		auto fnc = command2function.find(command_id);
 		if(fnc != command2function.end())
 			fnc->second(context, src, msg);
 	}
 
-	void SimpleBaseObject::process_message(Client *context, const Message &msg) {
+	void SimpleBaseObject::process_message_client(Context* context,
+						      MessageHandler *src,
+						      const Message &msg) {
 		std::string command_id = msg.get_value("commandid");
 		auto fnc = command2function.find(command_id);
 		if(fnc != command2function.end())
-			fnc->second(context, context, msg);
+			fnc->second(context, src, msg);
 	}
 
 	void SimpleBaseObject::serialize(std::shared_ptr<Message> &target) {
 	}
 
-	void SimpleBaseObject::on_delete(Client *context) {
+	void SimpleBaseObject::on_delete(Context* context) {
 	}
 };
 
@@ -752,7 +747,9 @@ RemoteInterface::HandleList::HandleList(int32_t new_obj_id, const Factory *facto
 
 void RemoteInterface::HandleList::post_constructor_client() {}
 
-void RemoteInterface::HandleList::process_message(Server *context, MessageHandler *src, const Message &msg) {
+void RemoteInterface::HandleList::process_message_server(Context* context,
+							 MessageHandler *src,
+							 const Message &msg) {
 	std::string command = msg.get_value("command");
 
 	if(command == "instance") {
@@ -764,13 +761,13 @@ void RemoteInterface::HandleList::process_message(Server *context, MessageHandle
 			try {
 				MachineSequencer::create_sequencer_for_machine(new_machine);
 			} catch(std::exception &e) {
-				SATAN_ERROR("Server->HandleList::process_message() - failed to create sequencer for %s (%s)\n",
+				SATAN_ERROR("Server->HandleList::process_message_server() - failed to create sequencer for %s (%s)\n",
 					    new_m_handle.c_str(), e.what());
 				// something went wrong - destroy the new machine
 				Machine::disconnect_and_destroy(new_machine);
 				new_machine = NULL;
 			} catch(...) {
-				SATAN_ERROR("Server->HandleList::process_message() - failed to create sequencer for %s\n",
+				SATAN_ERROR("Server->HandleList::process_message_server() - failed to create sequencer for %s\n",
 					    new_m_handle.c_str());
 				// something went wrong - destroy the new machine
 				Machine::disconnect_and_destroy(new_machine);
@@ -786,7 +783,9 @@ void RemoteInterface::HandleList::process_message(Server *context, MessageHandle
 	}
 }
 
-void RemoteInterface::HandleList::process_message(Client *context, const Message &msg) {
+void RemoteInterface::HandleList::process_message_client(Context* context,
+							 MessageHandler *src,
+							 const Message &msg) {
 }
 
 void RemoteInterface::HandleList::serialize(std::shared_ptr<Message> &target) {
@@ -803,7 +802,7 @@ void RemoteInterface::HandleList::serialize(std::shared_ptr<Message> &target) {
 	target->set_value("handles", handles_serialized.str());
 }
 
-void RemoteInterface::HandleList::on_delete(Client *context) { /* noop */ }
+void RemoteInterface::HandleList::on_delete(Context* context) { /* noop */ }
 
 std::map<std::string, std::string> RemoteInterface::HandleList::get_handles_and_hints() {
 	std::map<std::string, std::string> retval;
@@ -815,7 +814,7 @@ std::map<std::string, std::string> RemoteInterface::HandleList::get_handles_and_
 			}, true
 			);
 	} else {
-		throw RemoteInterface::Client::ClientNotConnected();
+		throw RemoteInterface::Context::ContextNotConnected();
 	}
 
 	return retval;
@@ -848,7 +847,7 @@ std::string RemoteInterface::HandleList::create_instance(const std::string &hand
 	}
 
 	if(failed)
-		throw RemoteInterface::Client::ClientNotConnected();
+		throw RemoteInterface::Context::ContextNotConnected();
 
 	return retval;
 }
@@ -926,7 +925,9 @@ RemoteInterface::GlobalControlObject::GlobalControlObject(int32_t new_obj_id, co
 
 void RemoteInterface::GlobalControlObject::post_constructor_client() {}
 
-void RemoteInterface::GlobalControlObject::process_message(Server *context, MessageHandler *src, const Message &msg) {
+void RemoteInterface::GlobalControlObject::process_message_server(Context* context,
+								  MessageHandler *src,
+								  const Message &msg) {
 	std::string command = msg.get_value("command");
 
 	if(command == "get_arp_patterns") {
@@ -1032,7 +1033,9 @@ void RemoteInterface::GlobalControlObject::process_message(Server *context, Mess
 
 }
 
-void RemoteInterface::GlobalControlObject::process_message(Client *context, const Message &msg) {
+void RemoteInterface::GlobalControlObject::process_message_client(Context* context,
+								  MessageHandler *src,
+								  const Message &msg) {
 	std::string command = msg.get_value("command");
 
 	if(command == "nrplaying") {
@@ -1081,7 +1084,7 @@ void RemoteInterface::GlobalControlObject::serialize(std::shared_ptr<Message> &t
 	target->set_value("is_recording", Machine::get_record_state() ? "true" : "false");
 }
 
-void RemoteInterface::GlobalControlObject::on_delete(Client *context) { /* noop */ }
+void RemoteInterface::GlobalControlObject::on_delete(Context* context) { /* noop */ }
 
 std::vector<std::string> RemoteInterface::GlobalControlObject::get_pad_arpeggio_patterns() {
 	std::vector<std::string> retval;
@@ -1377,7 +1380,9 @@ void RemoteInterface::SampleBank::load_sample(int bank_index, const std::string 
 
 void RemoteInterface::SampleBank::post_constructor_client() {}
 
-void RemoteInterface::SampleBank::process_message(Server *context, MessageHandler *src, const Message &msg) {
+void RemoteInterface::SampleBank::process_message_server(Context* context,
+							 MessageHandler *src,
+							 const Message &msg) {
 	auto command = msg.get_value("command");
 	if(command == "loads") {
 
@@ -1409,7 +1414,9 @@ void RemoteInterface::SampleBank::process_message(Server *context, MessageHandle
 	}
 }
 
-void RemoteInterface::SampleBank::process_message(Client *context, const Message &msg) {
+void RemoteInterface::SampleBank::process_message_client(Context* context,
+							 MessageHandler *src,
+							 const Message &msg) {
 	std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 
 	auto command = msg.get_value("command");
@@ -1427,7 +1434,7 @@ void RemoteInterface::SampleBank::serialize(std::shared_ptr<Message> &target) {
 	target->set_value("content", iser.result());
 }
 
-void RemoteInterface::SampleBank::on_delete(Client *context) {
+void RemoteInterface::SampleBank::on_delete(Context* context) {
 	std::lock_guard<std::mutex> lock_guard(clientside_samplebanks_mutex);
 
 	auto itr = clientside_samplebanks.begin();
@@ -1914,7 +1921,9 @@ void RemoteInterface::RIMachine::serverside_init_from_machine_ptr(Machine *m_ptr
 void RemoteInterface::RIMachine::attach_input(std::shared_ptr<RIMachine> source_machine,
 					      const std::string &source_output_name,
 					      const std::string &destination_input_name) {
+	SATAN_DEBUG("RIMachine::attach_input()\n");
 	if(is_server_side()) {
+		SATAN_DEBUG("RIMachine::attach_input() Server side.\n");
 		/* server side */
 		int32_t source_objid = source_machine->get_obj_id();
 
@@ -1933,6 +1942,7 @@ void RemoteInterface::RIMachine::attach_input(std::shared_ptr<RIMachine> source_
 			}
 			);
 	} else {
+		SATAN_DEBUG("RIMachine::attach_input() client side.\n");
 		/* client side */
 		int32_t source_objid = source_machine->get_obj_id();
 
@@ -2379,7 +2389,9 @@ void RemoteInterface::RIMachine::post_constructor_client() {
 	}
 }
 
-void RemoteInterface::RIMachine::process_message(Server *context, MessageHandler *src, const Message &msg) {
+void RemoteInterface::RIMachine::process_message_server(Context* context,
+							MessageHandler *src,
+							const Message &msg) {
 	std::string command = msg.get_value("command");
 
 	if(command == "padevt") {
@@ -2805,7 +2817,9 @@ void RemoteInterface::RIMachine::process_detach_message(Context *context, const 
 	}
 }
 
-void RemoteInterface::RIMachine::process_message(Client *context, const Message &msg) {
+void RemoteInterface::RIMachine::process_message_client(Context* context,
+							MessageHandler *src,
+							const Message &msg) {
 	std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 	std::string command = msg.get_value("command");
 
@@ -2887,7 +2901,7 @@ void RemoteInterface::RIMachine::serialize(std::shared_ptr<Message> &target) {
 	}
 }
 
-void RemoteInterface::RIMachine::on_delete(Client *context) {
+void RemoteInterface::RIMachine::on_delete(Context* context) {
 	std::lock_guard<std::mutex> lock_guard(ri_machine_lock);
 	for(auto weak_set_listener : set_listeners) {
 		if(auto set_listener = weak_set_listener.lock()) {
@@ -2933,695 +2947,3 @@ std::set<std::weak_ptr<RemoteInterface::RIMachine::RIMachineSetListener>,
 std::weak_ptr<RemoteInterface::RIMachine> RemoteInterface::RIMachine::sink;
 std::map<std::string, std::weak_ptr<RemoteInterface::RIMachine> > RemoteInterface::RIMachine::name2machine;
 std::mutex RemoteInterface::RIMachine::ri_machine_lock;
-
-/***************************
- *
- *  Class RemoteInterface::Client
- *
- ***************************/
-
-std::shared_ptr<RemoteInterface::Client> RemoteInterface::Client::client;
-std::mutex RemoteInterface::Client::client_mutex;
-
-RemoteInterface::Client::Client(const std::string &server_host,
-				int server_port,
-				std::function<void()> _disconnect_callback,
-				std::function<void(const std::string &failure_response)> _failure_response_callback) :
-	MessageHandler(io_service), resolver(io_service), udp_resolver(io_service), disconnect_callback(_disconnect_callback)
-{
-	failure_response_callback = _failure_response_callback;
-	auto endpoint_iterator = resolver.resolve({server_host, std::to_string(server_port) });
-
-	asio::async_connect(my_socket, endpoint_iterator,
-			    [this](std::error_code ec, asio::ip::tcp::resolver::iterator)
-			    {
-				    if (!ec)
-				    {
-					    start_receive();
-				    } else {
-					    SATAN_ERROR("Failed to connect to server.\n");
-				    }
-			    }
-		);
-
-	udp_target_endpoint = *udp_resolver.resolve({asio::ip::udp::v4(), server_host, std::to_string(server_port) });
-}
-
-void RemoteInterface::Client::flush_all_objects() {
-	for(auto objid2obj : all_objects) {
-		objid2obj.second->on_delete(this);
-	}
-	all_objects.clear();
-
-}
-
-void RemoteInterface::Client::on_message_received(const Message &msg) {
-	int identifier = std::stol(msg.get_value("id"));
-
-	SATAN_DEBUG("Client() received message: %d\n", identifier);
-
-	switch(identifier) {
-	case __MSG_PROTOCOL_VERSION:
-	{
-		auto protocol_version = std::stol(msg.get_value("pversion"));
-		if(protocol_version > __VUKNOB_PROTOCOL_VERSION__) {
-			failure_response_callback("Server is to new - you must upgrade before you can connect.");
-			disconnect();
-		}
-	}
-	break;
-
-	case __MSG_CLIENT_ID:
-	{
-		client_id = std::stol(msg.get_value("clid"));
-	}
-	break;
-
-	case __MSG_CREATE_OBJECT:
-	{
-		std::shared_ptr<BaseObject> new_obj = BaseObject::create_object_from_message(msg);
-		new_obj->set_context(this);
-
-		int32_t obj_id = new_obj->get_obj_id();
-
-		if(all_objects.find(obj_id) != all_objects.end()) throw BaseObject::DuplicateObjectId();
-		if(obj_id < 0) throw BaseObject::ObjIdOverflow();
-
-		all_objects[new_obj->get_obj_id()] = new_obj;
-	}
-	break;
-
-	case __MSG_FLUSH_ALL_OBJECTS:
-	{
-		flush_all_objects();
-	}
-	break;
-
-	case __MSG_REPLY:
-	{
-		SATAN_DEBUG("Will get repid...\n");
-
-		int32_t reply_identifier = std::stol(msg.get_value("repid"));
-		SATAN_DEBUG("Reply received: %d\n", reply_identifier);
-		auto repmsg = msg_waiting_for_reply.find(reply_identifier);
-		if(repmsg != msg_waiting_for_reply.end()) {
-			SATAN_DEBUG("Matching outstanding request.\n");
-			repmsg->second->reply_to(&msg);
-			SATAN_DEBUG("Reply processed.\n");
-			msg_waiting_for_reply.erase(repmsg);
-		}
-	}
-	break;
-
-	case __MSG_DELETE_OBJECT:
-	{
-		auto obj_iterator = all_objects.find(std::stol(msg.get_value("objid")));
-		if(obj_iterator != all_objects.end()) {
-			obj_iterator->second->on_delete(this);
-			all_objects.erase(obj_iterator);
-		}
-	}
-	break;
-
-	case __MSG_FAILURE_RESPONSE:
-	{
-		failure_response_callback(msg.get_value("response"));
-	}
-	break;
-
-	default:
-	{
-		auto obj_iterator = all_objects.find(identifier);
-		if(obj_iterator == all_objects.end()) throw BaseObject::NoSuchObject();
-
-		obj_iterator->second->process_message(this, msg);
-	}
-	break;
-	}
-}
-
-void RemoteInterface::Client::on_connection_dropped() {
-	// inform all waiting messages that their action failed
-	for(auto msg : msg_waiting_for_reply) {
-		msg.second->reply_to(NULL);
-	}
-	msg_waiting_for_reply.clear();
-
-	flush_all_objects();
-	disconnect_callback();
-
-}
-
-void RemoteInterface::Client::start_client(const std::string &server_host,
-					   int server_port,
-					   std::function<void()> disconnect_callback,
-					   std::function<void(const std::string &fresp)> failure_response_callback) {
-	std::lock_guard<std::mutex> lock_guard(client_mutex);
-
-	try {
-		client = std::shared_ptr<Client>(new Client(server_host, server_port, disconnect_callback, failure_response_callback));
-
-		client->io_thread = std::thread([]() {
-				client->io_service.run();
-			}
-			);
-	} catch (std::exception& e) {
-		SATAN_ERROR("exception caught: %s\n", e.what());
-	}
-}
-
-void RemoteInterface::Client::disconnect() {
-	std::lock_guard<std::mutex> lock_guard(client_mutex);
-	if(client) {
-		client->io_service.post(
-			[]()
-			{
-				try {
-					client->my_socket.close();
-				} catch(std::exception &exp) {
-				}
-				client->io_service.stop();
-			});
-
-		client->io_thread.join();
-		client.reset();
-	}
-}
-
-void RemoteInterface::Client::register_ri_machine_set_listener(std::weak_ptr<RIMachine::RIMachineSetListener> ri_mset_listener) {
-	std::lock_guard<std::mutex> lock_guard(client_mutex);
-	if(client) {
-		client->io_service.post(
-		[ri_mset_listener]()
-		{
-			RIMachine::register_ri_machine_set_listener(ri_mset_listener);
-		});
-	} else {
-		// if disconnected, we can go ahead and directly register...
-		RIMachine::register_ri_machine_set_listener(ri_mset_listener);
-	}
-
-}
-
-void RemoteInterface::Client::distribute_message(std::shared_ptr<Message> &msg, bool via_udp) {
-	if(msg->is_awaiting_reply()) {
-		if(msg_waiting_for_reply.find(next_reply_id) != msg_waiting_for_reply.end()) {
-			// no available reply id - reply with empty message to signal failure
-			msg->reply_to(NULL);
-		} else {
-			// fill in object reply id header
-			msg->set_value("repid", std::to_string(next_reply_id));
-			// add the msg to our set of messages waiting for a reply
-			msg_waiting_for_reply[next_reply_id++] = msg;
-			// deliver it
-			deliver_message(msg, via_udp);
-		}
-	} else {
-		deliver_message(msg, via_udp);
-	}
-}
-
-auto RemoteInterface::Client::get_object(int32_t objid) -> std::shared_ptr<BaseObject> {
-	if(all_objects.find(objid) == all_objects.end()) throw BaseObject::NoSuchObject();
-
-	return all_objects[objid];
-}
-
-/***************************
- *
- *  Class RemoteInterface::Server::ClientAgent
- *
- ***************************/
-
-void RemoteInterface::Server::ClientAgent::send_handler_message() {
-}
-
-RemoteInterface::Server::ClientAgent::ClientAgent(int32_t _id, asio::ip::tcp::socket _socket, Server *_server) :
-	MessageHandler(std::move(_socket)), id(_id), server(_server) {
-}
-
-void RemoteInterface::Server::ClientAgent::start() {
-	send_handler_message();
-	start_receive();
-}
-
-void RemoteInterface::Server::ClientAgent::disconnect() {
-	my_socket.close();
-}
-
-void RemoteInterface::Server::ClientAgent::on_message_received(const Message &msg) {
-	std::string resp_msg;
-
-	try {
-		server->route_incomming_message(this, msg);
-	} catch(Context::FailureResponse &fresp) {
-		resp_msg = fresp.response_message;
-	}
-
-	if(resp_msg.size() != 0) {
-		std::shared_ptr<Message> response = server->acquire_message();
-		response->set_value("id", std::to_string(__MSG_FAILURE_RESPONSE));
-		response->set_value("response", resp_msg);
-		deliver_message(response);
-	}
-}
-
-void RemoteInterface::Server::ClientAgent::on_connection_dropped() {
-	server->drop_client(std::static_pointer_cast<ClientAgent>(shared_from_this()));
-}
-
-/***************************
- *
- *  Class RemoteInterface::Server
- *
- ***************************/
-
-std::shared_ptr<RemoteInterface::Server> RemoteInterface::Server::server;
-std::mutex RemoteInterface::Server::server_mutex;
-
-int32_t RemoteInterface::Server::reserve_new_obj_id() {
-	int32_t new_obj_id = ++last_obj_id;
-
-	if(new_obj_id < 0) throw BaseObject::ObjIdOverflow();
-
-	return new_obj_id;
-}
-
-void RemoteInterface::Server::create_object_from_factory(
-	const std::string &factory_type,
-	std::function<void(std::shared_ptr<BaseObject> nuobj)> new_object_init_callback)
-{
-	int32_t new_obj_id = reserve_new_obj_id();
-
-	std::shared_ptr<BaseObject> new_obj = BaseObject::create_object_on_server(new_obj_id, factory_type);
-	new_obj->set_context(this);
-	all_objects[new_obj_id] = new_obj;
-
-	new_object_init_callback(new_obj);
-
-	std::shared_ptr<Message> create_object_message = acquire_message();
-	add_create_object_header(create_object_message, new_obj);
-	new_obj->serialize(create_object_message);
-	distribute_message(create_object_message, false);
-}
-
-void RemoteInterface::Server::delete_object(std::shared_ptr<BaseObject> obj2delete) {
-	for(auto obj  = all_objects.begin();
-	    obj != all_objects.end();
-	    obj++) {
-		if((*obj).second == obj2delete) {
-
-			std::shared_ptr<Message> destroy_object_message = acquire_message();
-			add_destroy_object_header(destroy_object_message, obj2delete);
-			distribute_message(destroy_object_message, false);
-
-			all_objects.erase(obj);
-			return;
-		}
-	}
-}
-
-void RemoteInterface::Server::project_loaded() {
-	io_service.post(
-
-		[this]()
-		{
-			for(auto m2ri : machine2rimachine) {
-				auto x = m2ri.first->get_x_position();
-				auto y = m2ri.first->get_y_position();
-				m2ri.second->set_position(x, y);
-			}
-		}
-
-		);
-}
-
-void RemoteInterface::Server::machine_registered(Machine *m_ptr) {
-	io_service.post(
-
-		[this, m_ptr]()
-		{
-			SATAN_DEBUG("!!! Machine %s was registered\n", m_ptr->get_name().c_str());
-			std::string resp_msg;
-
-			try {
-				create_object_from_factory(__FCT_RIMACHINE,
-							   [this, m_ptr](std::shared_ptr<BaseObject> nuobj) {
-								   auto mch = std::dynamic_pointer_cast<RIMachine>(nuobj);
-								   mch->serverside_init_from_machine_ptr(m_ptr);
-
-								   machine2rimachine[m_ptr] = mch;
-							   }
-					);
-			} catch(BaseObject::ObjIdOverflow &e) {
-				resp_msg = "Internal server error - Object ID overflow. Please restart session.";
-			}
-			if(resp_msg != "") {
-				std::shared_ptr<Message> response = server->acquire_message();
-				response->set_value("id", std::to_string(__MSG_FAILURE_RESPONSE));
-				response->set_value("response", resp_msg);
-				distribute_message(response);
-			}
-		}
-
-		);
-}
-
-void RemoteInterface::Server::machine_unregistered(Machine *m_ptr) {
-	io_service.post(
-
-		[this, m_ptr]()
-		{
-			auto mch = machine2rimachine.find(m_ptr);
-			if(mch != machine2rimachine.end()) {
-				delete_object(mch->second);
-				machine2rimachine.erase(mch);
-			}
-			Machine::dereference_machine(m_ptr);
-		}
-
-		);
-}
-
-void RemoteInterface::Server::machine_input_attached(Machine *source, Machine *destination,
-						     const std::string &output_name,
-						     const std::string &input_name) {
-	io_service.post(
-		[this, source, destination, output_name, input_name]()
-		{
-			SATAN_DEBUG("!!! Signal attached [%s:%s] -> [%s:%s]\n",
-				    source->get_name().c_str(), output_name.c_str(),
-				    destination->get_name().c_str(), input_name.c_str());
-
-			auto src_mch = machine2rimachine.find(source);
-			auto dst_mch = machine2rimachine.find(destination);
-			if(src_mch != machine2rimachine.end() && dst_mch != machine2rimachine.end()) {
-				dst_mch->second->attach_input(src_mch->second, output_name, input_name);
-			}
-		}
-
-		);
-}
-
-void RemoteInterface::Server::machine_input_detached(Machine *source, Machine *destination,
-						     const std::string &output_name,
-						     const std::string &input_name) {
-	io_service.post(
-		[this, source, destination, output_name, input_name]()
-		{
-			SATAN_DEBUG("!!! Signal detached [%s:%s] -> [%s:%s]\n",
-				    source->get_name().c_str(), output_name.c_str(),
-				    destination->get_name().c_str(), input_name.c_str());
-
-			auto src_mch = machine2rimachine.find(source);
-			auto dst_mch = machine2rimachine.find(destination);
-			if(src_mch != machine2rimachine.end() && dst_mch != machine2rimachine.end()) {
-				dst_mch->second->detach_input(src_mch->second, output_name, input_name);
-			}
-		}
-
-		);
-}
-
-RemoteInterface::Server::Server(const asio::ip::tcp::endpoint& endpoint) : last_obj_id(-1), acceptor(io_service, endpoint),
-									   acceptor_socket(io_service)
-{
-	acceptor.listen();
-
-	current_port = acceptor.local_endpoint().port();
-
-	SATAN_DEBUG("RemoteInterface::Server::Server() current ip: %s, port: %d\n",
-		    acceptor.local_endpoint().address().to_string().c_str(),
-		    current_port);
-
-#ifdef VUKNOB_UDP_SUPPORT
-	udp_socket = std::make_shared<asio::ip::udp::socket>(io_service,
-							     asio::ip::udp::endpoint(asio::ip::udp::v4(), current_port));
-#endif
-
-	io_service.post(
-		[this]()
-		{
-			try {
-				this->create_service_objects();
-			} catch(std::exception &exp) {
-				throw;
-			}
-		});
-
-	do_accept();
-#ifdef VUKNOB_UDP_SUPPORT
-	do_udp_receive();
-#endif
-}
-
-int RemoteInterface::Server::get_port() {
-	return current_port;
-}
-
-void RemoteInterface::Server::do_accept() {
-	acceptor.async_accept(
-		acceptor_socket,
-		[this](std::error_code ec) {
-
-			if (!ec) {
-				auto new_id = next_client_agent_id++;
-
-				std::shared_ptr<ClientAgent> new_client_agent = std::make_shared<ClientAgent>(new_id,
-													      std::move(acceptor_socket), this);
-
-				client_agents[new_id] = new_client_agent;
-
-				send_protocol_version_to_new_client(new_client_agent);
-				send_client_id_to_new_client(new_client_agent);
-				send_all_objects_to_new_client(new_client_agent);
-
-				new_client_agent->start();
-			}
-
-			do_accept();
-		}
-		);
-}
-
-void RemoteInterface::Server::do_udp_receive() {
-	udp_socket->async_receive_from(
-		//asio::buffer(udp_buffer),
-		udp_read_msg.prepare_buffer(VUKNOB_MAX_UDP_SIZE),
-		udp_endpoint,
-		[this](std::error_code ec,
-		       std::size_t bytes_transferred) {
-//			if(!ec) udp_read_msg.commit_data(bytes_transferred);
-
-			if((!ec) && udp_read_msg.decode_client_id()) {
-				if(udp_read_msg.decode_header()) {
-					if(udp_read_msg.decode_body()) {
-						// make sure body length matches what we received
-						if(bytes_transferred == 16 + udp_read_msg.get_body_length()) {
-							try {
-								auto udp_client_agent = client_agents.find(udp_read_msg.get_client_id());
-								if(udp_client_agent != client_agents.end()) {
-									udp_client_agent->second->on_message_received(udp_read_msg);
-								} else {
-									SATAN_ERROR("RemoteInterface::Server::do_udp_receive()"
-										    " received an udp message from %s with an"
-										    " unkown client id %d.\n",
-										    udp_endpoint.address().to_string().c_str(),
-										    udp_read_msg.get_client_id());
-								}
-							} catch (std::exception& e) {
-								SATAN_ERROR("RemoteInterface::Server::do_udp_receive() caught an exception (%s)"
-									    " when processing an incomming message.\n",
-									    e.what());
-							}
-						} else {
-							SATAN_ERROR("RemoteInterface::Server::do_udp_receive() received an"
-								    " udp message from %s of the wrong size (%d != %d).\n",
-								    udp_endpoint.address().to_string().c_str(),
-								    bytes_transferred - 16, udp_read_msg.get_body_length());
-						}
-					} else {
-						SATAN_ERROR("RemoteInterface::Server::do_udp_receive() received an"
-							    " udp message from %s with a malformed body.\n",
-							    udp_endpoint.address().to_string().c_str());
-					}
-				} else {
-					SATAN_ERROR("RemoteInterface::Server::do_udp_receive() received an"
-						    " udp message from %s with a malformed header.\n",
-						    udp_endpoint.address().to_string().c_str());
-				}
-			} else {
-				SATAN_ERROR("RemoteInterface::Server::do_udp_receive() received a malformed udp message from %s.\n",
-					    udp_endpoint.address().to_string().c_str());
-			}
-
-			do_udp_receive();
-		}
-		);
-}
-
-void RemoteInterface::Server::drop_client(std::shared_ptr<ClientAgent> client_agent) {
-	auto client_iterator = client_agents.find(client_agent->get_id());
-	if(client_iterator != client_agents.end()) {
-		client_agents.erase(client_iterator);
-	}
-}
-
-void RemoteInterface::Server::add_create_object_header(std::shared_ptr<Message> &target, std::shared_ptr<BaseObject> obj) {
-	target->set_value("id", std::to_string(__MSG_CREATE_OBJECT));
-	target->set_value("new_objid", std::to_string(obj->get_obj_id()));
-	target->set_value("factory", obj->get_type().type_name);
-}
-
-void RemoteInterface::Server::add_destroy_object_header(std::shared_ptr<Message> &target, std::shared_ptr<BaseObject> obj) {
-	target->set_value("id", std::to_string(__MSG_DELETE_OBJECT));
-	target->set_value("objid", std::to_string(obj->get_obj_id()));
-}
-
-void RemoteInterface::Server::send_protocol_version_to_new_client(std::shared_ptr<MessageHandler> client_agent) {
-	std::shared_ptr<Message> pv_message = acquire_message();
-	pv_message->set_value("id", std::to_string(__MSG_PROTOCOL_VERSION));
-	pv_message->set_value("pversion", std::to_string(__VUKNOB_PROTOCOL_VERSION__));
-	client_agent->deliver_message(pv_message);
-}
-
-void RemoteInterface::Server::send_client_id_to_new_client(std::shared_ptr<ClientAgent> client_agent) {
-	std::shared_ptr<Message> pv_message = acquire_message();
-	pv_message->set_value("id", std::to_string(__MSG_CLIENT_ID));
-	pv_message->set_value("clid", std::to_string(client_agent->get_id()));
-	client_agent->deliver_message(pv_message);
-}
-
-void RemoteInterface::Server::send_all_objects_to_new_client(std::shared_ptr<MessageHandler> client_agent) {
-	for(auto obj : all_objects) {
-		std::shared_ptr<Message> create_object_message = acquire_message();
-		add_create_object_header(create_object_message, obj.second);
-		obj.second->serialize(create_object_message);
-		client_agent->deliver_message(create_object_message);
-	}
-}
-
-void RemoteInterface::Server::route_incomming_message(ClientAgent *src, const Message &msg) {
-	int identifier = std::stol(msg.get_value("id"));
-
-	auto obj_iterator = all_objects.find(identifier);
-	if(obj_iterator == all_objects.end()) throw BaseObject::NoSuchObject();
-
-	obj_iterator->second->process_message(this, src, msg);
-}
-
-void RemoteInterface::Server::disconnect_clients() {
-	for(auto client_agent : client_agents) {
-		client_agent.second->disconnect();
-	}
-}
-
-void RemoteInterface::Server::create_service_objects() {
-	{ // create handle list object
-		create_object_from_factory(__FCT_HANDLELIST, [](std::shared_ptr<BaseObject> new_obj){});
-	}
-	{ // create global control object
-		create_object_from_factory(__FCT_GLOBALCONTROLOBJECT, [](std::shared_ptr<BaseObject> new_obj){});
-	}
-	{ // create global sample bank
-		create_object_from_factory(__FCT_SAMPLEBANK, [](std::shared_ptr<BaseObject> new_obj){});
-	}
-	{
-		BaseObject::create_static_single_objects_on_server(
-			[this](void) -> int {
-				return reserve_new_obj_id();
-			},
-			[this](std::shared_ptr<BaseObject> new_obj) {
-				new_obj->set_context(this);
-				all_objects[new_obj->get_obj_id()] = new_obj;
-
-				std::shared_ptr<Message> create_object_message = acquire_message();
-				add_create_object_header(create_object_message, new_obj);
-				new_obj->serialize(create_object_message);
-				distribute_message(create_object_message, false);
-			}
-			);
-	}
-	{ // register us as a machine set listener
-		Machine::register_machine_set_listener(shared_from_this());
-	}
-}
-
-int RemoteInterface::Server::start_server() {
-	std::lock_guard<std::mutex> lock_guard(server_mutex);
-
-	if(server) {
-		return server->get_port();
-	}
-
-	int portval = -1;
-
-	try {
-		asio::ip::tcp::endpoint endpoint;//(asio::ip::tcp::v4(), 0); // 0 => select a random available port
-		server = std::shared_ptr<Server>(new Server(endpoint));
-
-		server->io_thread = std::thread([]() {
-				try {
-					server->io_service.run();
-				} catch(std::exception const& e) {
-					SATAN_ERROR("RemoteInterface::Server::start_server() - std::exception caught %s\n", e.what());
-				} catch(...) {
-					SATAN_ERROR("RemoteInterface::Server::start_server() - unknown exception caught\n");
-				}
-			}
-			);
-
-		portval = server->get_port();
-	} catch (std::exception& e) {
-		SATAN_ERROR("Exception caught: %s\n", e.what());
-	}
-
-	return portval;
-}
-
-bool RemoteInterface::Server::is_running() {
-	std::lock_guard<std::mutex> lock_guard(server_mutex);
-
-	if(server) {
-		return true;
-	}
-	return false;
-}
-
-void RemoteInterface::Server::stop_server() {
-	std::lock_guard<std::mutex> lock_guard(server_mutex);
-
-	if(server) {
-		server->io_service.post(
-		[]()
-		{
-			try {
-				SATAN_DEBUG("will disconnect clients...\n");
-				server->disconnect_clients();
-				SATAN_DEBUG("clients disconnected!");
-			} catch(std::exception &exp) {
-				throw;
-			}
-			SATAN_DEBUG("stop IO service...!");
-			server->io_service.stop();
-		});
-
-		SATAN_DEBUG("waiting for thread...!");
-		server->io_thread.join();
-		SATAN_DEBUG("reseting server object...!");
-		server.reset();
-		SATAN_DEBUG("done!");
-	}
-}
-
-void RemoteInterface::Server::distribute_message(std::shared_ptr<Message> &msg, bool via_udp) {
-	for(auto client_agent : client_agents) {
-		client_agent.second->deliver_message(msg, via_udp);
-	}
-}
-
-auto RemoteInterface::Server::get_object(int32_t objid) -> std::shared_ptr<BaseObject> {
-	if(all_objects.find(objid) == all_objects.end()) throw BaseObject::NoSuchObject();
-
-	return all_objects[objid];
-}

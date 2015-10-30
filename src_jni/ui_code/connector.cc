@@ -31,6 +31,8 @@
 #include "machine_sequencer.hh"
 #include "common.hh"
 
+#include "../engine_code/client.hh"
+
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
@@ -112,7 +114,7 @@ void Connector::ConnectionGraphic::recalculate_position() {
 		transform_m.translate(center_x, center_y);
 
 		set_transform(transform_m);
-	}	
+	}
 }
 
 void Connector::ConnectionGraphic::recalculate_end_point(std::shared_ptr<MachineGraphic> end_point) {
@@ -148,26 +150,26 @@ auto Connector::ConnectionGraphic::attach(Connector *context,
 	}
 
 	// if we get here, there was no previously created ConnectionGraphic object - we must create one our selves
-	
+
 	std::stringstream id_stream;
 	id_stream << "connection_" << (void *)source_machine.get() << "_" << (void *)destination_machine.get();
-	
+
 	SATAN_DEBUG("Create ConnectionGraphic - Connector context: %p\n", context);
-	
+
 	KammoGUI::SVGCanvas::ElementReference connection_template = KammoGUI::SVGCanvas::ElementReference(context, "connectionTemplate");
 	KammoGUI::SVGCanvas::ElementReference connection_layer = KammoGUI::SVGCanvas::ElementReference(context, "connectionContainer");
-	
+
 	(void) connection_layer.add_element_clone(id_stream.str(), connection_template);
-	
+
 	auto retval = std::make_shared<ConnectionGraphic>(context, id_stream.str(), source_machine, destination_machine, output, input);
 
 	connection_graphics[{source_machine, destination_machine}] = retval;
-		
+
 	return retval;
 }
 
 void Connector::ConnectionGraphic::debug_print() {
-	
+
 }
 
 void Connector::ConnectionGraphic::detach(std::shared_ptr<MachineGraphic> source_machine,
@@ -184,7 +186,7 @@ void Connector::ConnectionGraphic::detach(std::shared_ptr<MachineGraphic> source
 		SATAN_DEBUG("    source: %p\n", source_machine.get());
 		SATAN_DEBUG("    destin: %p\n", destination_machine.get());
 	}
-	
+
 	// try to find existing graphics object
 	if(found_gfx != connection_graphics.end()) {
 		SATAN_DEBUG("  ConnectionGraphic::detach() - connection found!\n");
@@ -302,13 +304,13 @@ Connector::MachineGraphic::MachineGraphic(Connector *_context, const std::string
 		create_sockets(outputs, machine->get_output_names(), output_template, on_output_socket_event);
 	}
 	{ // move the graphic into position
-		
+
 		get_transform(base_t);
 		base_t.translate(-250.0, -250.0);
 
 		refresh_position(0.0, 0.0);
 	}
-	
+
 	refresh_appearance(1.0);
 }
 
@@ -322,8 +324,8 @@ Connector::MachineGraphic::~MachineGraphic() {
 
 	if(selected_animation) {
 		deselect();
-	}	
-	
+	}
+
 	drop_element();
 
 	auto found = mch2grph.find(machine);
@@ -351,7 +353,7 @@ void Connector::MachineGraphic::on_attach(std::shared_ptr<RemoteInterface::RIMac
 		    gettid(),
 		    src_machine->get_name().c_str(), src_output.c_str(),
 		    machine->get_name().c_str(), dst_input.c_str());
-	
+
 	auto thiz = shared_from_this();
 	KammoGUI::run_on_GUI_thread(
 		[this, thiz,src_machine, src_output, dst_input]() {
@@ -359,14 +361,14 @@ void Connector::MachineGraphic::on_attach(std::shared_ptr<RemoteInterface::RIMac
 				    gettid(),
 				    src_machine->get_name().c_str(), src_output.c_str(),
 				    machine->get_name().c_str(), dst_input.c_str());
-			
+
 			auto weak_src_gfx = mch2grph.find(src_machine);
-			
+
 			// only attach if we have a MachineGraphic object for the source as well (in some cases we don't, like for MachineSequencer objects.)
 			if(weak_src_gfx != mch2grph.end()) {
 				if(auto src_gfx = (*weak_src_gfx).second.lock()) {
 					auto congfx = ConnectionGraphic::attach(context, src_gfx, shared_from_this(), src_output, dst_input);
-					
+
 					{
 						// insert here
 						auto found_here = connections.find(congfx);
@@ -408,9 +410,9 @@ void Connector::MachineGraphic::on_detach(std::shared_ptr<RemoteInterface::RIMac
 			SATAN_DEBUG("MachineGraphic() -- detached [%s] @ %s ---> [%s] @ %s\n",
 				    src_machine->get_name().c_str(), src_output.c_str(),
 				    machine->get_name().c_str(), dst_input.c_str());
-			
+
 			auto weak_src_gfx = thiz->mch2grph.find(src_machine);
-			
+
 			// only detach if we have a MachineGraphic object for the source as well (in some cases we don't, like for MachineSequencer objects.)
 			if(weak_src_gfx != mch2grph.end()) {
 				if(auto src_gfx = (*weak_src_gfx).second.lock()) {
@@ -462,20 +464,20 @@ void Connector::MachineGraphic::create_sockets(std::vector<IOSocket *> &vctr, st
 				socket_container.add_element_clone(id_stream.str(), template_socket);
 
 			socket.find_child_by_class("nameTemplate").set_text_content(name);
-			
+
 			KammoGUI::SVGCanvas::SVGMatrix rotate_t;
 			socket.get_transform(rotate_t);
-						
+
 			rotate_t.translate(-250.0, -250.0);
 			rotate_t.rotate(angle * M_PI / 180.0);
 			rotate_t.translate(250.0, 250.0);
 			socket.set_transform(rotate_t);
-			
+
 			socket.set_display("inline");
 
 			vctr.push_back(new IOSocket(socket.find_child_by_class("selectButton"), socket, this, name));
 			vctr[vctr.size() - 1]->set_event_handler(this_on_event);
-			
+
 			angle += angle_step;
 		} catch(KammoGUI::SVGCanvas::OperationFailedException &e) {
 			SATAN_DEBUG("   OPERATION FAILED\n");
@@ -492,8 +494,8 @@ void Connector::MachineGraphic::select(const std::string &output_socket_name) {
 	current_output = new std::pair<std::weak_ptr<MachineGraphic>, std::string>(shared_from_this(), output_socket_name);
 
 	selected_animation = new SelectionAnimation(this);
-	context->start_animation(selected_animation);	
-	
+	context->start_animation(selected_animation);
+
 	find_child_by_class("selectedIndicator").set_display("inline");
 
 	leave_detailed_mode();
@@ -518,32 +520,32 @@ void Connector::MachineGraphic::refresh_appearance(double progress) {
 
 	{
 		double scale = 0.5 + progress * 0.5;
-		
+
 		KammoGUI::SVGCanvas::SVGMatrix zoom_t;
 		zoom_t.translate(-250.0, -250.0);
 		zoom_t.scale(scale, scale);
 		zoom_t.translate(250.0, 250.0);
-		
+
 		socket_container.set_transform(zoom_t);
 	}
 
 	{
 		bool op_view = current_output ? false : true;;
-	
+
 		tilt_x = 125.0 * progress * (op_view ? -1.0 : 1.0);
 		hide_sockets(op_view ? inputs : outputs);
 		show_sockets(op_view ? outputs : inputs);
 
 		refresh_position(0.0, 0.0);
 	}
-	
+
 	socket_container.set_display(progress == 0.0 ? "none" : "inline");
 }
 
 void Connector::MachineGraphic::refresh_position(double temp_x, double temp_y) {
 	appear_at_x = pos_x + temp_x + tilt_x;
 	appear_at_y = pos_y + temp_y;
-	
+
 	KammoGUI::SVGCanvas::SVGMatrix move_t = base_t;
 	move_t.translate(appear_at_x, appear_at_y);
 	set_transform(move_t);
@@ -566,7 +568,7 @@ void Connector::MachineGraphic::on_event(KammoGUI::SVGCanvas::SVGDocument *sourc
 
 	double now_x = event.get_x();
 	double now_y = event.get_y();
-	
+
 	switch(event.get_action()) {
 	case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
 	case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
@@ -601,14 +603,14 @@ void Connector::MachineGraphic::on_event(KammoGUI::SVGCanvas::SVGDocument *sourc
 				ctx->deselect();
 			} else {
 				ctx->detailed_mode = !(ctx->detailed_mode);
-				
+
 				Transition *transition = new (std::nothrow) Transition(ctx, transition_progressed);
 				if(transition) {
 					source->start_animation(transition);
 				} else {
 					ctx->refresh_appearance(1.0); // skip to final state directly
 				}
-				
+
 				if(ctx->detailed_mode)
 					ctx->context->zoom_in_at(ctx->shared_from_this(), ctx->pos_x, ctx->pos_y);
 				else
@@ -620,7 +622,7 @@ void Connector::MachineGraphic::on_event(KammoGUI::SVGCanvas::SVGDocument *sourc
 			ctx->pos_y += (now_y - ctx->first_selection_y) / scaling;
 
 			ctx->machine->set_position(ctx->pos_x / MACHINE_POS_SCALING, ctx->pos_y / MACHINE_POS_SCALING);
-			
+
 			ctx->refresh_position(0.0, 0.0);
 		}
 		break;
@@ -632,14 +634,14 @@ void Connector::MachineGraphic::on_output_socket_event(KammoGUI::SVGCanvas::SVGD
 						       const KammoGUI::SVGCanvas::MotionEvent &event) {
 	if(event.get_action() == KammoGUI::SVGCanvas::MotionEvent::ACTION_UP) {
 		IOSocket *io_sock = (IOSocket *)e_ref;
-		
+
 		if(current_output) {
 			auto crnt = current_output->first.lock();
 			crnt->deselect();
 		}
-		
+
 		auto ownr = io_sock->owner->shared_from_this();
-		ownr->select(io_sock->name);	
+		ownr->select(io_sock->name);
 	}
 }
 
@@ -648,7 +650,7 @@ void Connector::MachineGraphic::on_input_socket_event(KammoGUI::SVGCanvas::SVGDo
 						      const KammoGUI::SVGCanvas::MotionEvent &event) {
 	if(event.get_action() == KammoGUI::SVGCanvas::MotionEvent::ACTION_UP) {
 		IOSocket *io_sock = (IOSocket *)e_ref;
-		
+
 		if(current_output) {
 			auto crnt = current_output->first.lock();
 
@@ -656,7 +658,7 @@ void Connector::MachineGraphic::on_input_socket_event(KammoGUI::SVGCanvas::SVGDo
 			auto d = io_sock->owner->get_ri_machine();
 
 			d->attach_input(s, current_output->second, io_sock->name);
-			
+
 			crnt->deselect();
 		}
 
@@ -674,13 +676,13 @@ std::shared_ptr<Connector::MachineGraphic> Connector::MachineGraphic::create(Con
 	KammoGUI::SVGCanvas::ElementReference connector_layer = KammoGUI::SVGCanvas::ElementReference(context, "connectorContainer");
 
 	(void) connector_layer.add_element_clone(id_stream.str(), graphic_template);
-	
+
 	auto retval = std::make_shared<MachineGraphic>(context, id_stream.str(), machine);
-	
+
 	machine->set_state_change_listener(retval);
 
 	mch2grph[machine] = retval;
-	
+
 	return retval;
 }
 
@@ -694,7 +696,7 @@ void Connector::MachineGraphic::show() {
 
 void Connector::MachineGraphic::leave_detailed_mode() {
 	detailed_mode = false;
-	
+
 	Transition *transition = new (std::nothrow) Transition(this, transition_progressed);
 	if(transition) {
 		context->start_animation(transition);
@@ -713,7 +715,7 @@ void Connector::MachineGraphic::animate_selection() {
 		if(auto mgfx = current_output->first.lock()) {
 			if(mgfx->selected_animation) {
 				KammoGUI::SVGCanvas::SVGMatrix transform_m = mgfx->selection_indicator_base_t;
-				
+
 				// rotate around center
 				transform_m.translate(-(250.0),
 						      -(250.0)
@@ -722,7 +724,7 @@ void Connector::MachineGraphic::animate_selection() {
 				transform_m.translate((250.0),
 						      (250.0)
 					);
-				
+
 				mgfx->find_child_by_class("selectedIndicator").set_transform(transform_m);
 			}
 		}
@@ -778,8 +780,8 @@ void Connector::on_render() {
 	transform_m.translate(base_translate_x - (pan_zoom_offset_x * pan_zoom_scale - pan_zoom_offset_x),
 			      base_translate_y - (pan_zoom_offset_y * pan_zoom_scale - pan_zoom_offset_y)
 		);
-	
-	// fetch the root and transform it	
+
+	// fetch the root and transform it
 	KammoGUI::SVGCanvas::ElementReference(this, "connectionContainer").set_transform(transform_m);
 	KammoGUI::SVGCanvas::ElementReference(this, "connectorContainer").set_transform(transform_m);
 
@@ -790,7 +792,7 @@ void Connector::on_resize() {
 	int canvas_w, canvas_h;
 	float canvas_w_inches, canvas_h_inches;
 	KammoGUI::SVGCanvas::SVGRect document_size;
-	
+
 	// get data
 	KammoGUI::SVGCanvas::ElementReference root(this);
 	root.get_viewport(document_size);
@@ -801,18 +803,18 @@ void Connector::on_resize() {
 		center_x = (double)canvas_w / 2.0;
 		center_y = (double)canvas_h / 2.0;
 	}
-	
+
 	{ // calculate transform for the connectorContainer part of the document
 		double tmp;
 
-		// calculate the width of the canvas in "fingers" 
+		// calculate the width of the canvas in "fingers"
 		tmp = canvas_w_inches / INCHES_PER_FINGER;
 		double canvas_width_fingers = tmp;
 
 		// calculate the size of a finger in pixels
 		tmp = canvas_w / (canvas_width_fingers);
 		double finger_width = tmp;
-				
+
 		// calculate initial scaling factor
 		old_scaling = scaling = (2.0 * finger_width) / (double)document_size.width;
 
@@ -849,7 +851,7 @@ bool Connector::on_scale_begin(KammoGUI::ScaleGestureDetector *detector) {
 	pan_zoom_offset_x = fc_x - center_x;
 	pan_zoom_offset_y = fc_y - center_y;
 	pan_zoom_scale = 1.0;
-	
+
 	return true;
 }
 
@@ -872,12 +874,12 @@ void Connector::on_pan_and_zoom_event(KammoGUI::SVGCanvas::SVGDocument *source,
 
 	if(auto selgraph = ctx->selected_graphic.lock()) {
 		ignore_scroll = true;
-	}	
-	
+	}
+
 	if((!(scroll_event)) && (!ignore_scroll)) {
 		double now_x = event.get_x();
 		double now_y = event.get_y();
-		
+
 		switch(event.get_action()) {
 		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
 		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
@@ -943,7 +945,7 @@ Connector::Connector(KammoGUI::SVGCanvas *cnvs) : SVGDocument(std::string(SVGLoa
 						  list_view(cnvs), pan_and_zoom(this, "panAndZoomSurface"), position_x(0.0), position_y(0.0), pan_zoom_offset_x(0.0), pan_zoom_offset_y(0.0), pan_zoom_scale(1.0), sgd(this) {
 
 	connection_list = std::make_shared<ConnectionList>(cnvs);
-	
+
 	// hide template graphics
 	KammoGUI::SVGCanvas::ElementReference(this, "machineGraphicTemplateContainer").set_display("none");
 
@@ -956,7 +958,7 @@ Connector::Connector(KammoGUI::SVGCanvas *cnvs) : SVGDocument(std::string(SVGLoa
 			for(auto handle2hint : RemoteInterface::HandleList::get_handles_and_hints()) {
 				list_view.add_row(handle2hint.first);
 			}
-	
+
 			list_view.select_from_list("Create new machine", this,
 						  [this](void *context, bool row_selected, int row_index, const std::string &text) {
 							  if(row_selected) {
@@ -977,7 +979,7 @@ Connector::Connector(KammoGUI::SVGCanvas *cnvs) : SVGDocument(std::string(SVGLoa
 				zoom_restore();
 			}
 		}
-		);	
+		);
 	trash_button.hide();
 
 	settings_button.set_select_callback(
@@ -1001,7 +1003,7 @@ Connector::Connector(KammoGUI::SVGCanvas *cnvs) : SVGDocument(std::string(SVGLoa
 				}
 			}
 		}
-		);	
+		);
 	settings_button.hide();
 }
 
@@ -1033,7 +1035,7 @@ void Connector::show_connection_list(double x_pos, double y_pos,
 
 void Connector::zoom_in_at(std::shared_ptr<MachineGraphic> new_selection, double x_pos, double y_pos) {
 	selected_graphic = new_selection;
-	
+
 	old_scaling = scaling;
 	ZoomTransition *transition = new (std::nothrow) ZoomTransition(this, zoom_callback, scaling,
 								       zoom_scaling,
@@ -1051,7 +1053,7 @@ void Connector::zoom_in_at(std::shared_ptr<MachineGraphic> new_selection, double
 	}
 
 	ConnectionGraphic::hide_all();
-	
+
 	plus_button.hide();
 	trash_button.show();
 	settings_button.show();
@@ -1059,7 +1061,7 @@ void Connector::zoom_in_at(std::shared_ptr<MachineGraphic> new_selection, double
 
 void Connector::zoom_restore() {
 	selected_graphic.reset();
-	
+
 	ZoomTransition *transition = new (std::nothrow) ZoomTransition(this, zoom_callback, scaling,
 								       old_scaling,
 								       position_x, position_y,
@@ -1086,7 +1088,7 @@ void Connector::ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine
 	if(ri_machine->get_machine_type() == "MachineSequencer") return; // we don't want to show the MachineSequencers in the connector view..
 
 	SATAN_DEBUG("---->     --- (%d) will create MachineGraphic for %s\n", gettid(), ri_machine->get_name().c_str());
-	  
+
 	KammoGUI::run_on_GUI_thread(
 		[this, ri_machine]() {
 			graphics.push_back(MachineGraphic::create(this, ri_machine));
@@ -1108,7 +1110,7 @@ void Connector::ri_machine_unregistered(std::shared_ptr<RemoteInterface::RIMachi
 					if(selected_graphic.lock() == (*iterator)) {
 						zoom_restore();
 					}
-					
+
 					ConnectionGraphic::machine_unregistered(*iterator);
 
 					iterator = graphics.erase(iterator);
@@ -1128,11 +1130,11 @@ void Connector::ri_machine_unregistered(std::shared_ptr<RemoteInterface::RIMachi
 KammoEventHandler_Declare(ConnectorHandler,"connector");
 
 virtual void on_init(KammoGUI::Widget *wid) {
-	KammoGUI::SVGCanvas *cnvs = (KammoGUI::SVGCanvas *)wid;		
+	KammoGUI::SVGCanvas *cnvs = (KammoGUI::SVGCanvas *)wid;
 	cnvs->set_bg_color(1.0, 1.0, 1.0);
 
 	static std::shared_ptr<Connector> connector_ui = std::make_shared<Connector>(cnvs);
-	RemoteInterface::Client::register_ri_machine_set_listener(connector_ui);
+	RemoteInterface::ClientSpace::Client::register_ri_machine_set_listener(connector_ui);
 }
 
 KammoEventHandler_Instance(ConnectorHandler);

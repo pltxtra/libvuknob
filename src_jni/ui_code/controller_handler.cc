@@ -55,6 +55,8 @@ using namespace std;
 
 #include "controller_handler.hh"
 
+#include "../engine_code/client.hh"
+
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
@@ -427,7 +429,7 @@ virtual void on_user_event(KammoGUI::UserEvent *ue, std::map<std::string, void *
 
 virtual void on_init(KammoGUI::Widget *wid) {
 	if(wid->get_id() == "cgroups") {
-		RemoteInterface::Client::register_ri_machine_set_listener(chndl);
+		RemoteInterface::ClientSpace::Client::register_ri_machine_set_listener(chndl);
 	}
 }
 
