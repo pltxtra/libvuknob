@@ -95,7 +95,7 @@ CLIENT_CODE(
 		case __MSG_CREATE_OBJECT:
 		{
 			SATAN_DEBUG("Client - Creating object from message...\n");
-			std::shared_ptr<BaseObject> new_obj = BaseObject::create_object_from_message(msg);
+			std::shared_ptr<BaseObject> new_obj = BaseObject::create_object_on_client(msg);
 			new_obj->set_context(this);
 
 			int32_t obj_id = new_obj->get_obj_id();

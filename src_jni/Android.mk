@@ -172,8 +172,8 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 
 LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 LOCAL_SRC_FILES := \
-engine_code/server.cc engine_code/server.hh \
-engine_code/sequence.cc engine_code/sequence.hh
+engine_code/sequence.cc engine_code/sequence.hh \
+engine_code/server.cc engine_code/server.hh
 
 LOCAL_LDLIBS += -ldl -llog
 LOCAL_SHARED_LIBRARIES := libvuknob

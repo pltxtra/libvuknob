@@ -80,8 +80,8 @@
 #define SERVER_CODE_END				\
 	}; }
 
-#define ON_SERVER(_A) _A
-#define ON_CLIENT(_A)
+#define ON_SERVER(...) __VA_ARGS__
+#define ON_CLIENT(...)
 
 #endif
 
@@ -113,14 +113,8 @@
 		__VA_ARGS__			\
 	}; }
 
-#define CLIENT_CODE_START			\
-	namespace RemoteInterface {		\
-	namespace ServerSpace {
-#define CLIENT_CODE_END				\
-	}; }
-
-#define ON_SERVER(_A)
-#define ON_CLIENT(_A) _A
+#define ON_SERVER(...)
+#define ON_CLIENT(...) __VA_ARGS__
 
 #endif
 
@@ -155,6 +149,11 @@ namespace RemoteInterface {
 	class MessageHandler;
 	class Context;
 	class BaseObject;
+
+	enum WhatSide {
+		ServerSide = 0x0010,
+		ClientSide = 0x0100
+	};
 
 	static inline std::string encode_byte_array(size_t len, const char *data) {
 		std::string result;
@@ -349,8 +348,11 @@ namespace RemoteInterface {
 	protected:
 		class Factory {
 		private:
+			void register_factory();
+
 			const char* type;
 			bool static_single_object;
+			int what_sides; // if this factory is ServerSide, ClientSide or both.
 
 		public:
 			class FactoryAlreadyCreated : public std::runtime_error {
@@ -368,6 +370,7 @@ namespace RemoteInterface {
 			};
 
 			Factory(const char* type, bool static_single_object = false);
+			Factory(WhatSide what_side, const char* type, bool static_single_object = false);
 			~Factory();
 
 			const char* get_type() const;
@@ -430,7 +433,7 @@ namespace RemoteInterface {
 		virtual void serialize(std::shared_ptr<Message> &target) = 0;
 		virtual void on_delete(Context* context) = 0; // called on client side when it's about to be deleted
 
-		static std::shared_ptr<BaseObject> create_object_from_message(const Message &msg);
+		static std::shared_ptr<BaseObject> create_object_on_client(const Message &msg);
 		static std::shared_ptr<BaseObject> create_object_on_server(int32_t new_obj_id, const std::string &type);
 
 		static void create_static_single_objects_on_server(
@@ -438,7 +441,8 @@ namespace RemoteInterface {
 			std::function<void(std::shared_ptr<BaseObject>)> new_obj_created);
 
 	private:
-		static std::map<std::string, Factory *> factories;
+		static std::map<std::string, Factory *> server_factories;
+		static std::map<std::string, Factory *> client_factories;
 
 		int32_t obj_id;
 

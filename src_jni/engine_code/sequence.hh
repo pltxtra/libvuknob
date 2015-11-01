@@ -25,11 +25,18 @@
 #include "../common.hh"
 #include "../remote_interface.hh"
 
+#ifdef __RI__SERVER_SIDE
+#include "../machine_sequencer.hh"
+#endif
+
 namespace RemoteInterface {
 	namespace __RI__CURRENT_NAMESPACE {
 
-		class Sequence : public RemoteInterface::SimpleBaseObject {
+		class Sequence
+			: public RemoteInterface::SimpleBaseObject {
 		public:
+			static constexpr const char* FACTORY_NAME		= "Sequence";
+
 			struct PatternInstance {
 				uint32_t pattern_id;
 				int start_at, loop_length, stop_at;
@@ -57,6 +64,11 @@ namespace RemoteInterface {
 					 int start_at, int length);
 			void get_notes(uint32_t pattern_id, std::list<Note> &storage);
 			void delete_note(uint32_t pattern_id, const Note& note);
+
+			Sequence(const Factory *factory, const RemoteInterface::Message &serialized);
+			Sequence(int32_t new_obj_id, const Factory *factory);
+
+			ON_SERVER(void init_from_machine_sequencer(MachineSequencer *m_seq));
 
 		private:
 			struct Pattern {
@@ -102,6 +114,19 @@ namespace RemoteInterface {
 				CLIENT_REG_HANDLER(Sequence,cmd_add_note);
 				CLIENT_REG_HANDLER(Sequence,cmd_del_note);
 			}
+
+		public:
+			class SequenceFactory
+				: public Factory
+			{
+			public:
+				ON_SERVER(SequenceFactory() : Factory(ServerSide, FACTORY_NAME) {});
+				ON_CLIENT(SequenceFactory() : Factory(ClientSide, FACTORY_NAME) {});
+				virtual std::shared_ptr<BaseObject> create(const Message &serialized) override;
+				virtual std::shared_ptr<BaseObject> create(int32_t new_obj_id) override;
+
+			};
+
 
 		};
 	};

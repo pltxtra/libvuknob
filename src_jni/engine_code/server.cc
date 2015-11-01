@@ -24,9 +24,11 @@
 #endif
 
 #include "server.hh"
+#include "sequence.hh"
 
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
+
 
 SERVER_CODE(
 
@@ -142,18 +144,45 @@ SERVER_CODE(
 				SATAN_DEBUG("RemoteInterface::ServerSpace::Server::machine_registered(%s) was registered\n", m_ptr->get_name().c_str());
 				std::string resp_msg;
 
-				try {
-					create_object_from_factory(__FCT_RIMACHINE,
-								   [this, m_ptr](std::shared_ptr<BaseObject> nuobj) {
-									   auto mch = std::dynamic_pointer_cast<RIMachine>(nuobj);
-									   mch->serverside_init_from_machine_ptr(m_ptr);
-									   SATAN_DEBUG("Serverside machine initiated.\n");
+				MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((m_ptr));
+				if(mseq != NULL) {
+					try {
+						create_object_from_factory(
+							ServerSpace::Sequence::FACTORY_NAME,
+							[this, mseq](std::shared_ptr<BaseObject> nuobj) {
+								auto seq =
+									std::dynamic_pointer_cast<
+									ServerSpace::Sequence>(nuobj);
+								seq->init_from_machine_sequencer(mseq)
+								SATAN_DEBUG("Serverside sequence initiated.\n");
 
-									   machine2rimachine[m_ptr] = mch;
-								   }
-						);
-				} catch(BaseObject::ObjIdOverflow &e) {
-					resp_msg = "Internal server error - Object ID overflow. Please restart session.";
+								machine2sequence[mseq] = seq;
+							}
+							);
+					} catch(BaseObject::ObjIdOverflow &e) {
+						resp_msg =
+							"Internal server error - Object ID overflow."
+							"Please restart session.";
+					}
+				}
+				if(resp_msg == "") {
+					try {
+						create_object_from_factory(
+							__FCT_RIMACHINE,
+							[this, m_ptr](std::shared_ptr<BaseObject> nuobj) {
+								auto mch = std::dynamic_pointer_cast<
+									RIMachine>(nuobj);
+								mch->serverside_init_from_machine_ptr(m_ptr);
+								SATAN_DEBUG("Serverside machine initiated.\n");
+
+								machine2rimachine[m_ptr] = mch;
+							}
+							);
+					} catch(BaseObject::ObjIdOverflow &e) {
+						resp_msg =
+							"Internal server error - Object ID overflow."
+							"Please restart session.";
+					}
 				}
 				if(resp_msg != "") {
 					std::shared_ptr<Message> response = server->acquire_message();
@@ -171,10 +200,19 @@ SERVER_CODE(
 
 			[this, m_ptr]()
 			{
-				auto mch = machine2rimachine.find(m_ptr);
-				if(mch != machine2rimachine.end()) {
-					delete_object(mch->second);
-					machine2rimachine.erase(mch);
+				MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((m_ptr));
+				if(mseq != NULL) {
+					auto seq = machine2sequence.find(mseq);
+					if(seq != machine2sequence.end()) {
+						delete_object(seq->second);
+						machine2sequence.erase(seq);
+					}
+				} else {
+					auto mch = machine2rimachine.find(m_ptr);
+					if(mch != machine2rimachine.end()) {
+						delete_object(mch->second);
+						machine2rimachine.erase(mch);
+					}
 				}
 				Machine::dereference_machine(m_ptr);
 			}
@@ -266,8 +304,10 @@ SERVER_CODE(
 				if (!ec) {
 					auto new_id = next_client_agent_id++;
 
-					std::shared_ptr<ClientAgent> new_client_agent = std::make_shared<ClientAgent>(new_id,
-														      std::move(acceptor_socket), this);
+					std::shared_ptr<ClientAgent> new_client_agent =
+						std::make_shared<ClientAgent>(new_id,
+									      std::move(acceptor_socket),
+									      this);
 
 					client_agents[new_id] = new_client_agent;
 

@@ -19,6 +19,9 @@
 
 #include "sequence.hh"
 
+#define __DO_SATAN_DEBUG
+#include "satan_debug.hh"
+
 SERVER_CODE(
 
 	static IDAllocator pattern_id_allocator;
@@ -83,6 +86,10 @@ SERVER_CODE(
 	void Sequence::handle_req_del_note(RemoteInterface::Context *context,
 					   RemoteInterface::MessageHandler *src,
 					   const RemoteInterface::Message& msg) {
+	}
+
+	void Sequence::init_from_machine_sequencer(MachineSequencer *m_seq) {
+
 	}
 
 	);
@@ -190,6 +197,28 @@ CLIENT_CODE(
 	);
 
 SERVER_N_CLIENT_CODE(
+
+	Sequence::Sequence(const Factory *factory, const RemoteInterface::Message &serialized)
+	: SimpleBaseObject(factory, serialized) {
+		register_handlers();
+		SATAN_DEBUG("Sequence() created client side.\n");
+	}
+
+	Sequence::Sequence(int32_t new_obj_id, const Factory *factory)
+	: SimpleBaseObject(new_obj_id, factory) {
+		register_handlers();
+		SATAN_DEBUG("Sequence() created server side.\n");
+	}
+
+	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(const Message &serialized) {
+		return std::make_shared<Sequence>(this, serialized);
+	}
+
+	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(int32_t new_obj_id) {
+		return std::make_shared<Sequence>(new_obj_id, this);
+	}
+
+	static Sequence::SequenceFactory this_will_register_us_as_a_factory;
 
 	ObjectAllocator<Sequence::Pattern> Sequence::pattern_allocator;
 	ObjectAllocator<Sequence::Note> Sequence::note_allocator;
