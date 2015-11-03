@@ -81,11 +81,12 @@ namespace Serialize {
 		void process(size_t array_size, ArrayT* elements);
 
 		template <typename SerializableT>
-		auto process(const SerializableT*& element)
-			-> void;
+		auto process(const SerializableT& element)
+			-> typename std::enable_if<std::is_pointer<SerializableT>::value>::type;
 
 		template <class ContainerT>
-		void process(const ContainerT &elements);
+		auto process(const ContainerT &elements)
+			-> typename std::enable_if<!std::is_pointer<ContainerT>::value>::type;
 
 		std::string result() {
 			return encode_string(result_stream.str());
@@ -107,7 +108,10 @@ namespace Serialize {
 		ItemSerializer subser;
 		t->serderize(subser);
 
-		result_stream << SerializableT::serialize_identifier << ";" << encode_string(subser.result()) << ";";
+		result_stream << SerializableT::serialize_identifier
+			      << ";"
+			      << encode_string(subser.result())
+			      << ";";
 	}
 
 	template <class ArrayT>
@@ -122,17 +126,20 @@ namespace Serialize {
 	}
 
 	template <typename SerializableT>
-	auto ItemSerializer::process(const SerializableT*& element)
-		-> void {
+	auto ItemSerializer::process(const SerializableT& element)
+		-> typename std::enable_if<std::is_pointer<SerializableT>::value>::type {
 		ItemSerializer subser;
 		element->serderize(subser);
 
-		result_stream << SerializableT::serialize_identifier << ";"
-			      << encode_string(subser.result()) << ";";
+		result_stream << std::remove_pointer<SerializableT>::type::serialize_identifier
+			      << ";"
+			      << encode_string(subser.result())
+			      << ";";
 	}
 
 	template <class ContainerT>
-	void ItemSerializer::process(const ContainerT &elements) {
+	auto ItemSerializer::process(const ContainerT &elements)
+		-> typename std::enable_if<!std::is_pointer<ContainerT>::value>::type {
 		ItemSerializer subser;
 
 		for(auto element : elements) {
@@ -239,11 +246,12 @@ namespace Serialize {
 		void process(size_t array_size, ArrayT* elements);
 
 		template <typename SerializableT>
-		auto process(SerializableT*& element)
-			-> void;
+		auto process(SerializableT& element)
+			-> typename std::enable_if<std::is_pointer<SerializableT>::value>::type;
 
 		template <class ContainerT>
-		void process(ContainerT &elements);
+		auto process(ContainerT &elements)
+			-> typename std::enable_if<!std::is_pointer<ContainerT>::value>::type;
 
 
 		bool eof() {
@@ -312,20 +320,21 @@ namespace Serialize {
 	}
 
 	template <typename SerializableT>
-	auto ItemDeserializer::process(SerializableT*& element)
-		-> void {
-		verify_type(SerializableT::serialize_identifier);
+	auto ItemDeserializer::process(SerializableT& element)
+		-> typename std::enable_if<std::is_pointer<SerializableT>::value>::type {
+		verify_type(std::remove_pointer<SerializableT>::type::serialize_identifier);
 
 		__ITD_GET_STRING(subserialized);
 
 		ItemDeserializer subdeser(decode_string(subserialized));
 
-		element = SerializableT::allocate();
+		element = std::remove_pointer<SerializableT>::type::allocate();
 		element->serderize(subdeser);
 	}
 
 	template <class ContainerT>
-	void ItemDeserializer::process(ContainerT &elements) {
+	auto ItemDeserializer::process(ContainerT &elements)
+		-> typename std::enable_if<!std::is_pointer<ContainerT>::value>::type {
 		typedef typename ContainerT::value_type ElementT;
 
 		verify_type("container");
