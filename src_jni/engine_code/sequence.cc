@@ -92,6 +92,12 @@ SERVER_CODE(
 
 	}
 
+	void Sequence::serialize(std::shared_ptr<Message> &target) {
+		Serialize::ItemSerializer iser;
+		serderize_sequence(iser);
+		target->set_value("sequence_data", iser.result());
+	}
+
 	);
 
 CLIENT_CODE(
@@ -197,10 +203,69 @@ CLIENT_CODE(
 	);
 
 SERVER_N_CLIENT_CODE(
+	template <class SerderClassT>
+	void Sequence::Note::serderize_single(Note *trgt, SerderClassT& iserder) {
+		iserder.process(trgt->note);
+		iserder.process(trgt->velocity);
+		iserder.process(trgt->start_at);
+		iserder.process(trgt->length);
+	}
+
+	template <class SerderClassT>
+	void Sequence::Note::serderize(SerderClassT& iserder) {
+		serderize_single(this, iserder);
+
+		Note **current_note = &(next_note);
+		bool has_next_note;
+		do {
+			has_next_note = (*current_note) != NULL;
+			iserder.process(has_next_note);
+			if(has_next_note) {
+				if((*current_note) == NULL)
+					(*current_note) = Note::allocate();
+				serderize_single((*current_note), iserder);
+				current_note = &((*current_note)->next_note);
+			}
+		} while(has_next_note);
+
+	}
+
+	Sequence::Note* Sequence::Note::allocate() {
+		auto retval = note_allocator.allocate();
+		retval->next_note = NULL;
+		return retval;
+	}
+
+	template <class SerderClassT>
+	void Sequence::Pattern::serderize(SerderClassT& iserder) {
+		iserder.process(id);
+		iserder.process(name);
+
+		bool has_note = first_note != NULL;
+
+		iserder.process(has_note);
+
+		if(has_note)
+			iserder.process(first_note);
+
+	}
+
+	Sequence::Pattern* Sequence::Pattern::allocate() {
+		return pattern_allocator.allocate();
+	}
+
+	template <class SerderClassT>
+	void Sequence::serderize_sequence(SerderClassT& iserder) {
+		iserder.process(patterns);
+	}
 
 	Sequence::Sequence(const Factory *factory, const RemoteInterface::Message &serialized)
 	: SimpleBaseObject(factory, serialized) {
 		register_handlers();
+
+		Serialize::ItemDeserializer serder(serialized.get_value("sequence_data"));
+		serderize_sequence(serder);
+
 		SATAN_DEBUG("Sequence() created client side.\n");
 	}
 

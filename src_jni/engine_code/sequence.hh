@@ -24,6 +24,7 @@
 
 #include "../common.hh"
 #include "../remote_interface.hh"
+#include "../serialize.hh"
 
 #ifdef __RI__SERVER_SIDE
 #include "../machine_sequencer.hh"
@@ -46,6 +47,12 @@ namespace RemoteInterface {
 				int note, velocity;
 				int start_at, length;
 				Note *next_note;
+
+				static constexpr const char* serialize_identifier = "SequenceNote";
+				template <class SerderClassT>
+				static void serderize_single(Note *trgt, SerderClassT& iserder);
+				template <class SerderClassT> void serderize(SerderClassT& iserder);
+				static Note* allocate();
 			};
 
 			void add_pattern(const std::string& name);
@@ -69,12 +76,17 @@ namespace RemoteInterface {
 			Sequence(int32_t new_obj_id, const Factory *factory);
 
 			ON_SERVER(void init_from_machine_sequencer(MachineSequencer *m_seq));
+			ON_SERVER(virtual void serialize(std::shared_ptr<Message> &target) override;);
 
 		private:
 			struct Pattern {
 				uint32_t id;
 				std::string name;
 				Note *first_note;
+
+				static constexpr const char* serialize_identifier = "SequencePattern";
+				template <class SerderClassT> void serderize(SerderClassT& iserder);
+				static Pattern* allocate();
 			};
 
 			static ObjectAllocator<Pattern> pattern_allocator;
@@ -114,6 +126,10 @@ namespace RemoteInterface {
 				CLIENT_REG_HANDLER(Sequence,cmd_add_note);
 				CLIENT_REG_HANDLER(Sequence,cmd_del_note);
 			}
+
+			// serder is an either an ItemSerializer or ItemDeserializer object.
+			template <class SerderClassT>
+			void serderize_sequence(SerderClassT &serder);
 
 		public:
 			class SequenceFactory
