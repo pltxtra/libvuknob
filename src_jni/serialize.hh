@@ -80,6 +80,10 @@ namespace Serialize {
 		template <class ArrayT>
 		void process(size_t array_size, ArrayT* elements);
 
+		template <typename SerializableT>
+		auto process(const SerializableT*& element)
+			-> void;
+
 		template <class ContainerT>
 		void process(const ContainerT &elements);
 
@@ -115,6 +119,16 @@ namespace Serialize {
 		}
 
 		result_stream << "array;" << encode_string(subser.result()) << ";";
+	}
+
+	template <typename SerializableT>
+	auto ItemSerializer::process(const SerializableT*& element)
+		-> void {
+		ItemSerializer subser;
+		element->serderize(subser);
+
+		result_stream << SerializableT::serialize_identifier << ";"
+			      << encode_string(subser.result()) << ";";
 	}
 
 	template <class ContainerT>
@@ -224,6 +238,10 @@ namespace Serialize {
 		template <class ArrayT>
 		void process(size_t array_size, ArrayT* elements);
 
+		template <typename SerializableT>
+		auto process(SerializableT*& element)
+			-> void;
+
 		template <class ContainerT>
 		void process(ContainerT &elements);
 
@@ -291,6 +309,19 @@ namespace Serialize {
 				/* ignore - this indicates end of contained data */
 			}
 		}
+	}
+
+	template <typename SerializableT>
+	auto ItemDeserializer::process(SerializableT*& element)
+		-> void {
+		verify_type(SerializableT::serialize_identifier);
+
+		__ITD_GET_STRING(subserialized);
+
+		ItemDeserializer subdeser(decode_string(subserialized));
+
+		element = SerializableT::allocate();
+		element->serderize(subdeser);
 	}
 
 	template <class ContainerT>
