@@ -62,6 +62,9 @@ namespace Serialize {
 	}
 
 	std::string encode_string(const std::string &uncoded) {
+		SATAN_DEBUG("encode_string() - uncoded size %d\n", uncoded.size());
+		if(uncoded.size() == 0) return std::string("<empty>");
+
 		char inp[uncoded.size() + 1];
 		(void) strncpy(inp, uncoded.c_str(), sizeof(inp));
 
