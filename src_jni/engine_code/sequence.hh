@@ -41,6 +41,7 @@ namespace RemoteInterface {
 			struct PatternInstance {
 				uint32_t pattern_id;
 				int start_at, loop_length, stop_at;
+				PatternInstance *next_instance;
 			};
 
 			struct Note {
@@ -90,9 +91,11 @@ namespace RemoteInterface {
 			};
 
 			static ObjectAllocator<Pattern> pattern_allocator;
+			static ObjectAllocator<PatternInstance> pattern_instance_allocator;
 			static ObjectAllocator<Note> note_allocator;
 
 			std::map<uint32_t, Pattern*> patterns;
+			PatternInstance *first_instance;
 
 			/* REQ means the client request the server to perform an operation */
 			/* CMD means the server commands the client to perform an operation */

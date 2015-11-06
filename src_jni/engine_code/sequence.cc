@@ -26,10 +26,7 @@ SERVER_CODE(
 
 	static IDAllocator pattern_id_allocator;
 
-	void Sequence::handle_req_add_pattern(RemoteInterface::Context *context,
-					      RemoteInterface::MessageHandler *src,
-					      const RemoteInterface::Message& msg) {
-		auto new_name = msg.get_value("name");
+	void Sequence::add_pattern(const std::string& new_name) {
 		auto new_id = pattern_id_allocator.get_id();
 		auto ptrn = pattern_allocator.allocate();
 
@@ -48,10 +45,7 @@ SERVER_CODE(
 			);
 	}
 
-	void Sequence::handle_req_del_pattern(RemoteInterface::Context *context,
-					      RemoteInterface::MessageHandler *src,
-					      const RemoteInterface::Message& msg) {
-		auto pattern_id = std::stol(msg.get_value("pattern_id"));
+	void Sequence::delete_pattern(uint32_t pattern_id) {
 		auto ptrn_itr = patterns.find(pattern_id);
 
 		if(ptrn_itr != patterns.end()) {
@@ -68,9 +62,99 @@ SERVER_CODE(
 		}
 	}
 
+	void Sequence::insert_pattern_in_sequence(uint32_t pattern_id,
+						  int start_at,
+						  int loop_length,
+						  int stop_at) {
+		if(stop_at - start_at <= 0) return;
+
+		auto ptrn_itr = patterns.find(pattern_id);
+
+		if(ptrn_itr != patterns.end()) {
+
+			// don't add overlapping
+			auto c_inst = first_instance;
+			while(c_inst != NULL) {
+				if(
+					(
+						c_inst->start_at >= start_at
+						&&
+						c_inst->start_at <= stop_at
+						)
+					||
+					(
+						c_inst->stop_at >= start_at
+						&&
+						c_inst->stop_at <= stop_at
+						)
+					) {
+					// can't do - overlapping
+					return;
+				}
+				c_inst = c_inst->next_instance;
+			}
+
+			// create instance
+			auto new_instance = pattern_instance_allocator.allocate();
+			new_instance->pattern_id = pattern_id;
+			new_instance->start_at = start_at;
+			new_instance->loop_length = loop_length;
+			new_instance->stop_at = stop_at;
+			new_instance->next_instance = NULL;
+
+			// insert in chain
+			if(first_instance == NULL || new_instance->start_at < first_instance->start_at) {
+				new_instance->next_instance = first_instance;
+				first_instance = new_instance;
+			} else {
+				auto this_instance = first_instance;
+				while(this_instance->next_instance != NULL &&
+				      this_instance->next_instance->start_at < new_instance->start_at) {
+					this_instance = this_instance->next_instance;
+				}
+				new_instance->next_instance = this_instance->next_instance;
+				this_instance->next_instance = new_instance;
+
+			}
+
+			// tell all clients to add it
+			send_message(
+				cmd_add_pattern_instance,
+				[pattern_id, start_at,
+				 loop_length, stop_at](std::shared_ptr<Message> &msg_to_send) {
+					msg_to_send->set_value("pattern_id", std::to_string(pattern_id));
+					msg_to_send->set_value("start_at", std::to_string(start_at));
+					msg_to_send->set_value("loop_length", std::to_string(loop_length));
+					msg_to_send->set_value("stop_at", std::to_string(stop_at));
+				}
+				);
+		}
+	}
+
+	void Sequence::handle_req_add_pattern(RemoteInterface::Context *context,
+					      RemoteInterface::MessageHandler *src,
+					      const RemoteInterface::Message& msg) {
+		add_pattern(msg.get_value("name"));
+	}
+
+	void Sequence::handle_req_del_pattern(RemoteInterface::Context *context,
+					      RemoteInterface::MessageHandler *src,
+					      const RemoteInterface::Message& msg) {
+		delete_pattern((uint32_t)(std::stol(msg.get_value("pattern_id"))));
+	}
+
 	void Sequence::handle_req_add_pattern_instance(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
+		uint32_t pattern_id = std::stol(msg.get_value("pattern_id"));
+		int start_at = std::stol(msg.get_value("start_at"));
+		int loop_length = std::stol(msg.get_value("loop_length"));
+		int stop_at = std::stol(msg.get_value("stop_at"));
+		insert_pattern_in_sequence(pattern_id,
+					   start_at,
+					   loop_length,
+					   stop_at);
+
 	}
 
 	void Sequence::handle_req_del_pattern_instance(RemoteInterface::Context *context,
@@ -286,6 +370,7 @@ SERVER_N_CLIENT_CODE(
 	static Sequence::SequenceFactory this_will_register_us_as_a_factory;
 
 	ObjectAllocator<Sequence::Pattern> Sequence::pattern_allocator;
+	ObjectAllocator<Sequence::PatternInstance> Sequence::pattern_instance_allocator;
 	ObjectAllocator<Sequence::Note> Sequence::note_allocator;
 
 	);
