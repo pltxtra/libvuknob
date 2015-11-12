@@ -42,6 +42,19 @@ namespace RemoteInterface {
 				uint32_t pattern_id;
 				int start_at, loop_length, stop_at;
 				PatternInstance *next_instance;
+
+				inline bool operator==(const PatternInstance& rhs) const {
+					bool a = pattern_id == rhs.pattern_id;
+					bool b = start_at == rhs.start_at;
+					bool c = start_at == rhs.start_at;
+					bool d = stop_at == rhs.stop_at;
+					return a && b && c && d;
+				}
+
+				inline bool operator!=(const PatternInstance& rhs) const {
+					return !(*this == rhs);
+				}
+
 			};
 
 			struct Note {

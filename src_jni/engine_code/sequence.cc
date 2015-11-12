@@ -131,6 +131,49 @@ SERVER_CODE(
 		}
 	}
 
+	void Sequence::delete_pattern_from_sequence(const PatternInstance& pattern_instance) {
+		if(first_instance == NULL) return;
+
+		// find match in chain
+		if(pattern_instance == *first_instance) {
+			auto recycle_instance = first_instance;
+			first_instance = first_instance->next_instance;
+			pattern_instance_allocator.recycle(recycle_instance);
+		} else {
+			auto this_instance = first_instance;
+			while(this_instance->next_instance != NULL &&
+			      *(this_instance->next_instance) != pattern_instance) {
+				this_instance = this_instance->next_instance;
+			}
+			if(this_instance &&
+			   this_instance->next_instance &&
+			   *(this_instance->next_instance) == pattern_instance) {
+				auto next = this_instance->next_instance;
+				this_instance->next_instance = next->next_instance;
+				pattern_instance_allocator.recycle(next);
+			}
+		}
+
+		// tell all clients to delete it
+		send_message(
+			cmd_del_pattern_instance,
+			[pattern_instance](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value(
+					"pattern_id",
+					std::to_string(pattern_instance.pattern_id));
+				msg_to_send->set_value(
+					"start_at",
+					std::to_string(pattern_instance.start_at));
+				msg_to_send->set_value(
+					"loop_length",
+					std::to_string(pattern_instance.loop_length));
+				msg_to_send->set_value(
+					"stop_at",
+					std::to_string(pattern_instance.stop_at));
+			}
+			);
+	}
+
 	void Sequence::handle_req_add_pattern(RemoteInterface::Context *context,
 					      RemoteInterface::MessageHandler *src,
 					      const RemoteInterface::Message& msg) {
@@ -140,13 +183,13 @@ SERVER_CODE(
 	void Sequence::handle_req_del_pattern(RemoteInterface::Context *context,
 					      RemoteInterface::MessageHandler *src,
 					      const RemoteInterface::Message& msg) {
-		delete_pattern((uint32_t)(std::stol(msg.get_value("pattern_id"))));
+		delete_pattern((uint32_t)(std::stoul(msg.get_value("pattern_id"))));
 	}
 
 	void Sequence::handle_req_add_pattern_instance(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
-		uint32_t pattern_id = std::stol(msg.get_value("pattern_id"));
+		uint32_t pattern_id = std::stoul(msg.get_value("pattern_id"));
 		int start_at = std::stol(msg.get_value("start_at"));
 		int loop_length = std::stol(msg.get_value("loop_length"));
 		int stop_at = std::stol(msg.get_value("stop_at"));
@@ -154,12 +197,20 @@ SERVER_CODE(
 					   start_at,
 					   loop_length,
 					   stop_at);
-
 	}
 
 	void Sequence::handle_req_del_pattern_instance(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
+		PatternInstance to_del = {
+			.pattern_id = std::stoul(msg.get_value("pattern_id")),
+			.start_at = std::stol(msg.get_value("start_at")),
+			.loop_length = std::stol(msg.get_value("loop_length")),
+			.stop_at = std::stol(msg.get_value("stop_at")),
+			.next_instance = NULL,
+		};
+
+		delete_pattern_from_sequence(to_del);
 	}
 
 	void Sequence::handle_req_add_note(RemoteInterface::Context *context,
@@ -190,7 +241,7 @@ CLIENT_CODE(
 					      RemoteInterface::MessageHandler *src,
 					      const RemoteInterface::Message& msg) {
 		auto new_name = msg.get_value("name");
-		auto new_id = std::stol(msg.get_value("pattern_id"));
+		auto new_id = std::stoul(msg.get_value("pattern_id"));
 		auto ptrn = pattern_allocator.allocate();
 
 		ptrn->id = new_id;
@@ -203,7 +254,7 @@ CLIENT_CODE(
 	void Sequence::handle_cmd_del_pattern(RemoteInterface::Context *context,
 					      RemoteInterface::MessageHandler *src,
 					      const RemoteInterface::Message& msg) {
-		auto pattern_id = std::stol(msg.get_value("pattern_id"));
+		auto pattern_id = std::stoul(msg.get_value("pattern_id"));
 		auto ptrn_itr = patterns.find(pattern_id);
 
 		if(ptrn_itr != patterns.end()) {
