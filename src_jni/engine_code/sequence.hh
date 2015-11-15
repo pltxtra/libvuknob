@@ -23,6 +23,7 @@
 #include <list>
 
 #include "../common.hh"
+#include "../linked_list.hh"
 #include "../remote_interface.hh"
 #include "../serialize.hh"
 
@@ -41,7 +42,8 @@ namespace RemoteInterface {
 			struct PatternInstance {
 				uint32_t pattern_id;
 				int start_at, loop_length, stop_at;
-				PatternInstance *next_instance;
+
+				PatternInstance *next; // to support class LinkedList<T>
 
 				inline bool operator==(const PatternInstance& rhs) const {
 					bool a = pattern_id == rhs.pattern_id;
@@ -55,18 +57,52 @@ namespace RemoteInterface {
 					return !(*this == rhs);
 				}
 
+				inline bool operator<(const PatternInstance& rhs) const {
+					return start_at < rhs.start_at;
+				}
+
+				inline bool operator>(const PatternInstance& rhs) const {
+					return rhs < *this;
+				}
+
 			};
 
 			struct Note {
-				int note, velocity;
-				int start_at, length;
-				Note *next_note;
+				int channel, // only values that are within (channel & 0x0f)
+				    program, // only values that are within (program & 0x7f)
+				    velocity,// only values that are within (velocity & 0x7f)
+				    note;    // only values that are within (note & 0x7f)
+				int on_at, length;
+
+				Note *next; // to support class LinkedList<T>
 
 				static constexpr const char* serialize_identifier = "SequenceNote";
 				template <class SerderClassT>
 				static void serderize_single(Note *trgt, SerderClassT& iserder);
 				template <class SerderClassT> void serderize(SerderClassT& iserder);
 				static Note* allocate();
+
+				inline bool operator==(const Note& rhs) const {
+					bool a = channel == rhs.channel;
+					bool b = program == rhs.program;
+					bool c = velocity == rhs.velocity;
+					bool d = note == rhs.note;
+					bool e = on_at == rhs.on_at;
+					bool f = length == rhs.length;
+					return a && b && c && d && e && f;
+				}
+
+				inline bool operator!=(const Note& rhs) const {
+					return !(*this == rhs);
+				}
+
+				inline bool operator<(const Note& rhs) const {
+					return on_at < rhs.on_at;
+				}
+
+				inline bool operator>(const Note& rhs) const {
+					return rhs < *this;
+				}
 			};
 
 			void add_pattern(const std::string& name);
@@ -96,7 +132,7 @@ namespace RemoteInterface {
 			struct Pattern {
 				uint32_t id;
 				std::string name;
-				Note *first_note;
+				LinkedList<Note> note_list;
 
 				static constexpr const char* serialize_identifier = "SequencePattern";
 				template <class SerderClassT> void serderize(SerderClassT& iserder);
@@ -107,8 +143,9 @@ namespace RemoteInterface {
 			static ObjectAllocator<PatternInstance> pattern_instance_allocator;
 			static ObjectAllocator<Note> note_allocator;
 
+			ON_SERVER(MachineSequencer* m_seq);
 			std::map<uint32_t, Pattern*> patterns;
-			PatternInstance *first_instance;
+			LinkedList<PatternInstance> instance_list;
 
 			/* REQ means the client request the server to perform an operation */
 			/* CMD means the server commands the client to perform an operation */

@@ -32,7 +32,6 @@ SERVER_CODE(
 
 		ptrn->id = new_id;
 		ptrn->name = new_name;
-		ptrn->first_note = NULL;
 
 		patterns[ptrn->id] = ptrn;
 
@@ -50,6 +49,12 @@ SERVER_CODE(
 
 		if(ptrn_itr != patterns.end()) {
 			pattern_id_allocator.free_id(ptrn_itr->second->id);
+			ptrn_itr->second->note_list.clear(
+				[](Note* note2drop) {
+					note_allocator.recycle(note2drop);
+				}
+			);
+
 			pattern_allocator.recycle(ptrn_itr->second);
 			patterns.erase(ptrn_itr);
 
@@ -71,28 +76,31 @@ SERVER_CODE(
 		auto ptrn_itr = patterns.find(pattern_id);
 
 		if(ptrn_itr != patterns.end()) {
-
-			// don't add overlapping
-			auto c_inst = first_instance;
-			while(c_inst != NULL) {
-				if(
+			bool did_overlap = false;
+			instance_list.for_each(
+				[&did_overlap, start_at, loop_length, stop_at]
+				(PatternInstance* _pin) {
+					if(
 					(
-						c_inst->start_at >= start_at
+						_pin->start_at >= start_at
 						&&
-						c_inst->start_at <= stop_at
+						_pin->start_at <= stop_at
 						)
 					||
 					(
-						c_inst->stop_at >= start_at
+						_pin->stop_at >= start_at
 						&&
-						c_inst->stop_at <= stop_at
+						_pin->stop_at <= stop_at
 						)
 					) {
 					// can't do - overlapping
-					return;
+						did_overlap = true;
+					}
 				}
-				c_inst = c_inst->next_instance;
-			}
+				);
+
+			if(did_overlap)
+				return;	// can't do - overlapping
 
 			// create instance
 			auto new_instance = pattern_instance_allocator.allocate();
@@ -100,22 +108,10 @@ SERVER_CODE(
 			new_instance->start_at = start_at;
 			new_instance->loop_length = loop_length;
 			new_instance->stop_at = stop_at;
-			new_instance->next_instance = NULL;
+			new_instance->next = NULL;
 
-			// insert in chain
-			if(first_instance == NULL || new_instance->start_at < first_instance->start_at) {
-				new_instance->next_instance = first_instance;
-				first_instance = new_instance;
-			} else {
-				auto this_instance = first_instance;
-				while(this_instance->next_instance != NULL &&
-				      this_instance->next_instance->start_at < new_instance->start_at) {
-					this_instance = this_instance->next_instance;
-				}
-				new_instance->next_instance = this_instance->next_instance;
-				this_instance->next_instance = new_instance;
-
-			}
+			// insert in list
+			instance_list.insert_element(new_instance);
 
 			// tell all clients to add it
 			send_message(
@@ -132,27 +128,12 @@ SERVER_CODE(
 	}
 
 	void Sequence::delete_pattern_from_sequence(const PatternInstance& pattern_instance) {
-		if(first_instance == NULL) return;
-
-		// find match in chain
-		if(pattern_instance == *first_instance) {
-			auto recycle_instance = first_instance;
-			first_instance = first_instance->next_instance;
-			pattern_instance_allocator.recycle(recycle_instance);
-		} else {
-			auto this_instance = first_instance;
-			while(this_instance->next_instance != NULL &&
-			      *(this_instance->next_instance) != pattern_instance) {
-				this_instance = this_instance->next_instance;
+		instance_list.drop_element(
+			&pattern_instance,
+			[](PatternInstance* _pin) {
+				pattern_instance_allocator.recycle(_pin);
 			}
-			if(this_instance &&
-			   this_instance->next_instance &&
-			   *(this_instance->next_instance) == pattern_instance) {
-				auto next = this_instance->next_instance;
-				this_instance->next_instance = next->next_instance;
-				pattern_instance_allocator.recycle(next);
-			}
-		}
+			);
 
 		// tell all clients to delete it
 		send_message(
@@ -207,7 +188,7 @@ SERVER_CODE(
 			.start_at = std::stol(msg.get_value("start_at")),
 			.loop_length = std::stol(msg.get_value("loop_length")),
 			.stop_at = std::stol(msg.get_value("stop_at")),
-			.next_instance = NULL,
+			.next = NULL,
 		};
 
 		delete_pattern_from_sequence(to_del);
@@ -223,8 +204,8 @@ SERVER_CODE(
 					   const RemoteInterface::Message& msg) {
 	}
 
-	void Sequence::init_from_machine_sequencer(MachineSequencer *m_seq) {
-
+	void Sequence::init_from_machine_sequencer(MachineSequencer *__m_seq) {
+		m_seq = __m_seq;
 	}
 
 	void Sequence::serialize(std::shared_ptr<Message> &target) {
@@ -246,7 +227,6 @@ CLIENT_CODE(
 
 		ptrn->id = new_id;
 		ptrn->name = new_name;
-		ptrn->first_note = NULL;
 
 		patterns[ptrn->id] = ptrn;
 	}
@@ -258,6 +238,11 @@ CLIENT_CODE(
 		auto ptrn_itr = patterns.find(pattern_id);
 
 		if(ptrn_itr != patterns.end()) {
+			ptrn_itr->second->note_list.clear(
+				[](Note* to_drop) {
+					note_allocator.recycle(to_drop);
+				}
+				);
 			pattern_allocator.recycle(ptrn_itr->second);
 			patterns.erase(ptrn_itr);
 		}
@@ -340,9 +325,11 @@ CLIENT_CODE(
 SERVER_N_CLIENT_CODE(
 	template <class SerderClassT>
 	void Sequence::Note::serderize_single(Note *trgt, SerderClassT& iserder) {
-		iserder.process(trgt->note);
+		iserder.process(trgt->channel);
+		iserder.process(trgt->program);
 		iserder.process(trgt->velocity);
-		iserder.process(trgt->start_at);
+		iserder.process(trgt->note);
+		iserder.process(trgt->on_at);
 		iserder.process(trgt->length);
 	}
 
@@ -350,7 +337,7 @@ SERVER_N_CLIENT_CODE(
 	void Sequence::Note::serderize(SerderClassT& iserder) {
 		serderize_single(this, iserder);
 
-		Note **current_note = &(next_note);
+		Note **current_note = &(next);
 		bool has_next_note;
 		do {
 			has_next_note = (*current_note) != NULL;
@@ -359,7 +346,7 @@ SERVER_N_CLIENT_CODE(
 				if((*current_note) == NULL)
 					(*current_note) = Note::allocate();
 				serderize_single((*current_note), iserder);
-				current_note = &((*current_note)->next_note);
+				current_note = &((*current_note)->next);
 			}
 		} while(has_next_note);
 
@@ -367,7 +354,7 @@ SERVER_N_CLIENT_CODE(
 
 	Sequence::Note* Sequence::Note::allocate() {
 		auto retval = note_allocator.allocate();
-		retval->next_note = NULL;
+		retval->next = NULL;
 		return retval;
 	}
 
@@ -376,12 +363,12 @@ SERVER_N_CLIENT_CODE(
 		iserder.process(id);
 		iserder.process(name);
 
-		bool has_note = first_note != NULL;
+		bool has_note = note_list.head != NULL;
 
 		iserder.process(has_note);
 
 		if(has_note)
-			iserder.process(first_note);
+			iserder.process(note_list.head);
 
 	}
 
