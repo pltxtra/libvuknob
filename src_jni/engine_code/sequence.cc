@@ -28,12 +28,8 @@ SERVER_CODE(
 
 	void Sequence::add_pattern(const std::string& new_name) {
 		auto new_id = pattern_id_allocator.get_id();
-		auto ptrn = pattern_allocator.allocate();
 
-		ptrn->id = new_id;
-		ptrn->name = new_name;
-
-		patterns[ptrn->id] = ptrn;
+		process_add_pattern(new_name, new_id);
 
 		send_message(
 			cmd_add_pattern,
@@ -45,18 +41,8 @@ SERVER_CODE(
 	}
 
 	void Sequence::delete_pattern(uint32_t pattern_id) {
-		auto ptrn_itr = patterns.find(pattern_id);
-
-		if(ptrn_itr != patterns.end()) {
-			pattern_id_allocator.free_id(ptrn_itr->second->id);
-			ptrn_itr->second->note_list.clear(
-				[](Note* note2drop) {
-					note_allocator.recycle(note2drop);
-				}
-			);
-
-			pattern_allocator.recycle(ptrn_itr->second);
-			patterns.erase(ptrn_itr);
+		if(process_del_pattern(pattern_id)) {
+			pattern_id_allocator.free_id(pattern_id);
 
 			send_message(
 				cmd_del_pattern,
@@ -71,48 +57,7 @@ SERVER_CODE(
 						  int start_at,
 						  int loop_length,
 						  int stop_at) {
-		if(stop_at - start_at <= 0) return;
-
-		auto ptrn_itr = patterns.find(pattern_id);
-
-		if(ptrn_itr != patterns.end()) {
-			bool did_overlap = false;
-			instance_list.for_each(
-				[&did_overlap, start_at, loop_length, stop_at]
-				(PatternInstance* _pin) {
-					if(
-					(
-						_pin->start_at >= start_at
-						&&
-						_pin->start_at <= stop_at
-						)
-					||
-					(
-						_pin->stop_at >= start_at
-						&&
-						_pin->stop_at <= stop_at
-						)
-					) {
-					// can't do - overlapping
-						did_overlap = true;
-					}
-				}
-				);
-
-			if(did_overlap)
-				return;	// can't do - overlapping
-
-			// create instance
-			auto new_instance = pattern_instance_allocator.allocate();
-			new_instance->pattern_id = pattern_id;
-			new_instance->start_at = start_at;
-			new_instance->loop_length = loop_length;
-			new_instance->stop_at = stop_at;
-			new_instance->next = NULL;
-
-			// insert in list
-			instance_list.insert_element(new_instance);
-
+		if(process_add_pattern_instance(pattern_id, start_at, loop_length, stop_at)) {
 			// tell all clients to add it
 			send_message(
 				cmd_add_pattern_instance,
@@ -128,12 +73,7 @@ SERVER_CODE(
 	}
 
 	void Sequence::delete_pattern_from_sequence(const PatternInstance& pattern_instance) {
-		instance_list.drop_element(
-			&pattern_instance,
-			[](PatternInstance* _pin) {
-				pattern_instance_allocator.recycle(_pin);
-			}
-			);
+		process_del_pattern_instance(pattern_instance);
 
 		// tell all clients to delete it
 		send_message(
@@ -155,6 +95,83 @@ SERVER_CODE(
 			);
 	}
 
+
+	void Sequence::add_note(
+		uint32_t pattern_id,
+		int channel, int program, int velocity,
+		int note, int on_at, int length
+		) {
+		process_add_note(
+			pattern_id,
+			channel, program, velocity,
+			note, on_at, length);
+
+		send_message(
+			cmd_add_note,
+			[pattern_id,
+			 channel, program,
+			 velocity, note,
+			 on_at, length](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value(
+					"pattern_id",
+					std::to_string(pattern_id));
+				msg_to_send->set_value(
+					"channel",
+					std::to_string(channel));
+				msg_to_send->set_value(
+					"program",
+					std::to_string(program));
+				msg_to_send->set_value(
+					"velocity",
+					std::to_string(velocity));
+				msg_to_send->set_value(
+					"note",
+					std::to_string(note));
+				msg_to_send->set_value(
+					"on_at",
+					std::to_string(on_at));
+				msg_to_send->set_value(
+					"length",
+					std::to_string(length));
+			}
+			);
+	}
+
+	void Sequence::delete_note(
+		uint32_t pattern_id,
+		const Note& note
+		) {
+		process_delete_note(pattern_id, note);
+
+		// tell all clients to delete it
+		send_message(
+			cmd_del_pattern_instance,
+			[pattern_id, note](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value(
+					"pattern_id",
+					std::to_string(pattern_id));
+				msg_to_send->set_value(
+					"channel",
+					std::to_string(note.channel));
+				msg_to_send->set_value(
+					"program",
+					std::to_string(note.program));
+				msg_to_send->set_value(
+					"velocity",
+					std::to_string(note.velocity));
+				msg_to_send->set_value(
+					"note",
+					std::to_string(note.note));
+				msg_to_send->set_value(
+					"on_at",
+					std::to_string(note.on_at));
+				msg_to_send->set_value(
+					"length",
+					std::to_string(note.length));
+			}
+			);
+	}
+
 	void Sequence::handle_req_add_pattern(RemoteInterface::Context *context,
 					      RemoteInterface::MessageHandler *src,
 					      const RemoteInterface::Message& msg) {
@@ -171,9 +188,9 @@ SERVER_CODE(
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
 		uint32_t pattern_id = std::stoul(msg.get_value("pattern_id"));
-		int start_at = std::stol(msg.get_value("start_at"));
-		int loop_length = std::stol(msg.get_value("loop_length"));
-		int stop_at = std::stol(msg.get_value("stop_at"));
+		int start_at = std::stoi(msg.get_value("start_at"));
+		int loop_length = std::stoi(msg.get_value("loop_length"));
+		int stop_at = std::stoi(msg.get_value("stop_at"));
 		insert_pattern_in_sequence(pattern_id,
 					   start_at,
 					   loop_length,
@@ -185,9 +202,9 @@ SERVER_CODE(
 						       const RemoteInterface::Message& msg) {
 		PatternInstance to_del = {
 			.pattern_id = std::stoul(msg.get_value("pattern_id")),
-			.start_at = std::stol(msg.get_value("start_at")),
-			.loop_length = std::stol(msg.get_value("loop_length")),
-			.stop_at = std::stol(msg.get_value("stop_at")),
+			.start_at = std::stoi(msg.get_value("start_at")),
+			.loop_length = std::stoi(msg.get_value("loop_length")),
+			.stop_at = std::stoi(msg.get_value("stop_at")),
 			.next = NULL,
 		};
 
@@ -197,11 +214,31 @@ SERVER_CODE(
 	void Sequence::handle_req_add_note(RemoteInterface::Context *context,
 					   RemoteInterface::MessageHandler *src,
 					   const RemoteInterface::Message& msg) {
+
+		add_note(
+			std::stoul(msg.get_value("pattern_id")),
+			std::stoi(msg.get_value("channel")),
+			std::stoi(msg.get_value("program")),
+			std::stoi(msg.get_value("velocity")),
+			std::stoi(msg.get_value("note")),
+			std::stoi(msg.get_value("on_at")),
+			std::stoi(msg.get_value("length"))
+			);
 	}
 
 	void Sequence::handle_req_del_note(RemoteInterface::Context *context,
 					   RemoteInterface::MessageHandler *src,
 					   const RemoteInterface::Message& msg) {
+		Note note_to_delete =
+		{
+			.channel = std::stoi(msg.get_value("channel")),
+			.program = std::stoi(msg.get_value("program")),
+			.velocity = std::stoi(msg.get_value("velocity")),
+			.note = std::stoi(msg.get_value("note")),
+			.on_at = std::stoi(msg.get_value("on_at")),
+			.length = std::stoi(msg.get_value("length"))
+		};
+		delete_note(std::stoul(msg.get_value("pattern_id")), note_to_delete);
 	}
 
 	void Sequence::init_from_machine_sequencer(MachineSequencer *__m_seq) {
@@ -223,49 +260,73 @@ CLIENT_CODE(
 					      const RemoteInterface::Message& msg) {
 		auto new_name = msg.get_value("name");
 		auto new_id = std::stoul(msg.get_value("pattern_id"));
-		auto ptrn = pattern_allocator.allocate();
 
-		ptrn->id = new_id;
-		ptrn->name = new_name;
-
-		patterns[ptrn->id] = ptrn;
+		process_add_pattern(new_name, new_id);
 	}
 
 	void Sequence::handle_cmd_del_pattern(RemoteInterface::Context *context,
 					      RemoteInterface::MessageHandler *src,
 					      const RemoteInterface::Message& msg) {
 		auto pattern_id = std::stoul(msg.get_value("pattern_id"));
-		auto ptrn_itr = patterns.find(pattern_id);
 
-		if(ptrn_itr != patterns.end()) {
-			ptrn_itr->second->note_list.clear(
-				[](Note* to_drop) {
-					note_allocator.recycle(to_drop);
-				}
-				);
-			pattern_allocator.recycle(ptrn_itr->second);
-			patterns.erase(ptrn_itr);
-		}
+		(void) process_del_pattern(pattern_id);
 	}
 
 	void Sequence::handle_cmd_add_pattern_instance(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
+		auto pattern_id = std::stoul(msg.get_value("pattern_id"));
+		auto start_at = std::stoi(msg.get_value("start_at"));
+		auto loop_length = std::stoi(msg.get_value("loop_length"));
+		auto stop_at = std::stoi(msg.get_value("stop_at"));
+
+		(void) process_add_pattern_instance(pattern_id, start_at, loop_length, stop_at);
 	}
 
 	void Sequence::handle_cmd_del_pattern_instance(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
+		PatternInstance to_del = {
+			.pattern_id = std::stoul(msg.get_value("pattern_id")),
+			.start_at = std::stoi(msg.get_value("start_at")),
+			.loop_length = std::stoi(msg.get_value("loop_length")),
+			.stop_at = std::stoi(msg.get_value("stop_at")),
+			.next = NULL,
+		};
+
+		process_del_pattern_instance(to_del);
 	}
 
 	void Sequence::handle_cmd_add_note(RemoteInterface::Context *context,
 					   RemoteInterface::MessageHandler *src,
 					   const RemoteInterface::Message& msg) {
+		process_add_note(
+			std::stoul(msg.get_value("pattern_id")),
+			std::stoi(msg.get_value("channel")),
+			std::stoi(msg.get_value("program")),
+			std::stoi(msg.get_value("velocity")),
+			std::stoi(msg.get_value("note")),
+			std::stoi(msg.get_value("on_at")),
+			std::stoi(msg.get_value("length"))
+			);
 	}
 
 	void Sequence::handle_cmd_del_note(RemoteInterface::Context *context,
 					   RemoteInterface::MessageHandler *src,
 					   const RemoteInterface::Message& msg) {
+		Note note_to_delete =
+		{
+			.channel = std::stoi(msg.get_value("channel")),
+			.program = std::stoi(msg.get_value("program")),
+			.velocity = std::stoi(msg.get_value("velocity")),
+			.note = std::stoi(msg.get_value("note")),
+			.on_at = std::stoi(msg.get_value("on_at")),
+			.length = std::stoi(msg.get_value("length"))
+		};
+
+		process_delete_note(
+			std::stoul(msg.get_value("pattern_id")),
+			note_to_delete);
 	}
 
 	void Sequence::add_pattern(const std::string& name) {
@@ -300,18 +361,51 @@ CLIENT_CODE(
 						  int start_at,
 						  int loop_length,
 						  int stop_at)  {
+		send_message_to_server(
+			req_add_pattern_instance,
+			[pattern_id, start_at, loop_length, stop_at]
+			(std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				msg2send->set_value("id", std::to_string(pattern_id));
+				msg2send->set_value("start_at", std::to_string(pattern_id));
+				msg2send->set_value("loop_length", std::to_string(pattern_id));
+				msg2send->set_value("stop_at", std::to_string(pattern_id));
+			}
+		);
 	}
 
 	void Sequence::get_sequence(std::list<PatternInstance> &storage)  {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+
+		storage.clear();
+
+		instance_list.for_each(
+			[&storage](PatternInstance *pin) {
+				storage.push_back(*pin);
+			}
+			);
 	}
 
 	void Sequence::delete_pattern_from_sequence(const PatternInstance& pattern_instance)  {
+		auto pattern_id = pattern_instance.pattern_id;
+		auto start_at = pattern_instance.start_at;
+		auto loop_length = pattern_instance.loop_length;
+		auto stop_at = pattern_instance.stop_at;
+		send_message_to_server(
+			req_del_pattern_instance,
+			[pattern_id, start_at, loop_length, stop_at]
+			(std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				msg2send->set_value("id", std::to_string(pattern_id));
+				msg2send->set_value("start_at", std::to_string(pattern_id));
+				msg2send->set_value("loop_length", std::to_string(pattern_id));
+				msg2send->set_value("stop_at", std::to_string(pattern_id));
+			}
+		);
 	}
 
 
-	void Sequence::insert_note(uint32_t pattern_id,
-				   int note, int velocity,
-				   int start_at, int length)  {
+	void Sequence::add_note(uint32_t pattern_id,
+				int channel, int program, int velocity,
+				int note, int on_at, int length)  {
 	}
 
 	void Sequence::get_notes(uint32_t pattern_id, std::list<Note> &storage)  {
@@ -323,6 +417,121 @@ CLIENT_CODE(
 	);
 
 SERVER_N_CLIENT_CODE(
+	void Sequence::process_add_pattern(const std::string& new_name, uint32_t new_id) {
+		auto ptrn = pattern_allocator.allocate();
+		ptrn->id = new_id;
+		ptrn->name = new_name;
+		patterns[ptrn->id] = ptrn;
+	}
+
+	bool Sequence::process_del_pattern(uint32_t pattern_id) {
+		auto ptrn_itr = patterns.find(pattern_id);
+
+		if(ptrn_itr != patterns.end()) {
+			ptrn_itr->second->note_list.clear(
+				[](Note* to_drop) {
+					note_allocator.recycle(to_drop);
+				}
+				);
+			pattern_allocator.recycle(ptrn_itr->second);
+			patterns.erase(ptrn_itr);
+
+			return true;
+		}
+		return false;
+	}
+
+	bool Sequence::process_add_pattern_instance(uint32_t pattern_id,
+						    int start_at,
+						    int loop_length,
+						    int stop_at) {
+		if(stop_at - start_at <= 0) return false;
+
+		auto ptrn_itr = patterns.find(pattern_id);
+
+		if(ptrn_itr != patterns.end()) {
+			bool did_overlap = false;
+			instance_list.for_each(
+				[&did_overlap, start_at, loop_length, stop_at]
+				(PatternInstance* _pin) {
+					if(
+					(
+						_pin->start_at >= start_at
+						&&
+						_pin->start_at <= stop_at
+						)
+					||
+					(
+						_pin->stop_at >= start_at
+						&&
+						_pin->stop_at <= stop_at
+						)
+					) {
+					// can't do - overlapping
+						did_overlap = true;
+					}
+				}
+				);
+
+			if(did_overlap)
+				return false;	// can't do - overlapping
+
+			// create instance
+			auto new_instance = pattern_instance_allocator.allocate();
+			new_instance->pattern_id = pattern_id;
+			new_instance->start_at = start_at;
+			new_instance->loop_length = loop_length;
+			new_instance->stop_at = stop_at;
+			new_instance->next = NULL;
+
+			// insert in list
+			instance_list.insert_element(new_instance);
+
+			return true;
+		}
+		return false;
+	}
+
+	void Sequence::process_del_pattern_instance(const PatternInstance& pattern_instance) {
+		instance_list.drop_element(
+			&pattern_instance,
+			[](PatternInstance* _pin) {
+				pattern_instance_allocator.recycle(_pin);
+			}
+			);
+	}
+
+	void Sequence::process_add_note(uint32_t pattern_id,
+					int channel, int program, int velocity,
+					int note, int on_at, int length) {
+		auto ptrn_itr = patterns.find(pattern_id);
+		if(ptrn_itr == patterns.end()) return;
+		auto ptrn = ptrn_itr->second;
+
+		auto new_note = note_allocator.allocate();
+		new_note->channel = channel;
+		new_note->program = program;
+		new_note->velocity = velocity;
+		new_note->note = note;
+		new_note->on_at = on_at;
+		new_note->length = length;
+
+		ptrn->note_list.insert_element(new_note);
+	}
+
+	void Sequence::process_delete_note(uint32_t pattern_id, const Note& note) {
+		auto ptrn_itr = patterns.find(pattern_id);
+		if(ptrn_itr == patterns.end()) return;
+		auto ptrn = ptrn_itr->second;
+
+		ptrn->note_list.drop_element(
+			&note,
+			[](Note* _note) {
+				note_allocator.recycle(_note);
+			}
+			);
+	}
+
 	template <class SerderClassT>
 	void Sequence::Note::serderize_single(Note *trgt, SerderClassT& iserder) {
 		iserder.process(trgt->channel);

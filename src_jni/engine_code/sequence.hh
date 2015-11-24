@@ -116,9 +116,11 @@ namespace RemoteInterface {
 			void get_sequence(std::list<PatternInstance> &storage);
 			void delete_pattern_from_sequence(const PatternInstance& pattern_instance);
 
-			void insert_note(uint32_t pattern_id,
-					 int note, int velocity,
-					 int start_at, int length);
+			void add_note(
+				uint32_t pattern_id,
+				int channel, int program, int velocity,
+				int note, int on_at, int length
+				);
 			void get_notes(uint32_t pattern_id, std::list<Note> &storage);
 			void delete_note(uint32_t pattern_id, const Note& note);
 
@@ -146,6 +148,19 @@ namespace RemoteInterface {
 			ON_SERVER(MachineSequencer* m_seq);
 			std::map<uint32_t, Pattern*> patterns;
 			LinkedList<PatternInstance> instance_list;
+
+			/* internal processing of commands - on both the server & client */
+			void process_add_pattern(const std::string& new_name, uint32_t new_id);
+			bool process_del_pattern(uint32_t pattern_id);
+			bool process_add_pattern_instance(uint32_t pattern_id,
+							  int start_at,
+							  int loop_length,
+							  int stop_at);
+			void process_del_pattern_instance(const PatternInstance& pattern_instance);
+			void process_add_note(uint32_t pattern_id,
+					      int channel, int program, int velocity,
+					      int note, int on_at, int length);
+			void process_delete_note(uint32_t pattern_id, const Note& note);
 
 			/* REQ means the client request the server to perform an operation */
 			/* CMD means the server commands the client to perform an operation */

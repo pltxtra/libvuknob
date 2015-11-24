@@ -57,7 +57,7 @@ public:
 
 		T* element_found = NULL;
 
-		if(head == element_to_drop) {
+		if(*head == *element_to_drop) {
 			element_found = head;
 			head = head->next;
 		} else {
