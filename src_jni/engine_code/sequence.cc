@@ -22,14 +22,20 @@
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
-SERVER_CODE(
+#ifdef __RI_SERVER_SIDE
+#include "machine.hh"
+#endif
 
+SERVER_CODE(
 	static IDAllocator pattern_id_allocator;
 
 	void Sequence::add_pattern(const std::string& new_name) {
-		auto new_id = pattern_id_allocator.get_id();
-
-		process_add_pattern(new_name, new_id);
+		uint32_t new_id = 0;
+		Machine::machine_operation_enqueue(
+			[this, &new_id, new_name] {
+				new_id = pattern_id_allocator.get_id();
+				process_add_pattern(new_name, new_id);
+			});
 
 		send_message(
 			cmd_add_pattern,
@@ -41,9 +47,16 @@ SERVER_CODE(
 	}
 
 	void Sequence::delete_pattern(uint32_t pattern_id) {
-		if(process_del_pattern(pattern_id)) {
-			pattern_id_allocator.free_id(pattern_id);
+		bool operation_successfull = false;
+		Machine::machine_operation_enqueue(
+			[this, &operation_successfull, pattern_id] {
+				if(process_del_pattern(pattern_id)) {
+					pattern_id_allocator.free_id(pattern_id);
+					operation_successfull = true;
+				}
+			});
 
+		if(operation_successfull) {
 			send_message(
 				cmd_del_pattern,
 				[pattern_id](std::shared_ptr<Message> &msg_to_send) {
@@ -57,7 +70,16 @@ SERVER_CODE(
 						  int start_at,
 						  int loop_length,
 						  int stop_at) {
-		if(process_add_pattern_instance(pattern_id, start_at, loop_length, stop_at)) {
+		bool operation_successfull = false;
+		Machine::machine_operation_enqueue(
+			[this, &operation_successfull,
+			 pattern_id,
+			 start_at, loop_length, stop_at] {
+				operation_successfull = process_add_pattern_instance(
+					pattern_id, start_at, loop_length, stop_at);
+			});
+
+		if(operation_successfull) {
 			// tell all clients to add it
 			send_message(
 				cmd_add_pattern_instance,
@@ -73,8 +95,10 @@ SERVER_CODE(
 	}
 
 	void Sequence::delete_pattern_from_sequence(const PatternInstance& pattern_instance) {
-		process_del_pattern_instance(pattern_instance);
-
+		Machine::machine_operation_enqueue(
+			[this, &pattern_instance]() {
+				process_del_pattern_instance(pattern_instance);
+			});
 		// tell all clients to delete it
 		send_message(
 			cmd_del_pattern_instance,
@@ -101,10 +125,14 @@ SERVER_CODE(
 		int channel, int program, int velocity,
 		int note, int on_at, int length
 		) {
-		process_add_note(
-			pattern_id,
-			channel, program, velocity,
-			note, on_at, length);
+		Machine::machine_operation_enqueue(
+			[this, pattern_id, channel, program,  velocity,
+			 note, on_at, length] {
+				process_add_note(
+					pattern_id,
+					channel, program, velocity,
+					note, on_at, length);
+			});
 
 		send_message(
 			cmd_add_note,
@@ -141,7 +169,10 @@ SERVER_CODE(
 		uint32_t pattern_id,
 		const Note& note
 		) {
-		process_delete_note(pattern_id, note);
+		Machine::machine_operation_enqueue(
+			[this, pattern_id, &note] {
+				process_delete_note(pattern_id, note);
+			});
 
 		// tell all clients to delete it
 		send_message(
