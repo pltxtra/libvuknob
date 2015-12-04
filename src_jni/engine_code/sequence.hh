@@ -105,30 +105,34 @@ namespace RemoteInterface {
 				}
 			};
 
-			void add_pattern(const std::string& name);
-			void get_pattern_ids(std::list<uint32_t> &storage);
-			void delete_pattern(uint32_t pattern_id);
+			ON_CLIENT(
+				void add_pattern(const std::string& name);
+				void get_pattern_ids(std::list<uint32_t> &storage);
+				void delete_pattern(uint32_t pattern_id);
 
-			void insert_pattern_in_sequence(uint32_t pattern_id,
-							int start_at,
-							int loop_length,
-							int stop_at);
-			void get_sequence(std::list<PatternInstance> &storage);
-			void delete_pattern_from_sequence(const PatternInstance& pattern_instance);
+				void insert_pattern_in_sequence(uint32_t pattern_id,
+								int start_at,
+								int loop_length,
+								int stop_at);
+				void get_sequence(std::list<PatternInstance> &storage);
+				void delete_pattern_from_sequence(const PatternInstance& pattern_instance);
 
-			void add_note(
-				uint32_t pattern_id,
-				int channel, int program, int velocity,
-				int note, int on_at, int length
+				void add_note(
+					uint32_t pattern_id,
+					int channel, int program, int velocity,
+					int note, int on_at, int length
+					);
+				void get_notes(uint32_t pattern_id, std::list<Note> &storage);
+				void delete_note(uint32_t pattern_id, const Note& note);
 				);
-			void get_notes(uint32_t pattern_id, std::list<Note> &storage);
-			void delete_note(uint32_t pattern_id, const Note& note);
 
 			Sequence(const Factory *factory, const RemoteInterface::Message &serialized);
 			Sequence(int32_t new_obj_id, const Factory *factory);
 
-			ON_SERVER(void init_from_machine_sequencer(MachineSequencer *m_seq));
-			ON_SERVER(virtual void serialize(std::shared_ptr<Message> &target) override;);
+			ON_SERVER(
+				void init_from_machine_sequencer(MachineSequencer *m_seq);
+				virtual void serialize(std::shared_ptr<Message> &target) override;
+				);
 
 			class SequenceListener {
 			public:

@@ -29,8 +29,12 @@
 SERVER_CODE(
 	static IDAllocator pattern_id_allocator;
 
-	void Sequence::add_pattern(const std::string& new_name) {
+	void Sequence::handle_req_add_pattern(RemoteInterface::Context *context,
+					      RemoteInterface::MessageHandler *src,
+					      const RemoteInterface::Message& msg) {
+		std::string new_name = msg.get_value("name");
 		uint32_t new_id = 0;
+
 		Machine::machine_operation_enqueue(
 			[this, &new_id, new_name] {
 				new_id = pattern_id_allocator.get_id();
@@ -46,7 +50,10 @@ SERVER_CODE(
 			);
 	}
 
-	void Sequence::delete_pattern(uint32_t pattern_id) {
+	void Sequence::handle_req_del_pattern(RemoteInterface::Context *context,
+					      RemoteInterface::MessageHandler *src,
+					      const RemoteInterface::Message& msg) {
+		uint32_t pattern_id = (uint32_t)(std::stoul(msg.get_value("pattern_id")));
 		bool operation_successfull = false;
 		Machine::machine_operation_enqueue(
 			[this, &operation_successfull, pattern_id] {
@@ -64,13 +71,18 @@ SERVER_CODE(
 				}
 				);
 		}
+
 	}
 
-	void Sequence::insert_pattern_in_sequence(uint32_t pattern_id,
-						  int start_at,
-						  int loop_length,
-						  int stop_at) {
+	void Sequence::handle_req_add_pattern_instance(RemoteInterface::Context *context,
+						       RemoteInterface::MessageHandler *src,
+						       const RemoteInterface::Message& msg) {
+		uint32_t pattern_id = std::stoul(msg.get_value("pattern_id"));
+		int start_at = std::stoi(msg.get_value("start_at"));
+		int loop_length = std::stoi(msg.get_value("loop_length"));
+		int stop_at = std::stoi(msg.get_value("stop_at"));
 		bool operation_successfull = false;
+
 		Machine::machine_operation_enqueue(
 			[this, &operation_successfull,
 			 pattern_id,
@@ -94,7 +106,17 @@ SERVER_CODE(
 		}
 	}
 
-	void Sequence::delete_pattern_from_sequence(const PatternInstance& pattern_instance) {
+	void Sequence::handle_req_del_pattern_instance(RemoteInterface::Context *context,
+						       RemoteInterface::MessageHandler *src,
+						       const RemoteInterface::Message& msg) {
+		PatternInstance pattern_instance = {
+			.pattern_id = std::stoul(msg.get_value("pattern_id")),
+			.start_at = std::stoi(msg.get_value("start_at")),
+			.loop_length = std::stoi(msg.get_value("loop_length")),
+			.stop_at = std::stoi(msg.get_value("stop_at")),
+			.next = NULL,
+		};
+
 		Machine::machine_operation_enqueue(
 			[this, &pattern_instance]() {
 				process_del_pattern_instance(pattern_instance);
@@ -119,13 +141,18 @@ SERVER_CODE(
 			);
 	}
 
+	void Sequence::handle_req_add_note(RemoteInterface::Context *context,
+					   RemoteInterface::MessageHandler *src,
+					   const RemoteInterface::Message& msg) {
+		uint32_t pattern_id = std::stoul(msg.get_value("pattern_id"));
+		int channel = std::stoi(msg.get_value("channel"));
+		int program = std::stoi(msg.get_value("program"));
+		int velocity = std::stoi(msg.get_value("velocity"));
+		int note = std::stoi(msg.get_value("note"));
+		int on_at = std::stoi(msg.get_value("on_at"));
+		int length = std::stoi(msg.get_value("length"));
 
-	void Sequence::add_note(
-		uint32_t pattern_id,
-		int channel, int program, int velocity,
-		int note, int on_at, int length
-		) {
-		Machine::machine_operation_enqueue(
+				Machine::machine_operation_enqueue(
 			[this, pattern_id, channel, program,  velocity,
 			 note, on_at, length] {
 				process_add_note(
@@ -165,12 +192,22 @@ SERVER_CODE(
 			);
 	}
 
-	void Sequence::delete_note(
-		uint32_t pattern_id,
-		const Note& note
-		) {
+	void Sequence::handle_req_del_note(RemoteInterface::Context *context,
+					   RemoteInterface::MessageHandler *src,
+					   const RemoteInterface::Message& msg) {
+		Note note =
+		{
+			.channel = std::stoi(msg.get_value("channel")),
+			.program = std::stoi(msg.get_value("program")),
+			.velocity = std::stoi(msg.get_value("velocity")),
+			.note = std::stoi(msg.get_value("note")),
+			.on_at = std::stoi(msg.get_value("on_at")),
+			.length = std::stoi(msg.get_value("length"))
+		};
+		uint32_t pattern_id = std::stoul(msg.get_value("pattern_id"));
+
 		Machine::machine_operation_enqueue(
-			[this, pattern_id, &note] {
+			[this, pattern_id, note] {
 				process_delete_note(pattern_id, note);
 			});
 
@@ -201,75 +238,7 @@ SERVER_CODE(
 					std::to_string(note.length));
 			}
 			);
-	}
 
-	void Sequence::handle_req_add_pattern(RemoteInterface::Context *context,
-					      RemoteInterface::MessageHandler *src,
-					      const RemoteInterface::Message& msg) {
-		add_pattern(msg.get_value("name"));
-	}
-
-	void Sequence::handle_req_del_pattern(RemoteInterface::Context *context,
-					      RemoteInterface::MessageHandler *src,
-					      const RemoteInterface::Message& msg) {
-		delete_pattern((uint32_t)(std::stoul(msg.get_value("pattern_id"))));
-	}
-
-	void Sequence::handle_req_add_pattern_instance(RemoteInterface::Context *context,
-						       RemoteInterface::MessageHandler *src,
-						       const RemoteInterface::Message& msg) {
-		uint32_t pattern_id = std::stoul(msg.get_value("pattern_id"));
-		int start_at = std::stoi(msg.get_value("start_at"));
-		int loop_length = std::stoi(msg.get_value("loop_length"));
-		int stop_at = std::stoi(msg.get_value("stop_at"));
-		insert_pattern_in_sequence(pattern_id,
-					   start_at,
-					   loop_length,
-					   stop_at);
-	}
-
-	void Sequence::handle_req_del_pattern_instance(RemoteInterface::Context *context,
-						       RemoteInterface::MessageHandler *src,
-						       const RemoteInterface::Message& msg) {
-		PatternInstance to_del = {
-			.pattern_id = std::stoul(msg.get_value("pattern_id")),
-			.start_at = std::stoi(msg.get_value("start_at")),
-			.loop_length = std::stoi(msg.get_value("loop_length")),
-			.stop_at = std::stoi(msg.get_value("stop_at")),
-			.next = NULL,
-		};
-
-		delete_pattern_from_sequence(to_del);
-	}
-
-	void Sequence::handle_req_add_note(RemoteInterface::Context *context,
-					   RemoteInterface::MessageHandler *src,
-					   const RemoteInterface::Message& msg) {
-
-		add_note(
-			std::stoul(msg.get_value("pattern_id")),
-			std::stoi(msg.get_value("channel")),
-			std::stoi(msg.get_value("program")),
-			std::stoi(msg.get_value("velocity")),
-			std::stoi(msg.get_value("note")),
-			std::stoi(msg.get_value("on_at")),
-			std::stoi(msg.get_value("length"))
-			);
-	}
-
-	void Sequence::handle_req_del_note(RemoteInterface::Context *context,
-					   RemoteInterface::MessageHandler *src,
-					   const RemoteInterface::Message& msg) {
-		Note note_to_delete =
-		{
-			.channel = std::stoi(msg.get_value("channel")),
-			.program = std::stoi(msg.get_value("program")),
-			.velocity = std::stoi(msg.get_value("velocity")),
-			.note = std::stoi(msg.get_value("note")),
-			.on_at = std::stoi(msg.get_value("on_at")),
-			.length = std::stoi(msg.get_value("length"))
-		};
-		delete_note(std::stoul(msg.get_value("pattern_id")), note_to_delete);
 	}
 
 	void Sequence::init_from_machine_sequencer(MachineSequencer *__m_seq) {
