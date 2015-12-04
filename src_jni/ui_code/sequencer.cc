@@ -31,6 +31,8 @@
 #include "machine.hh"
 #include "common.hh"
 
+#include "../engine_code/sequence.hh"
+
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 

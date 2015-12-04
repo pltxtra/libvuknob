@@ -366,9 +366,9 @@ CLIENT_CODE(
 			[pattern_id, start_at, loop_length, stop_at]
 			(std::shared_ptr<RemoteInterface::Message> &msg2send) {
 				msg2send->set_value("id", std::to_string(pattern_id));
-				msg2send->set_value("start_at", std::to_string(pattern_id));
-				msg2send->set_value("loop_length", std::to_string(pattern_id));
-				msg2send->set_value("stop_at", std::to_string(pattern_id));
+				msg2send->set_value("start_at", std::to_string(start_at));
+				msg2send->set_value("loop_length", std::to_string(loop_length));
+				msg2send->set_value("stop_at", std::to_string(stop_at));
 			}
 		);
 	}
@@ -395,9 +395,9 @@ CLIENT_CODE(
 			[pattern_id, start_at, loop_length, stop_at]
 			(std::shared_ptr<RemoteInterface::Message> &msg2send) {
 				msg2send->set_value("id", std::to_string(pattern_id));
-				msg2send->set_value("start_at", std::to_string(pattern_id));
-				msg2send->set_value("loop_length", std::to_string(pattern_id));
-				msg2send->set_value("stop_at", std::to_string(pattern_id));
+				msg2send->set_value("start_at", std::to_string(start_at));
+				msg2send->set_value("loop_length", std::to_string(loop_length));
+				msg2send->set_value("stop_at", std::to_string(stop_at));
 			}
 		);
 	}
@@ -406,17 +406,75 @@ CLIENT_CODE(
 	void Sequence::add_note(uint32_t pattern_id,
 				int channel, int program, int velocity,
 				int note, int on_at, int length)  {
+		send_message_to_server(
+			req_add_note,
+			[pattern_id, channel, program, velocity,
+			 note, on_at, length]
+			(std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				msg2send->set_value("id", std::to_string(pattern_id));
+				msg2send->set_value("channel", std::to_string(channel));
+				msg2send->set_value("program", std::to_string(program));
+				msg2send->set_value("velocity", std::to_string(velocity));
+				msg2send->set_value("note", std::to_string(note));
+				msg2send->set_value("on_at", std::to_string(on_at));
+				msg2send->set_value("length", std::to_string(length));
+			}
+		);
 	}
 
 	void Sequence::get_notes(uint32_t pattern_id, std::list<Note> &storage)  {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+
+		storage.clear();
+
+		auto ptrn_i = patterns.find(pattern_id);
+		if(ptrn_i == patterns.end())
+			return;
+		auto ptrn = (*ptrn_i).second;
+
+		ptrn->note_list.for_each(
+			[&storage](Note* nin) {
+				storage.push_back(*nin);
+			}
+			);
 	}
 
-	void Sequence::delete_note(uint32_t pattern_id, const Note& note)  {
+	void Sequence::delete_note(uint32_t pattern_id, const Note& note_obj)  {
+		auto channel = note_obj.channel;
+		auto program = note_obj.program;
+		auto velocity = note_obj.velocity;
+		auto note = note_obj.note;
+		auto on_at = note_obj.on_at;
+		auto length = note_obj.length;
+
+		send_message_to_server(
+			req_del_note,
+			[pattern_id, channel, program, velocity,
+			 note, on_at, length]
+			(std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				msg2send->set_value("id", std::to_string(pattern_id));
+				msg2send->set_value("channel", std::to_string(channel));
+				msg2send->set_value("program", std::to_string(program));
+				msg2send->set_value("velocity", std::to_string(velocity));
+				msg2send->set_value("note", std::to_string(note));
+				msg2send->set_value("on_at", std::to_string(on_at));
+				msg2send->set_value("length", std::to_string(length));
+			}
+		);
 	}
 
 	);
 
 SERVER_N_CLIENT_CODE(
+	static std::mutex sequence_global_mutex;
+
+	std::set<
+	std::weak_ptr<Sequence::SequenceListener>,
+	std::owner_less<std::weak_ptr<Sequence::SequenceListener> >
+	> Sequence::seq_listeners;
+
+	std::set<std::shared_ptr<Sequence> > Sequence::sequences;
+
 	void Sequence::process_add_pattern(const std::string& new_name, uint32_t new_id) {
 		auto ptrn = pattern_allocator.allocate();
 		ptrn->id = new_id;
@@ -606,12 +664,47 @@ SERVER_N_CLIENT_CODE(
 		SATAN_DEBUG("Sequence() created server side.\n");
 	}
 
+	void Sequence::register_sequence_listener(std::weak_ptr<SequenceListener> weak_lstnr) {
+		std::lock_guard<std::mutex> lock_guard(sequence_global_mutex);
+		seq_listeners.insert(weak_lstnr);
+
+		if(auto lstnr = weak_lstnr.lock()) {
+			for(auto seq : sequences) {
+				lstnr->sequence_added(seq);
+			}
+		}
+	}
+
+	void Sequence::remember_sequence(std::shared_ptr<Sequence> seq) {
+		std::lock_guard<std::mutex> lock_guard(sequence_global_mutex);
+		sequences.insert(seq);
+		for(auto weak_lstnr : seq_listeners) {
+			if(auto lstnr = weak_lstnr.lock()) {
+				lstnr->sequence_added(seq);
+			}
+		}
+	}
+
+	void Sequence::forget_sequence(std::shared_ptr<Sequence> seq) {
+		std::lock_guard<std::mutex> lock_guard(sequence_global_mutex);
+		for(auto weak_lstnr : seq_listeners) {
+			if(auto lstnr = weak_lstnr.lock()) {
+				lstnr->sequence_added(seq);
+			}
+		}
+		sequences.erase(seq);
+	}
+
 	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(const Message &serialized) {
-		return std::make_shared<Sequence>(this, serialized);
+		auto nseq = std::make_shared<Sequence>(this, serialized);
+		remember_sequence(nseq);
+		return nseq;
 	}
 
 	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(int32_t new_obj_id) {
-		return std::make_shared<Sequence>(new_obj_id, this);
+		auto nseq = std::make_shared<Sequence>(new_obj_id, this);
+		remember_sequence(nseq);
+		return nseq;
 	}
 
 	static Sequence::SequenceFactory this_will_register_us_as_a_factory;

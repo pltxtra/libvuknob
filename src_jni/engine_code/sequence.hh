@@ -130,7 +130,23 @@ namespace RemoteInterface {
 			ON_SERVER(void init_from_machine_sequencer(MachineSequencer *m_seq));
 			ON_SERVER(virtual void serialize(std::shared_ptr<Message> &target) override;);
 
+			class SequenceListener {
+			public:
+				virtual void sequence_added(std::shared_ptr<Sequence> seq);
+				virtual void sequence_deleted(std::shared_ptr<Sequence> seq);
+			};
+
+			static void register_sequence_listener(
+				std::weak_ptr<SequenceListener> lstnr);
+
 		private:
+			static std::set<std::weak_ptr<SequenceListener>,
+					std::owner_less<std::weak_ptr<SequenceListener> > > seq_listeners;
+			static std::set<std::shared_ptr<Sequence> > sequences;
+
+			static void remember_sequence(std::shared_ptr<Sequence> seq);
+			static void forget_sequence(std::shared_ptr<Sequence> seq);
+
 			struct Pattern {
 				uint32_t id;
 				std::string name;
