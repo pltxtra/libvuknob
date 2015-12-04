@@ -966,6 +966,15 @@ void Machine::machine_operation_enqueue(std::function<void(void *data)> callback
 	}
 }
 
+// operation called ONLY by NON audio playback threads
+void Machine::machine_operation_enqueue(std::function<void()> operation, bool do_sync) {
+	machine_operation_enqueue(
+		[operation](void*) {
+			operation();
+		}, NULL, do_sync
+		);
+}
+
 // operation ONLY called by audio playback thread
 void Machine::machine_operation_dequeue() {
 	MachineOperation mo;
