@@ -35,7 +35,9 @@ namespace RemoteInterface {
 	namespace __RI__CURRENT_NAMESPACE {
 
 		class Sequence
-			: public RemoteInterface::SimpleBaseObject {
+			: public RemoteInterface::SimpleBaseObject
+		ON_SERVER(, public Machine)
+		{
 		public:
 			static constexpr const char* FACTORY_NAME		= "Sequence";
 
@@ -129,6 +131,35 @@ namespace RemoteInterface {
 			Sequence(const Factory *factory, const RemoteInterface::Message &serialized);
 			Sequence(int32_t new_obj_id, const Factory *factory);
 
+			// functions for implementing class Machine
+			ON_SERVER(
+				// this will detach all connections to/from this
+				// machine and then it returns a boolean which
+				// tells you if you should delete it or not.
+				virtual bool detach_and_destroy();
+
+				// Additional XML-formated descriptive data.
+				// Should only be called from monitor protected
+				// functions, Machine::*, like get_base_xml_description()
+				virtual std::string get_class_name();
+				virtual std::string get_descriptive_xml();
+
+				// fill output buffers for a new frame
+				virtual void fill_buffers();
+				// reset a machine to a defined state
+				virtual void reset();
+				/// Returns a set of controller groups
+				virtual std::vector<std::string> internal_get_controller_groups();
+				/// Returns the set of all controller names
+				virtual std::vector<std::string> internal_get_controller_names();
+				/// Returns the set of all controller names in a given group
+				virtual std::vector<std::string> internal_get_controller_names(
+					const std::string &group_name);
+				/// Returns a controller pointer (remember to delete it...)
+				virtual Controller *internal_get_controller(const std::string &name);
+				/// get a hint about what this machine is (for example, "effect" or "generator")
+				virtual std::string internal_get_hint();
+				);
 			ON_SERVER(
 				void init_from_machine_sequencer(MachineSequencer *m_seq);
 				virtual void serialize(std::shared_ptr<Message> &target) override;

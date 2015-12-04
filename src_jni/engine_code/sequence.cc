@@ -251,8 +251,51 @@ SERVER_CODE(
 		target->set_value("sequence_data", iser.result());
 	}
 
-	);
+	bool Sequence::detach_and_destroy() {
+		detach_all_inputs();
+		detach_all_outputs();
 
+		return true;
+	}
+
+	std::string Sequence::get_class_name() {
+		return "Sequence";
+	}
+
+	std::string Sequence::get_descriptive_xml() {
+		return "";
+	}
+
+	void Sequence::fill_buffers() {
+	}
+
+	void Sequence::reset() {
+	}
+
+	std::vector<std::string> Sequence::internal_get_controller_groups() {
+		std::vector<std::string> empty;
+		return empty;
+	}
+
+	std::vector<std::string> Sequence::internal_get_controller_names() {
+		std::vector<std::string> empty;
+		return empty;
+	}
+
+	std::vector<std::string> Sequence::internal_get_controller_names(
+		const std::string &group_name) {
+		std::vector<std::string> empty;
+		return empty;
+	}
+
+	Machine::Controller* Sequence::internal_get_controller(const std::string &name) {
+		return NULL;
+	}
+
+	std::string Sequence::internal_get_hint() {
+		return "";
+	}
+);
 CLIENT_CODE(
 
 	void Sequence::handle_cmd_add_pattern(RemoteInterface::Context *context,
@@ -655,7 +698,9 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	Sequence::Sequence(const Factory *factory, const RemoteInterface::Message &serialized)
-	: SimpleBaseObject(factory, serialized) {
+	: SimpleBaseObject(factory, serialized)
+	ON_SERVER(, Machine("Sequencer", false, 0.0f, 0.0f))
+	{
 		register_handlers();
 
 		Serialize::ItemDeserializer serder(serialized.get_value("sequence_data"));
@@ -665,7 +710,9 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	Sequence::Sequence(int32_t new_obj_id, const Factory *factory)
-	: SimpleBaseObject(new_obj_id, factory) {
+	: SimpleBaseObject(new_obj_id, factory)
+	ON_SERVER(, Machine("Sequencer", false, 0.0f, 0.0f))
+	{
 		register_handlers();
 		SATAN_DEBUG("Sequence() created server side.\n");
 	}
