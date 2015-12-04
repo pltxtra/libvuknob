@@ -258,6 +258,7 @@ CLIENT_CODE(
 	void Sequence::handle_cmd_add_pattern(RemoteInterface::Context *context,
 					      RemoteInterface::MessageHandler *src,
 					      const RemoteInterface::Message& msg) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		auto new_name = msg.get_value("name");
 		auto new_id = std::stoul(msg.get_value("pattern_id"));
 
@@ -267,6 +268,7 @@ CLIENT_CODE(
 	void Sequence::handle_cmd_del_pattern(RemoteInterface::Context *context,
 					      RemoteInterface::MessageHandler *src,
 					      const RemoteInterface::Message& msg) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		auto pattern_id = std::stoul(msg.get_value("pattern_id"));
 
 		(void) process_del_pattern(pattern_id);
@@ -275,6 +277,7 @@ CLIENT_CODE(
 	void Sequence::handle_cmd_add_pattern_instance(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		auto pattern_id = std::stoul(msg.get_value("pattern_id"));
 		auto start_at = std::stoi(msg.get_value("start_at"));
 		auto loop_length = std::stoi(msg.get_value("loop_length"));
@@ -286,6 +289,7 @@ CLIENT_CODE(
 	void Sequence::handle_cmd_del_pattern_instance(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		PatternInstance to_del = {
 			.pattern_id = std::stoul(msg.get_value("pattern_id")),
 			.start_at = std::stoi(msg.get_value("start_at")),
@@ -300,6 +304,7 @@ CLIENT_CODE(
 	void Sequence::handle_cmd_add_note(RemoteInterface::Context *context,
 					   RemoteInterface::MessageHandler *src,
 					   const RemoteInterface::Message& msg) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		process_add_note(
 			std::stoul(msg.get_value("pattern_id")),
 			std::stoi(msg.get_value("channel")),
@@ -314,6 +319,7 @@ CLIENT_CODE(
 	void Sequence::handle_cmd_del_note(RemoteInterface::Context *context,
 					   RemoteInterface::MessageHandler *src,
 					   const RemoteInterface::Message& msg) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		Note note_to_delete =
 		{
 			.channel = std::stoi(msg.get_value("channel")),
