@@ -289,13 +289,14 @@ SERVER_CODE(
 	}
 
 	Machine::Controller* Sequence::internal_get_controller(const std::string &name) {
-		return NULL;
+		throw jException("No such controller.", jException::sanity_error);
 	}
 
 	std::string Sequence::internal_get_hint() {
-		return "";
+		return "sequencer";
 	}
 );
+
 CLIENT_CODE(
 
 	void Sequence::handle_cmd_add_pattern(RemoteInterface::Context *context,
