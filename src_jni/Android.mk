@@ -105,6 +105,7 @@ signal.cc signal.hh \
 machine.cc machine.hh machine_project_entry.cc \
 dynamic_machine.cc dynamic_machine.hh \
 general_tools.cc \
+midi_generation.cc midi_generation.hh \
 machine_sequencer.cc machine_sequencer.hh \
 midi_export.cc midi_export.hh \
 vuknob_android_audio.cc vuknob_android_audio.hh \
@@ -176,7 +177,7 @@ engine_code/sequence.cc engine_code/sequence.hh \
 engine_code/server.cc engine_code/server.hh
 
 LOCAL_LDLIBS += -ldl -llog
-LOCAL_SHARED_LIBRARIES := libvuknob
+LOCAL_SHARED_LIBRARIES := libkamoflage libvuknob
 
 include $(BUILD_SHARED_LIBRARY)
 

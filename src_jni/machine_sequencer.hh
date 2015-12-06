@@ -42,6 +42,8 @@
 #include <fstream>
 #include <queue>
 
+#include "midi_generation.hh"
+
 // Each machine with a "midi" input will automatically
 // be attached to a MachineSequencer machine (invisible from the
 // user interface...) The MachineSequencer will be "tightly connected"
@@ -79,15 +81,6 @@ struct ltstr {
 
 typedef void (*MachineSequencerSetChangeCallbackF_t)(void *);
 
-typedef struct _MidiEventChain {
-	uint8_t data[sizeof(size_t) + sizeof(uint8_t) * 4];
-	char separator_a[9];
-	struct _MidiEventChain *next_in_chain;
-	struct _MidiEventChain *last_in_chain;
-	char separator_b[9];
-} MidiEventChain;
-
-
 class MachineSequencer : public Machine {
 	/***** OK - REAL WORK AHEAD *****/
 
@@ -116,66 +109,6 @@ public:
 	class NoteEntry;
 
 private:
-
-	class MidiEventChainControler {
-	private:
-		static MidiEventChain *separation_zone;
-		static MidiEventChain *next_free_midi_event;
-
-		static void init_free_midi_event_chain();
-	public:
-		static void check_separation_zone();
-
-		/// please note - the MidiEvent pointers here are really a hack
-		/// and really point to MidiEventChain objects.
-		///
-		/// Do not atempt to push a MidiEvent that was NOT retrieved using pop
-		/// in this class. It will epicly FAIL.
-		static MidiEvent *pop_next_free_midi(size_t size);
-		static void push_next_free_midi(MidiEvent *_element);
-
-		/// external stacks of events allocated from the main stack
-		/// same warning here - do not play around with MidiEvent pointers
-		/// that you got from external allocators - use only ones received from pop_next_free_midi()
-		static MidiEvent *get_chain_head(MidiEventChain **queue);
-		static void chain_to_tail(MidiEventChain **chain, MidiEvent *event);
-		static void join_chains(MidiEventChain **destination, MidiEventChain **source);
-	};
-
-	class MidiEventBuilder {
-	private:
-		void **buffer;
-		int buffer_size;
-		int buffer_position;
-
-		// chain of remaining midi events that need to be
-		// transmitted ASAP
-		MidiEventChain *remaining_midi_chain;
-
-		// chain of freeable midi events that can be returned
-		// to the main stack
-		MidiEventChain *freeable_midi_chain;
-
-		void chain_event(MidiEvent *mev);
-		void process_freeable_chain();
-		void process_remaining_chain();
-
-
-	public:
-		MidiEventBuilder();
-
-		void use_buffer(void **buffer, int buffer_size);
-		void finish_current_buffer();
-		void skip_to(int new_buffer_position);
-		int tell();
-
-		void queue_midi_data(size_t len, const char *data);
-
-		virtual void queue_note_on(int note, int velocity, int channel = 0);
-		virtual void queue_note_off(int note, int velocity, int channel = 0);
-		virtual void queue_controller(int controller, int value, int channel = 0);
-		virtual void queue_pitch_bend(int value_lsb, int value_msb, int channel = 0);
-	};
 
 	class PadMidiExportBuilder : public MidiEventBuilder {
 	private:
