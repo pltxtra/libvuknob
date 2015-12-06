@@ -191,6 +191,7 @@ private:
 		virtual void queue_note_on(int note, int velocity, int channel = 0);
 		virtual void queue_note_off(int note, int velocity, int channel = 0);
 		virtual void queue_controller(int controller, int value, int channel = 0);
+		virtual void queue_pitch_bend(int value_lsb, int value_msb, int channel = 0);
 
 		void step_tick();
 	};

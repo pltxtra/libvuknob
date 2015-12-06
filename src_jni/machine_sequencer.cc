@@ -360,6 +360,10 @@ void MachineSequencer::PadMidiExportBuilder::queue_controller(int controller, in
 	/* ignore, not supported */
 }
 
+void MachineSequencer::PadMidiExportBuilder::queue_pitch_bend(int value_lsb, int value_msb, int channel) {
+	/* ignore, not supported */
+}
+
 void MachineSequencer::PadMidiExportBuilder::step_tick() {
 	current_tick++;
 	export_tick++;
