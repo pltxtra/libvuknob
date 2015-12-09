@@ -35,7 +35,7 @@
 
 #include <stddef.h>
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 /*************************************
@@ -53,61 +53,58 @@ MachineSequencer::NoSuchController::NoSuchController(const std::string &name) :
  *
  *************************************/
 
-MachineSequencer::PadMidiExportBuilder::PadMidiExportBuilder(int start_tick, Loop *_loop) :
-	loop(_loop), export_tick(0), current_tick(start_tick)
+template <class ElementT, class ContainerT>
+MachineSequencer::PadMidiExportBuilder<ElementT, ContainerT>::PadMidiExportBuilder(
+	ContainerT* _cnt, int start_tick)
+	: cnt(_cnt), export_tick(0), current_tick(start_tick)
 {
 }
 
-MachineSequencer::PadMidiExportBuilder::~PadMidiExportBuilder() {
-	for(auto n : active_notes) {
-		delete n.second;
-	}
-}
-
-void MachineSequencer::PadMidiExportBuilder::queue_note_on(int note, int velocity, int channel) {
-	NoteEntry *n = new NoteEntry();
-
-	n->channel = channel;
-	n->program = 0;
-	n->velocity = velocity;
-	n->note = note;
-	n->on_at = export_tick;
-
+template <class ElementT, class ContainerT>
+void MachineSequencer::PadMidiExportBuilder<ElementT, ContainerT>::queue_note_on(int note,
+										 int velocity, int channel) {
 	if(active_notes.find(note) == active_notes.end()) {
-		active_notes[note] = n;
+		auto nptr = cnt->new_note();
+		nptr->channel = channel;
+		nptr->program = 0;
+		nptr->velocity = velocity;
+		nptr->note = note;
+		nptr->on_at = export_tick;
+		nptr->length = 0;
+		active_notes[note] = nptr;
+		SATAN_DEBUG("Created new note %p for note %d\n", nptr, nptr->note);
 	}
 }
 
-void MachineSequencer::PadMidiExportBuilder::queue_note_off(int note, int velocity, int channel) {
-	std::map<int, NoteEntry *>::iterator n;
-	n = active_notes.find(note);
+template <class ElementT, class ContainerT>
+void MachineSequencer::PadMidiExportBuilder<ElementT, ContainerT>::queue_note_off(int note,
+										  int velocity, int channel) {
+	auto n = active_notes.find(note);
 	if(n != active_notes.end()) {
-		(*n).second->length = export_tick - (*n).second->on_at;
-		(void) loop->internal_insert_note((*n).second);
+		auto nptr = (*n).second;
+		nptr->length = export_tick - nptr->on_at;
 
-		SATAN_DEBUG("(%p) insert note %d at %d\n", loop, (*n).second->note, (*n).second->on_at / 16);
+		SATAN_DEBUG("(%p) insert note %d (%p) at %d\n", cnt, nptr->note, nptr, nptr->on_at / 16);
 
+		(void) cnt->internal_insert_note(nptr);
 		active_notes.erase(n);
-
-		{
-			NoteEntry *top = loop->note;
-			while(top) {
-				SATAN_DEBUG("   loop has note (%d) at (%d)\n", top->note, top->on_at / 16);
-				top = top->next;
-			}
-		}
 	}
 }
 
-void MachineSequencer::PadMidiExportBuilder::queue_controller(int controller, int value, int channel) {
+template <class ElementT, class ContainerT>
+void MachineSequencer::PadMidiExportBuilder<ElementT, ContainerT>::queue_controller(int controller,
+								 int value, int channel) {
 	/* ignore, not supported */
 }
 
-void MachineSequencer::PadMidiExportBuilder::queue_pitch_bend(int value_lsb, int value_msb, int channel) {
+template <class ElementT, class ContainerT>
+void MachineSequencer::PadMidiExportBuilder<ElementT, ContainerT>::queue_pitch_bend(int value_lsb,
+								 int value_msb, int channel) {
 	/* ignore, not supported */
 }
 
-void MachineSequencer::PadMidiExportBuilder::step_tick() {
+template <class ElementT, class ContainerT>
+void MachineSequencer::PadMidiExportBuilder<ElementT, ContainerT>::step_tick() {
 	current_tick++;
 	export_tick++;
 }
@@ -883,6 +880,8 @@ const MachineSequencer::NoteEntry *MachineSequencer::Loop::internal_insert_note(
 
 	NoteEntry *crnt = note;
 	while(crnt != NULL) {
+		SATAN_DEBUG("internal_insert_note() - crnt: %p\n", crnt);
+		SATAN_DEBUG("internal_insert_note() - new_one: %p\n", new_one);
 		if(crnt->on_at > new_one->on_at) {
 			new_one->prev = crnt->prev;
 			new_one->next = crnt;
@@ -1980,7 +1979,7 @@ void MachineSequencer::Pad::export_to_loop(int start_tick, int stop_tick, Machin
 		// force stop_tick to the highest integer value (always limited to 32 bit)
 		stop_tick = 0x7fffffff;
 	}
-	PadMidiExportBuilder pmxb(start_tick, loop);
+	PadMidiExportBuilder<NoteEntry, Loop> pmxb(loop, start_tick);
 
 	std::vector<PadSession *> remaining_sessions;
 	std::vector<PadSession *> active_sessions;

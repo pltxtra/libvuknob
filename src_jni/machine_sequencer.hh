@@ -110,16 +110,16 @@ public:
 
 private:
 
+	template <class ElementT, class ContainerT>
 	class PadMidiExportBuilder : public MidiEventBuilder {
 	private:
-		Loop *loop;
-		std::map<int, NoteEntry *> active_notes;
+		std::map<int, ElementT*> active_notes;
+		ContainerT* cnt;
 		int export_tick;
 	public:
 		int current_tick;
 
-		PadMidiExportBuilder(int loop_offset, Loop *loop);
-		~PadMidiExportBuilder();
+		PadMidiExportBuilder(ContainerT* cnt, int loop_offset);
 
 		virtual void queue_note_on(int note, int velocity, int channel = 0);
 		virtual void queue_note_off(int note, int velocity, int channel = 0);
@@ -458,8 +458,6 @@ public:
 
 		// let the loop creator create objects of our class
 		friend class LoopCreator;
-		// let the pad midi export builder insert notes using the internal functions
-		friend class PadMidiExportBuilder;
 
 		Loop(const KXMLDoc &loop_xml);
 		void process_note_on(bool mute, MidiEventBuilder *_meb);
@@ -467,13 +465,14 @@ public:
 
 		NoteEntry *internal_delete_note(const NoteEntry *net);
 		void internal_update_note(const NoteEntry *original, const NoteEntry *new_entry);
-		const NoteEntry *internal_insert_note(NoteEntry *new_entry);
 		NoteEntry *internal_clear();
 		NoteEntry *internal_insert_notes(NoteEntry *new_notes);
 
 		bool activate_note(NoteEntry *);
 		void deactivate_note(NoteEntry *);
 	public:
+		const NoteEntry *internal_insert_note(NoteEntry *new_entry);
+
 		Loop();
 		~Loop();
 
@@ -490,6 +489,10 @@ public:
 		const NoteEntry *note_insert(const NoteEntry *new_entry);
 		void clear_loop();
 		void copy_loop(const Loop *source);
+
+		NoteEntry* new_note() {
+			return new NoteEntry();
+		}
 	};
 
 	class PadSession {
