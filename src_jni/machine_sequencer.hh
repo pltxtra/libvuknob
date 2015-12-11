@@ -116,10 +116,15 @@ private:
 		std::map<int, ElementT*> active_notes;
 		ContainerT* cnt;
 		int export_tick;
+		std::function<void(ElementT* eptr, ContainerT* cptr)> finalize_note;
+
 	public:
 		int current_tick;
 
-		PadMidiExportBuilder(ContainerT* cnt, int loop_offset);
+		PadMidiExportBuilder(
+			ContainerT* cnt, int loop_offset,
+			std::function<void(ElementT* eptr, ContainerT* cptr)> finalize_note
+			);
 
 		virtual void queue_note_on(int note, int velocity, int channel = 0);
 		virtual void queue_note_off(int note, int velocity, int channel = 0);

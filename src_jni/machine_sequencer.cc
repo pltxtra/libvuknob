@@ -55,8 +55,11 @@ MachineSequencer::NoSuchController::NoSuchController(const std::string &name) :
 
 template <class ElementT, class ContainerT>
 MachineSequencer::PadMidiExportBuilder<ElementT, ContainerT>::PadMidiExportBuilder(
-	ContainerT* _cnt, int start_tick)
-	: cnt(_cnt), export_tick(0), current_tick(start_tick)
+	ContainerT* _cnt, int start_tick,
+	std::function<void(ElementT* eptr, ContainerT* cptr)> _finalize_note)
+	: cnt(_cnt), export_tick(0)
+	, finalize_note(_finalize_note)
+	, current_tick(start_tick)
 {
 }
 
@@ -86,7 +89,7 @@ void MachineSequencer::PadMidiExportBuilder<ElementT, ContainerT>::queue_note_of
 
 		SATAN_DEBUG("(%p) insert note %d (%p) at %d\n", cnt, nptr->note, nptr, nptr->on_at / 16);
 
-		(void) cnt->internal_insert_note(nptr);
+		finalize_note(nptr, cnt);
 		active_notes.erase(n);
 	}
 }
@@ -1979,7 +1982,12 @@ void MachineSequencer::Pad::export_to_loop(int start_tick, int stop_tick, Machin
 		// force stop_tick to the highest integer value (always limited to 32 bit)
 		stop_tick = 0x7fffffff;
 	}
-	PadMidiExportBuilder<NoteEntry, Loop> pmxb(loop, start_tick);
+	PadMidiExportBuilder<NoteEntry, Loop> pmxb(
+		loop, start_tick,
+		[](NoteEntry* nptr, Loop* lp) {
+			lp->internal_insert_note(nptr);
+		}
+		);
 
 	std::vector<PadSession *> remaining_sessions;
 	std::vector<PadSession *> active_sessions;
