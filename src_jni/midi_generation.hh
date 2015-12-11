@@ -59,7 +59,7 @@ private:
 
 	void **buffer;
 	int buffer_size;
-	int buffer_position;
+	int buffer_position, buffer_p_last_skip;
 
 	// chain of remaining midi events that need to be
 	// transmitted ASAP
@@ -79,8 +79,7 @@ public:
 
 	void use_buffer(void **buffer, int buffer_size);
 	void finish_current_buffer();
-	void skip_to(int new_buffer_position);
-	int tell();
+	bool skip(int skip_length); // return true as long as buffer is not full.
 
 	void queue_midi_data(size_t len, const char *data);
 

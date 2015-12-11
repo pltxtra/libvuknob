@@ -21,7 +21,7 @@
 #include <jngldrum/jexception.hh>
 #include "midi_generation.hh"
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 /*************************************
@@ -184,23 +184,22 @@ void MidiEventBuilder::use_buffer(void **_buffer, int _buffer_size) {
 	buffer = _buffer;
 	buffer_size = _buffer_size;
 	buffer_position = 0;
+	buffer_p_last_skip = 0;
 
 	process_remaining_chain();
-	process_freeable_chain();
 }
 
 void MidiEventBuilder::finish_current_buffer() {
 	buffer_size = 0;
 	buffer_position = 1;
 	buffer = 0;
+	process_freeable_chain();
 }
 
-void MidiEventBuilder::skip_to(int new_buffer_position) {
-	buffer_position = new_buffer_position;
-}
-
-int MidiEventBuilder::tell() {
-	return buffer_position;
+bool MidiEventBuilder::skip(int skip_length) {
+	buffer_p_last_skip += skip_length;
+	buffer_position = buffer_p_last_skip > buffer_position ? buffer_p_last_skip : buffer_position;
+	return buffer_position < buffer_size;
 }
 
 void MidiEventBuilder::queue_midi_data(size_t len, const char *data) {

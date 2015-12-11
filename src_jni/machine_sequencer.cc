@@ -2403,22 +2403,18 @@ void MachineSequencer::fill_buffers() {
 	// synch to click track
 	int sequence_position = get_next_sequence_position();
 	int current_tick = get_next_tick();
-	int next_tick_at = get_next_tick_at(_MIDI);
 	int samples_per_tick = get_samples_per_tick(_MIDI);
 	bool do_loop = get_loop_state();
 	int loop_start = get_loop_start();
 	int loop_stop = get_loop_length() + loop_start;
 	int samples_per_tick_shuffle = get_samples_per_tick_shuffle(_MIDI);
+	int skip_length = get_next_tick_at(_MIDI);
 
 	_meb.use_buffer(output_buffer, output_limit);
 
 	bool no_sound = is_playing ? mute : true;
 
-	while(next_tick_at < output_limit) {
-		int overdraft = _meb.tell() - next_tick_at + 1;
-		if(overdraft < 0) overdraft = 0;
-
-		_meb.skip_to(next_tick_at + overdraft);
+	while(_meb.skip(skip_length)) {
 
 		pad.process(no_sound, PAD_TIME(sequence_position, current_tick), &_meb);
 
@@ -2448,17 +2444,14 @@ void MachineSequencer::fill_buffers() {
 		}
 
 		if(sequence_position % 2 == 0) {
-			next_tick_at += samples_per_tick - samples_per_tick_shuffle;
+			skip_length = samples_per_tick - samples_per_tick_shuffle;
 		} else {
-			next_tick_at += samples_per_tick + samples_per_tick_shuffle;
+			skip_length = samples_per_tick + samples_per_tick_shuffle;
 		}
 
 	}
 
 	_meb.finish_current_buffer();
-
-	// wrap around for next buffer
-	next_tick_at -= output_limit;
 }
 
 void MachineSequencer::reset() {
