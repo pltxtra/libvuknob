@@ -149,6 +149,7 @@ ui_code/connection_list.cc ui_code/connection_list.hh \
 ui_code/scale_editor.cc ui_code/scale_editor.hh
 
 LOCAL_STATIC_LIBRARIES := cpufeatures libvorbis libogg libvorbisenc libkissfft
+LOCAL_LDFLAGS += -Xlinker --threads
 LOCAL_LDLIBS += -ldl -llog
 LOCAL_SHARED_LIBRARIES := libsvgandroid libkamoflage libpathvariable
 
@@ -176,6 +177,7 @@ LOCAL_SRC_FILES := \
 engine_code/sequence.cc engine_code/sequence.hh \
 engine_code/server.cc engine_code/server.hh
 
+LOCAL_LDFLAGS += -Xlinker --threads
 LOCAL_LDLIBS += -ldl -llog
 LOCAL_SHARED_LIBRARIES := libkamoflage libvuknob
 
@@ -203,6 +205,7 @@ LOCAL_SRC_FILES := \
 engine_code/client.cc engine_code/client.hh \
 engine_code/sequence.cc engine_code/sequence.hh
 
+LOCAL_LDFLAGS += -Xlinker --threads
 LOCAL_LDLIBS += -ldl -llog
 LOCAL_SHARED_LIBRARIES := libvuknob
 
@@ -234,6 +237,7 @@ ui_code/livepad2.cc ui_code/livepad2.hh \
 ui_code/connector.cc ui_code/connector.hh \
 ui_code/sequencer.cc ui_code/sequencer.hh
 
+LOCAL_LDFLAGS += -Xlinker --threads
 LOCAL_LDLIBS += -ldl -llog
 LOCAL_SHARED_LIBRARIES := libsvgandroid libkamoflage libpathvariable libvuknob libvuknob_server libvuknob_client
 
@@ -258,6 +262,7 @@ LOCAL_C_INCLUDES := ../prereqs/include
 LOCAL_SRC_FILES := samsung_pa.cc samsung_jack.cc
 #LOCAL_CPP_FEATURES := exceptions
 LOCAL_MODULE_TAGS := eng optional
+LOCAL_LDFLAGS += -Xlinker --threads
 LOCAL_LDLIBS := -llog
 LOCAL_SHARED_LIBRARIES := libjack libvuknob
 LOCAL_STATIC_LIBRARIES := libsapaclient

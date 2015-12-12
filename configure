@@ -151,7 +151,7 @@ clean:
 	rm -rf libs/arm*
 
 ndkbuild:
-	$NDK_PATH/ndk-build TARGET_PLATFORM=$NDK_PLATFORM
+	$NDK_PATH/ndk-build -j4 TARGET_PLATFORM=$NDK_PLATFORM
 
 release: ndkbuild
 	ant release
