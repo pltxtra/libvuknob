@@ -650,7 +650,7 @@ void Tracker::NoteGraphic::set_data(int _start_tick, int _length) {
 }
 
 void Tracker::NoteGraphic::quantize() {
-	on_at = MachineSequencer::quantize_tick(on_at);
+	on_at = quantize_tick(on_at);
 
 	update_data();
 	update_graphics();

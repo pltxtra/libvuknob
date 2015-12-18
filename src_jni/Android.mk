@@ -119,6 +119,7 @@ remote_interface.cc remote_interface.hh \
 scales.cc scales.hh \
 serialize.cc serialize.hh \
 time_measure.cc \
+engine_code/pad.cc engine_code/pad.hh \
 \
 ui_code/information_catcher.cc ui_code/information_catcher.hh \
 ui_code/license_view.cc \

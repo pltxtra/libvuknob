@@ -64,6 +64,8 @@ class Machine;
 #define MACHINE_TICK_BITMASK 0x000000f
 #define MAX_STATIC_SIGNALS 256
 
+int quantize_tick(int start_tick);
+
 typedef std::function<void(int)> __MACHINE_PERIODIC_CALLBACK_F;
 typedef void __MACHINE_OPERATION_CALLBACK;
 

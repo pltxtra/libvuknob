@@ -52,6 +52,30 @@
 #include "satan_debug.hh"
 
 /*****************************
+ * Misc
+ *****************************/
+
+int quantize_tick(int start_tick) {
+	int offset = start_tick & MACHINE_TICK_BITMASK;
+
+	// chop of the additional ticks
+	int new_tick = start_tick & MACHINE_LINE_BITMASK;
+
+
+	SATAN_DEBUG("offset: (%x => %x) %x > %x ? %s\n",
+		    start_tick, new_tick,
+		    offset, ((0x1 << BITS_PER_LINE) >> 1),
+		    offset > ((0x1 << BITS_PER_LINE) >> 1) ? "yes" : "no");
+
+	// if offset is larger than half a line, move to next line
+	if(offset > ((0x1 << BITS_PER_LINE) >> 1)) {
+		new_tick += (0x1 << BITS_PER_LINE);
+	}
+
+	return new_tick;
+}
+
+/*****************************
  *                           *
  * class Machine::Controller *
  *                           *

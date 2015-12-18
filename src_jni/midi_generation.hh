@@ -20,6 +20,9 @@
 #ifndef MIDI_EVENT_BUILDER_HH
 #define MIDI_EVENT_BUILDER_HH
 
+#include <map>
+#include <functional>
+
 #include "dynlib/dynlib.h"
 
 typedef struct _MidiEventChain {
@@ -88,5 +91,91 @@ public:
 	virtual void queue_controller(int controller, int value, int channel = 0);
 	virtual void queue_pitch_bend(int value_lsb, int value_msb, int channel = 0);
 };
+
+template <class ElementT, class ContainerT>
+class PadMidiExportBuilder : public MidiEventBuilder {
+private:
+	std::map<int, ElementT*> active_notes;
+	ContainerT* cnt;
+	int export_tick;
+	std::function<void(ElementT* eptr, ContainerT* cptr)> finalize_note;
+
+public:
+	int current_tick;
+
+	PadMidiExportBuilder(
+		ContainerT* cnt, int loop_offset,
+		std::function<void(ElementT* eptr, ContainerT* cptr)> finalize_note
+		);
+
+	virtual void queue_note_on(int note, int velocity, int channel = 0);
+	virtual void queue_note_off(int note, int velocity, int channel = 0);
+	virtual void queue_controller(int controller, int value, int channel = 0);
+	virtual void queue_pitch_bend(int value_lsb, int value_msb, int channel = 0);
+
+	void step_tick();
+};
+
+/*************************************
+ *
+ * Class PadMidiExportBuilder, implementation
+ *
+ *************************************/
+
+template <class ElementT, class ContainerT>
+PadMidiExportBuilder<ElementT, ContainerT>::PadMidiExportBuilder(
+	ContainerT* _cnt, int start_tick,
+	std::function<void(ElementT* eptr, ContainerT* cptr)> _finalize_note)
+	: cnt(_cnt), export_tick(0)
+	, finalize_note(_finalize_note)
+	, current_tick(start_tick)
+{
+}
+
+template <class ElementT, class ContainerT>
+void PadMidiExportBuilder<ElementT, ContainerT>::queue_note_on(int note,
+										 int velocity, int channel) {
+	if(active_notes.find(note) == active_notes.end()) {
+		auto nptr = cnt->new_note();
+		nptr->channel = channel;
+		nptr->program = 0;
+		nptr->velocity = velocity;
+		nptr->note = note;
+		nptr->on_at = export_tick;
+		nptr->length = 0;
+		active_notes[note] = nptr;
+	}
+}
+
+template <class ElementT, class ContainerT>
+void PadMidiExportBuilder<ElementT, ContainerT>::queue_note_off(int note,
+										  int velocity, int channel) {
+	auto n = active_notes.find(note);
+	if(n != active_notes.end()) {
+		auto nptr = (*n).second;
+		nptr->length = export_tick - nptr->on_at;
+
+		finalize_note(nptr, cnt);
+		active_notes.erase(n);
+	}
+}
+
+template <class ElementT, class ContainerT>
+void PadMidiExportBuilder<ElementT, ContainerT>::queue_controller(int controller,
+								 int value, int channel) {
+	/* ignore, not supported */
+}
+
+template <class ElementT, class ContainerT>
+void PadMidiExportBuilder<ElementT, ContainerT>::queue_pitch_bend(int value_lsb,
+								 int value_msb, int channel) {
+	/* ignore, not supported */
+}
+
+template <class ElementT, class ContainerT>
+void PadMidiExportBuilder<ElementT, ContainerT>::step_tick() {
+	current_tick++;
+	export_tick++;
+}
 
 #endif

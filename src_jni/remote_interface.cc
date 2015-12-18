@@ -2430,19 +2430,19 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 
 		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
 		if(mseq != NULL) {
-			MachineSequencer::PadEvent_t pevt = MachineSequencer::ms_pad_no_event;
+			Pad::PadEvent::PadEvent_t pevt = Pad::PadEvent::ms_pad_no_event;
 			switch(event_type) {
 			case RIMachine::ms_pad_press:
-				pevt = MachineSequencer::ms_pad_press;
+				pevt = Pad::PadEvent::ms_pad_press;
 				break;
 			case RIMachine::ms_pad_slide:
-				pevt = MachineSequencer::ms_pad_slide;
+				pevt = Pad::PadEvent::ms_pad_slide;
 				break;
 			case RIMachine::ms_pad_release:
-				pevt = MachineSequencer::ms_pad_release;
+				pevt = Pad::PadEvent::ms_pad_release;
 				break;
 			case RIMachine::ms_pad_no_event:
-				pevt = MachineSequencer::ms_pad_no_event;
+				pevt = Pad::PadEvent::ms_pad_no_event;
 				break;
 			}
 			mseq->get_pad()->enqueue_event(finger, pevt, xp, yp, zp);
@@ -2531,7 +2531,7 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 
 		if(mseq != NULL) { // see if it's a MachineSequencer
 			int octave = std::stoi(msg.get_value("octave"));
-			mseq->get_pad()->set_octave(octave);
+			mseq->get_pad()->config.set_octave(octave);
 		} else {
 			// not a MachineSequencer
 			throw Context::FailureResponse("Not a MachineSequencer object.");
@@ -2541,7 +2541,7 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 
 		if(mseq != NULL) { // see if it's a MachineSequencer
 			int scale = std::stoi(msg.get_value("scale"));
-			mseq->get_pad()->set_scale(scale);
+			mseq->get_pad()->config.set_scale(scale);
 		} else {
 			// not a MachineSequencer
 			throw Context::FailureResponse("Not a MachineSequencer object.");
@@ -2571,17 +2571,17 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 
 		if(mseq != NULL) { // see if it's a MachineSequencer
 			PadAxis_t axis = (PadAxis_t)(std::stoi(msg.get_value("axis")));
-			MachineSequencer::PadConfiguration::PadAxis p_axis = MachineSequencer::PadConfiguration::pad_x_axis;
+			Pad::PadConfiguration::PadAxis p_axis = Pad::PadConfiguration::pad_x_axis;
 			std::string ctrl = msg.get_value("midictrl");
 			switch(axis) {
 			case pad_x_axis:
-				p_axis = MachineSequencer::PadConfiguration::pad_x_axis;
+				p_axis = Pad::PadConfiguration::pad_x_axis;
 				break;
 			case pad_y_axis:
-				p_axis = MachineSequencer::PadConfiguration::pad_y_axis;
+				p_axis = Pad::PadConfiguration::pad_y_axis;
 				break;
 			case pad_z_axis:
-				p_axis = MachineSequencer::PadConfiguration::pad_z_axis;
+				p_axis = Pad::PadConfiguration::pad_z_axis;
 				break;
 			}
 
@@ -2595,19 +2595,19 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 
 		if(mseq != NULL) { // see if it's a MachineSequencer
 			ChordMode_t chord_mode = (ChordMode_t)std::stoi(msg.get_value("chordmode"));
-			MachineSequencer::PadConfiguration::ChordMode cm = MachineSequencer::PadConfiguration::chord_off;
+			Pad::PadConfiguration::ChordMode cm = Pad::PadConfiguration::chord_off;
 			switch(chord_mode) {
 			case chord_off:
-				cm = MachineSequencer::PadConfiguration::chord_off;
+				cm = Pad::PadConfiguration::chord_off;
 				break;
 			case chord_triad:
-				cm = MachineSequencer::PadConfiguration::chord_triad;
+				cm = Pad::PadConfiguration::chord_triad;
 				break;
 			case chord_quad:
-				cm = MachineSequencer::PadConfiguration::chord_quad;
+				cm = Pad::PadConfiguration::chord_quad;
 				break;
 			}
-			mseq->get_pad()->set_chord_mode(cm);
+			mseq->get_pad()->config.set_chord_mode(cm);
 		} else {
 			// not a MachineSequencer
 			throw Context::FailureResponse("Not a MachineSequencer object.");
@@ -2627,20 +2627,20 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 
 		if(mseq != NULL) { // see if it's a MachineSequencer
 			ArpeggioDirection_t i_arp_direction = (ArpeggioDirection_t)std::stoi(msg.get_value("direction"));
-			MachineSequencer::PadConfiguration::ArpeggioDirection adir =
-				MachineSequencer::PadConfiguration::arp_off;
+			Pad::PadConfiguration::ArpeggioDirection adir =
+				Pad::PadConfiguration::arp_off;
 			switch(i_arp_direction) {
 			case arp_off:
-				adir = MachineSequencer::PadConfiguration::arp_off;
+				adir = Pad::PadConfiguration::arp_off;
 				break;
 			case arp_forward:
-				adir = MachineSequencer::PadConfiguration::arp_forward;
+				adir = Pad::PadConfiguration::arp_forward;
 				break;
 			case arp_reverse:
-				adir = MachineSequencer::PadConfiguration::arp_reverse;
+				adir = Pad::PadConfiguration::arp_reverse;
 				break;
 			case arp_pingpong:
-				adir = MachineSequencer::PadConfiguration::arp_pingpong;
+				adir = Pad::PadConfiguration::arp_pingpong;
 				break;
 			}
 			mseq->set_pad_arpeggio_direction(adir);
