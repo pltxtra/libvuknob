@@ -36,11 +36,6 @@
 #define MAX_BUILTIN_ARP_PATTERNS 7
 #define MAX_ARP_PATTERN_LENGTH 16
 
-// PAD_TIME(line,tick)
-#define PAD_TIME(A,B) ((int)(((A << BITS_PER_LINE) & (0xffffffff & (0xffffffff << BITS_PER_LINE))) | (B)))
-#define PAD_TIME_LINE(A) (A >> BITS_PER_LINE)
-#define PAD_TIME_TICK(B) (B & (((0xffffffff << BITS_PER_LINE) & 0xffffffff) ^ 0xffffffff))
-
 class Pad {
 public:
 	class PadConfiguration {

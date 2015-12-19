@@ -120,6 +120,7 @@ scales.cc scales.hh \
 serialize.cc serialize.hh \
 time_measure.cc \
 engine_code/pad.cc engine_code/pad.hh \
+engine_code/controller_envelope.cc engine_code/controller_envelope.hh \
 \
 ui_code/information_catcher.cc ui_code/information_catcher.hh \
 ui_code/license_view.cc \
@@ -135,7 +136,7 @@ ui_code/machine_selector_ui.cc \
 ui_code/load_ui.cc ui_code/save_ui.cc \
 ui_code/new_project_ui.cc \
 ui_code/project_info_entry.cc \
-ui_code/controller_envelope.cc ui_code/controller_envelope.hh \
+ui_code/envelope_editor.cc ui_code/envelope_editor.hh \
 ui_code/canvas_widget.cc ui_code/canvas_widget.hh \
 ui_code/numeric_keyboard.cc ui_code/numeric_keyboard.hh \
 ui_code/top_menu.cc ui_code/top_menu.hh \
