@@ -107,6 +107,11 @@ asio::streambuf::const_buffers_type RemoteInterface::Message::get_data() {
 	return sbuf.data();
 }
 
+void RemoteInterface::Message::recycle() {
+	sbuf.consume(data2send);
+	clear_msg_content();
+}
+
 bool RemoteInterface::Message::decode_client_id() {
 	std::istream is(&sbuf);
 	std::string header;
@@ -180,16 +185,6 @@ void RemoteInterface::Message::clear_msg_content() {
 	key2val.clear();
 }
 
-void RemoteInterface::Message::recycle(Message *msg) {
-	if(msg->context) {
-		msg->sbuf.consume(msg->data2send);
-		msg->clear_msg_content();
-		msg->context->recycle_message(msg);
-	} else {
-		delete msg;
-	}
-}
-
 /***************************
  *
  *  Class RemoteInterface::Context
@@ -244,7 +239,13 @@ std::shared_ptr<RemoteInterface::Message> RemoteInterface::Context::acquire_mess
 		available_messages.pop_front();
 	}
 
-	return std::shared_ptr<Message>(m_ptr, Message::recycle);
+	return std::shared_ptr<Message>(
+		m_ptr,
+		[this](RemoteInterface::Message* msg) {
+			msg->recycle();
+			available_messages.push_back(msg);
+		}
+		);
 }
 
 std::shared_ptr<RemoteInterface::Message> RemoteInterface::Context::acquire_reply(const Message &originator) {
@@ -252,10 +253,6 @@ std::shared_ptr<RemoteInterface::Message> RemoteInterface::Context::acquire_repl
 	reply->set_value("id", std::to_string(__MSG_REPLY));
 	reply->set_value("repid", std::to_string(originator.get_value("repid")));
 	return reply;
-}
-
-void RemoteInterface::Context::recycle_message(RemoteInterface::Message* used_message) {
-	available_messages.push_back(used_message);
 }
 
 /***************************

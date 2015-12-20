@@ -251,7 +251,7 @@ namespace RemoteInterface {
 		void clear_msg_content();
 
 	public:
-		static void recycle(Message *msg);
+		void recycle();
 
 		inline uint32_t get_body_length() { return body_length; }
 		inline int32_t get_client_id() { return client_id; }
@@ -299,7 +299,6 @@ namespace RemoteInterface {
 		virtual void post_action(std::function<void()> f, bool do_synch = false);
 		std::shared_ptr<Message> acquire_message();
 		std::shared_ptr<Message> acquire_reply(const Message &originator);
-		void recycle_message(Message *used_message);
 
 		void run_context() {
 			__context_thread_id = std::this_thread::get_id();
