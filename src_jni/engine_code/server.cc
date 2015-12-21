@@ -114,7 +114,7 @@ SERVER_CODE(
 				std::shared_ptr<Message> destroy_object_message = acquire_message();
 				add_destroy_object_header(destroy_object_message, obj2delete);
 				distribute_message(destroy_object_message, false);
-
+				invalidate_object(obj2delete); /* unlink from this context */
 				all_objects.erase(obj);
 				return;
 			}
@@ -424,10 +424,19 @@ SERVER_CODE(
 	void Server::route_incomming_message(ClientAgent *src, const Message &msg) {
 		int identifier = std::stol(msg.get_value("id"));
 
-		auto obj_iterator = all_objects.find(identifier);
-		if(obj_iterator == all_objects.end()) throw BaseObject::NoSuchObject();
+		if(identifier == __MSG_DELETE_OBJECT) {
+			int identifier = std::stol(msg.get_value("objid"));
 
-		obj_iterator->second->process_message_server(this, src, msg);
+			auto obj_iterator = all_objects.find(identifier);
+			if(obj_iterator == all_objects.end()) throw BaseObject::NoSuchObject();
+
+			delete_object(obj_iterator->second);
+		} else {
+			auto obj_iterator = all_objects.find(identifier);
+			if(obj_iterator == all_objects.end()) throw BaseObject::NoSuchObject();
+
+			obj_iterator->second->process_message_server(this, src, msg);
+		}
 	}
 
 	void Server::disconnect_clients() {
@@ -465,6 +474,17 @@ SERVER_CODE(
 		{ // register us as a machine set listener
 			Machine::register_machine_set_listener(shared_from_this());
 		}
+	}
+
+	void Server::on_remove_object(int32_t objid) {
+		io_service.post(
+			[this, objid]() {
+				auto obj_iterator = all_objects.find(objid);
+				if(obj_iterator == all_objects.end()) throw BaseObject::NoSuchObject();
+
+				delete_object(obj_iterator->second);
+			}
+			);
 	}
 
 	int Server::start_server() {

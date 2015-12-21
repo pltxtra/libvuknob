@@ -115,6 +115,9 @@ SERVER_CODE(
 		static std::shared_ptr<Server> server;
 		static std::mutex server_mutex;
 
+	protected:
+		virtual void on_remove_object(int32_t objid) override;
+
 	public:
 		static int start_server(); // will start a server and return the port number. If the server is already started, it will just return the port number.
 		static bool is_running();

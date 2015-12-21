@@ -274,6 +274,10 @@ namespace RemoteInterface {
 		std::thread io_thread;
 		asio::io_service io_service;
 
+		friend class BaseObject;
+		virtual void on_remove_object(int32_t objid) = 0;
+		void invalidate_object(std::shared_ptr<BaseObject> obj);
+
 	public:
 		class ContextNotConnected : public std::runtime_error {
 		public:
@@ -342,9 +346,16 @@ namespace RemoteInterface {
 
 	class BaseObject : public std::enable_shared_from_this<BaseObject> {
 	private:
+		friend class Context;
+
 		bool __is_server_side = false;
+		volatile bool __object_is_valid = true;
 
 	protected:
+		inline bool check_object_is_valid() {
+			return __object_is_valid;
+		}
+
 		class Factory {
 		private:
 			void register_factory();
@@ -386,6 +397,8 @@ namespace RemoteInterface {
 		Context* context;
 		std::mutex base_object_mutex;
 
+		void request_delete_me();
+
 		void send_object_message(std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback, bool via_udp = false);
 		void send_object_message(std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback,
 					 std::function<void(const Message *reply_message)> reply_received_callback);
@@ -397,6 +410,12 @@ namespace RemoteInterface {
 		class ObjectType {
 		public:
 			const char *type_name;
+		};
+
+		class ObjectWasDeleted : public std::runtime_error {
+		public:
+			ObjectWasDeleted() : runtime_error("Tried to use deleted RemoteInterface object.") {}
+			virtual ~ObjectWasDeleted() {}
 		};
 
 		class NoSuchFactory : public std::runtime_error {

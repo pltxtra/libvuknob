@@ -196,6 +196,11 @@ RemoteInterface::Context::~Context() {
 		delete msg;
 }
 
+void RemoteInterface::Context::invalidate_object(
+	std::shared_ptr<RemoteInterface::BaseObject> obj) {
+	obj->__object_is_valid = false;
+}
+
 void RemoteInterface::Context::post_action(std::function<void()> f, bool do_synch) {
 	auto ttid = std::this_thread::get_id();
 	if(ttid != __context_thread_id && do_synch) {
@@ -443,7 +448,19 @@ RemoteInterface::BaseObject::BaseObject(int32_t new_obj_id, const Factory *_fact
 	// this constructor should only be used server side
 }
 
+void RemoteInterface::BaseObject::request_delete_me() {
+	if(!check_object_is_valid()) throw ObjectWasDeleted();
+
+	context->post_action(
+		[this]() {
+			context->on_remove_object(obj_id);
+		}
+		);
+}
+
 void RemoteInterface::BaseObject::send_object_message(std::function<void(std::shared_ptr<Message> &msg_to_send)> complete_message, bool via_udp) {
+	if(!check_object_is_valid()) throw ObjectWasDeleted();
+
 	context->post_action(
 		[this, via_udp, complete_message]() {
 			std::shared_ptr<Message> msg2send = context->acquire_message();
@@ -475,6 +492,8 @@ void RemoteInterface::BaseObject::send_object_message(std::function<void(std::sh
 	std::mutex mtx;
 	std::condition_variable cv;
 	bool ready = false;
+
+	if(!check_object_is_valid()) throw ObjectWasDeleted();
 
 	context->post_action(
 		[this, complete_message, reply_received_callback, &ready, &mtx, &cv]() {
@@ -629,6 +648,8 @@ namespace RemoteInterface {
 		std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback,
 		std::function<void(const Message *reply_message)> reply_received_callback) {
 
+		if(!check_object_is_valid()) throw ObjectWasDeleted();
+
 		if(is_server_side()) {
 			// if we already are server side - shortcut the process
 			context->post_action(
@@ -671,6 +692,8 @@ namespace RemoteInterface {
 	void SimpleBaseObject::send_message_to_server(
 		const std::string &command_id,
 		std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback) {
+
+		if(!check_object_is_valid()) throw ObjectWasDeleted();
 
 		if(is_server_side()) {
 			// if we already are server side - shortcut the process
@@ -2171,6 +2194,8 @@ void RemoteInterface::RIMachine::set_state_change_listener(std::weak_ptr<RIMachi
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		state_listeners.insert(state_listener);
 	}
+
+	if(!check_object_is_valid()) throw ObjectWasDeleted();
 
 	context->post_action(
 		[this, state_listener]() {

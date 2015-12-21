@@ -55,6 +55,9 @@ namespace RemoteInterface {
 			static std::shared_ptr<Client> client;
 			static std::mutex client_mutex;
 
+		protected:
+			virtual void on_remove_object(int32_t objid) override;
+
 		public: // public singleton interface
 			static void start_client(const std::string &server_host, int server_port,
 						 std::function<void()> disconnect_callback,
@@ -69,7 +72,6 @@ namespace RemoteInterface {
 
 			virtual void distribute_message(std::shared_ptr<Message> &msg, bool via_udp) override;
 			virtual std::shared_ptr<BaseObject> get_object(int32_t objid) override;
-
 		};
 	};
 };

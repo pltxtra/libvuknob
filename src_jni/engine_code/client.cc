@@ -70,6 +70,13 @@ CLIENT_CODE(
 
 	}
 
+	void Client::on_remove_object(int32_t objid) {
+		auto msg = acquire_message();
+		msg->set_value("id", std::to_string(__MSG_DELETE_OBJECT));
+		msg->set_value("objid", std::to_string(objid));
+		distribute_message(msg, false);
+	}
+
 	void Client::on_message_received(const Message &msg) {
 		int identifier = std::stol(msg.get_value("id"));
 
@@ -134,6 +141,7 @@ CLIENT_CODE(
 			auto obj_iterator = all_objects.find(std::stol(msg.get_value("objid")));
 			if(obj_iterator != all_objects.end()) {
 				obj_iterator->second->on_delete(this);
+				invalidate_object(obj_iterator->second); /* unlink from this context */
 				all_objects.erase(obj_iterator);
 			}
 		}
