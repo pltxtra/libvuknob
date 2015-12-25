@@ -191,6 +191,8 @@ void RemoteInterface::Message::clear_msg_content() {
  *
  ***************************/
 
+std::atomic_int RemoteInterface::Context::__obj_type_id_counter(0);
+
 RemoteInterface::Context::~Context() {
 	for(auto msg : available_messages)
 		delete msg;

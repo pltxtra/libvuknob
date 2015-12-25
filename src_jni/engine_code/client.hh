@@ -73,6 +73,18 @@ namespace RemoteInterface {
 			static void disconnect_client();
 			static void destroy_client_object();
 
+			template<class T>
+			static void register_object_set_listener(std::weak_ptr<ObjectSetListener<T> > osl) {
+				std::lock_guard<std::mutex> lock_guard(client_mutex);
+				if(!client) create_client();
+
+				client->io_service.post(
+					[osl]() {
+						client->__register_ObjectSetListener(osl);
+					}
+					);
+			}
+
 			static void register_ri_machine_set_listener(std::weak_ptr<RIMachine::RIMachineSetListener> ri_mset_listener);
 
 		public:

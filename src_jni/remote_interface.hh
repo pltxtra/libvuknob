@@ -40,6 +40,8 @@
 #include <asio.hpp>
 #include <thread>
 #include <utility>
+#include <atomic>
+#include <unordered_map>
 
 #include "common.hh"
 
@@ -265,10 +267,29 @@ namespace RemoteInterface {
 	};
 
 	class Context {
+	public:
+		template<class T>
+		class ObjectSetListener {
+		public:
+			virtual void object_registered(std::shared_ptr<T> obj) = 0;
+			virtual void object_unregistered(std::shared_ptr<T> obj) = 0;
+		};
+
 	private:
 		std::deque<Message *> available_messages;
 
+		typedef std::function<void(std::shared_ptr<BaseObject>)> ListenerCB;
+		std::unordered_multimap<int, ListenerCB> register_obj_cbs;
+		std::unordered_multimap<int, ListenerCB> unregister_obj_cbs;
+
 		std::thread::id __context_thread_id;
+
+		static std::atomic_int __obj_type_id_counter;
+		template <typename T>
+		static int get_objtype_id() {
+			static int id = ++__obj_type_id_counter;
+			return id;
+		}
 
 	protected:
 		std::thread io_thread;
@@ -278,13 +299,61 @@ namespace RemoteInterface {
 		virtual void on_remove_object(int32_t objid) = 0;
 		void invalidate_object(std::shared_ptr<BaseObject> obj);
 
+		template<typename T>
+		void __register_ObjectSetListener(std::weak_ptr<ObjectSetListener<T> > osl) {
+			auto objid = get_objtype_id<T>();
+
+			register_obj_cbs[objid] =
+				[osl](std::shared_ptr<BaseObject> obj) {
+				if(auto locked = osl.lock()) {
+					auto T_obj = std::dynamic_pointer_cast<T>(obj);
+					if(T_obj)
+						locked->object_registered(T_obj);
+				}
+			};
+			unregister_obj_cbs[objid] =
+				[osl](std::shared_ptr<BaseObject> obj) {
+				if(auto locked = osl.lock()) {
+					auto T_obj = std::dynamic_pointer_cast<T>(obj);
+					if(T_obj)
+						locked->object_unregistered(T_obj);
+				}
+			};
+		}
+
 	public:
+		template <class T>
+		void unregister_object(std::shared_ptr<T> obj) {
+			auto objid = get_objtype_id<T>();
+			auto range = unregister_obj_cbs.equal_range(objid);
+			for(auto cb : range) {
+				cb.second(obj);
+			}
+		}
+
+		template <class T>
+		void register_object(std::shared_ptr<T> obj) {
+			auto objid = get_objtype_id<T>();
+			auto range = register_obj_cbs.equal_range(objid);
+			for(auto cb : range) {
+				cb.second(obj);
+			}
+		}
+
 		class ContextNotConnected : public std::runtime_error {
 		public:
 			ContextNotConnected()
 				: runtime_error("RemoteInterface::Context not connected to client/server.")
 				{}
 			virtual ~ContextNotConnected() {}
+		};
+
+		class ContextAlreadyConnected : public std::runtime_error {
+		public:
+			ContextAlreadyConnected()
+				: runtime_error("RemoteInterface::Context already connected to client/server.")
+				{}
+			virtual ~ContextAlreadyConnected() {}
 		};
 
 		class FailureResponse : public std::runtime_error {
