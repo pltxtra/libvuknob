@@ -27,9 +27,9 @@
 
 namespace RemoteInterface {
 	namespace __RI__CURRENT_NAMESPACE {
-
 		class Client : public Context, public MessageHandler {
 		private:
+			std::shared_ptr<asio::io_service::work> io_workit;
 			std::map<int32_t, std::shared_ptr<BaseObject> > all_objects;
 
 			int32_t client_id = -1;
@@ -45,24 +45,33 @@ namespace RemoteInterface {
 			std::function<void()> disconnect_callback;
 			std::function<void(const std::string &fresp)> failure_response_callback;
 
-			Client(const std::string &server_host,
-			       int server_port,
-			       std::function<void()> disconnect_callback,
-			       std::function<void(const std::string &failure_response)> failure_response_callback);
+			Client();
+
+			void connect(
+				const std::string &server_host,
+				int server_port,
+				std::function<void()> disconnect_callback,
+				std::function<void(const std::string &failure_response)> failure_response_cb);
+			void disconnect();
 
 			void flush_all_objects();
+			void link_object(std::shared_ptr<BaseObject> obj);
+			void unlink_object(std::shared_ptr<BaseObject> obj);
 
 			static std::shared_ptr<Client> client;
 			static std::mutex client_mutex;
+
+			static void create_client();
 
 		protected:
 			virtual void on_remove_object(int32_t objid) override;
 
 		public: // public singleton interface
-			static void start_client(const std::string &server_host, int server_port,
-						 std::function<void()> disconnect_callback,
-						 std::function<void(const std::string &failure_response)> failure_response_callback);
-			static void disconnect();
+			static void connect_client(const std::string &server_host, int server_port,
+						   std::function<void()> disconnect_callback,
+						   std::function<void(const std::string &failure_response)> failure_response_callback);
+			static void disconnect_client();
+			static void destroy_client_object();
 
 			static void register_ri_machine_set_listener(std::weak_ptr<RIMachine::RIMachineSetListener> ri_mset_listener);
 

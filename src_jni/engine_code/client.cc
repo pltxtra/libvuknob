@@ -23,6 +23,9 @@
 #error "CAN'T FIND config.h"
 #endif
 
+#include <mutex>
+#include <condition_variable>
+
 #include "client.hh"
 
 //#define __DO_SATAN_DEBUG
@@ -33,16 +36,21 @@ CLIENT_CODE(
 	std::shared_ptr<Client> Client::client;
 	std::mutex Client::client_mutex;
 
-	Client::Client(const std::string &server_host,
-		       int server_port,
-		       std::function<void()> _disconnect_callback,
-		       std::function<void(const std::string &failure_response)> _failure_response_callback)
+	Client::Client()
 	: MessageHandler(io_service)
 	, resolver(io_service)
 	, udp_resolver(io_service)
-	, disconnect_callback(_disconnect_callback)
 	{
-		failure_response_callback = _failure_response_callback;
+		// create some "work" to keep the service alive
+		io_workit = std::make_shared<asio::io_service::work>(io_service);
+	}
+
+	void Client::connect(const std::string &server_host,
+			     int server_port,
+			     std::function<void()> _disconnect_cb,
+			     std::function<void(const std::string &failure_response)> _failure_response_cb) {
+		failure_response_callback = _failure_response_cb;
+		disconnect_callback = _disconnect_cb;
 		auto endpoint_iterator = resolver.resolve({server_host, std::to_string(server_port) });
 
 		asio::async_connect(my_socket, endpoint_iterator,
@@ -62,12 +70,32 @@ CLIENT_CODE(
 			);
 	}
 
+	void Client::disconnect() {
+		try {
+			client->my_socket.close();
+		} catch(std::exception &exp) {
+		}
+	}
+
 	void Client::flush_all_objects() {
 		for(auto objid2obj : all_objects) {
-			objid2obj.second->on_delete(this);
+			unlink_object(objid2obj.second);
 		}
 		all_objects.clear();
+	}
 
+	void Client::unlink_object(std::shared_ptr<BaseObject> obj) {
+		obj->on_delete(this);
+		invalidate_object(obj); /* unlink from this context */
+	}
+
+	void Client::link_object(std::shared_ptr<BaseObject> new_obj) {
+		int32_t obj_id = new_obj->get_obj_id();
+
+		if(all_objects.find(obj_id) != all_objects.end()) throw BaseObject::DuplicateObjectId();
+		if(obj_id < 0) throw BaseObject::ObjIdOverflow();
+
+		all_objects[new_obj->get_obj_id()] = new_obj;
 	}
 
 	void Client::on_remove_object(int32_t objid) {
@@ -105,12 +133,7 @@ CLIENT_CODE(
 			std::shared_ptr<BaseObject> new_obj = BaseObject::create_object_on_client(msg);
 			new_obj->set_context(this);
 
-			int32_t obj_id = new_obj->get_obj_id();
-
-			if(all_objects.find(obj_id) != all_objects.end()) throw BaseObject::DuplicateObjectId();
-			if(obj_id < 0) throw BaseObject::ObjIdOverflow();
-
-			all_objects[new_obj->get_obj_id()] = new_obj;
+			link_object(new_obj);
 		}
 		break;
 
@@ -140,8 +163,7 @@ CLIENT_CODE(
 		{
 			auto obj_iterator = all_objects.find(std::stol(msg.get_value("objid")));
 			if(obj_iterator != all_objects.end()) {
-				obj_iterator->second->on_delete(this);
-				invalidate_object(obj_iterator->second); /* unlink from this context */
+				unlink_object(obj_iterator->second);
 				all_objects.erase(obj_iterator);
 			}
 		}
@@ -176,18 +198,14 @@ CLIENT_CODE(
 
 	}
 
-	void Client::start_client(const std::string &server_host,
-				  int server_port,
-				  std::function<void()> disconnect_callback,
-				  std::function<void(const std::string &fresp)> failure_response_callback) {
-		std::lock_guard<std::mutex> lock_guard(client_mutex);
-
+	void Client::create_client() {
 		try {
-			client = std::shared_ptr<Client>(new Client(server_host, server_port, disconnect_callback, failure_response_callback));
+			client = std::shared_ptr<Client>(new Client());
 
 			client->io_thread = std::thread([]() {
 					SATAN_DEBUG(" *********  CLIENT THREAD STARTED **********\n");
 					client->io_service.run();
+					SATAN_DEBUG(" *********  CLIENT THREAD EXITED ***********\n");
 				}
 				);
 		} catch (std::exception& e) {
@@ -195,39 +213,71 @@ CLIENT_CODE(
 		}
 	}
 
-	void Client::disconnect() {
+	void Client::connect_client(const std::string &server_host,
+				    int server_port,
+				    std::function<void()> disconnect_callback,
+				    std::function<void(const std::string &fresp)> failure_response_callback) {
 		std::lock_guard<std::mutex> lock_guard(client_mutex);
-		if(client) {
-			client->io_service.post(
-				[]()
-				{
-					try {
-						client->my_socket.close();
-					} catch(std::exception &exp) {
-					}
-					client->io_service.stop();
-				});
+		if(!client) create_client();
 
-			client->io_thread.join();
-			client.reset();
-		}
+		std::mutex mtx;
+		std::condition_variable cv;
+		std::atomic<bool> ready(false);
+
+		client->io_service.post(
+			[&mtx, &ready, &cv,
+			 server_host, server_port,
+			 disconnect_callback,
+			 failure_response_callback]()
+			{
+				if(client->my_socket.is_open()) {
+					client->disconnect();
+				}
+				client->connect(server_host, server_port,
+						disconnect_callback, failure_response_callback);
+
+				std::unique_lock<std::mutex> lck(mtx);
+				ready = true;
+				cv.notify_all();
+
+			}
+			);
+
+		std::unique_lock<std::mutex> lck(mtx);
+		while (!ready) cv.wait(lck);
+	}
+
+	void Client::disconnect_client() {
+		std::lock_guard<std::mutex> lock_guard(client_mutex);
+		if(!client) create_client();
+
+		client->io_service.post(
+			[]()
+			{
+				client->disconnect();
+			});
+	}
+
+	void Client::destroy_client_object() {
+		std::lock_guard<std::mutex> lock_guard(client_mutex);
+		if(!client) return;
+		client->io_workit.reset();
+		client->io_thread.join();
+		client.reset();
 	}
 
 	void Client::register_ri_machine_set_listener(
 		std::weak_ptr<RIMachine::RIMachineSetListener> ri_mset_listener
 		) {
 		std::lock_guard<std::mutex> lock_guard(client_mutex);
-		if(client) {
-			client->io_service.post(
-				[ri_mset_listener]()
-				{
-					RIMachine::register_ri_machine_set_listener(ri_mset_listener);
-				});
-		} else {
-			// if disconnected, we can go ahead and directly register...
-			RIMachine::register_ri_machine_set_listener(ri_mset_listener);
-		}
 
+		if(!client) create_client();
+
+		client->io_service.post(
+			[ri_mset_listener]()
+			{
+				RIMachine::register_ri_machine_set_listener(ri_mset_listener);
+			});
 	}
 
 	void Client::distribute_message(std::shared_ptr<Message> &msg, bool via_udp) {

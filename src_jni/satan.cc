@@ -67,7 +67,9 @@ virtual void on_click(KammoGUI::Widget *wid) {
 	SATAN_ERROR("stopping server..\n");
 	__RI_stop_server();
 	SATAN_ERROR("disconnecting client..\n");
-	RemoteInterface::ClientSpace::Client::disconnect();
+	RemoteInterface::ClientSpace::Client::disconnect_client();
+	SATAN_ERROR("destroying client object..\n");
+	RemoteInterface::ClientSpace::Client::destroy_client_object();
 	SATAN_ERROR("exit application..\n");
 	Machine::exit_application();
 }

@@ -184,8 +184,8 @@ void LogoScreen::start_vuknob(bool start_with_jam_view) {
 	}
 
 	// connect to the selected server
-	RemoteInterface::ClientSpace::Client::start_client(selected_server, selected_port,
-							   remote_interface_disconnected, failure_response);
+	RemoteInterface::ClientSpace::Client::connect_client(selected_server, selected_port,
+							     remote_interface_disconnected, failure_response);
 
 	// just show main UI
 	{
