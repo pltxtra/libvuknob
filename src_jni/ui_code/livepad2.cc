@@ -864,7 +864,7 @@ void LivePad2::use_new_MachineSequencer(std::shared_ptr<RemoteInterface::RIMachi
 	l_pad2->switch_MachineSequencer(m);
 }
 
-void LivePad2::ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
+void LivePad2::object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
 	SATAN_DEBUG("LivePad2::ri_machine_registered - type [%s] (%f, %f)\n",
 		    ri_machine->get_machine_type().c_str(), ri_machine->get_x_position(), ri_machine->get_y_position());
 
@@ -878,7 +878,7 @@ void LivePad2::ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine>
 		);
 }
 
-void LivePad2::ri_machine_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
+void LivePad2::object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
 	if(ri_machine->get_machine_type() != "MachineSequencer") return; // we're not interested in anything but the MachineSequencers
 
 	KammoGUI::run_on_GUI_thread(
@@ -922,7 +922,10 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		cnvs->set_bg_color(1.0, 1.0, 1.0);
 
 		static auto lpad = std::make_shared<LivePad2>(cnvs, SVGLoader::get_svg_path("/livePad2.svg"));
-		RemoteInterface::ClientSpace::Client::register_ri_machine_set_listener(lpad);
+		auto ptr =
+			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> >(lpad);
+		std::weak_ptr<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> > w_ptr = ptr;
+		RemoteInterface::ClientSpace::Client::register_object_set_listener(w_ptr);
 		RemoteInterface::GlobalControlObject::register_playback_state_listener(lpad);
 		KammoGUI::SensorEvent::register_listener(lpad);
 	}

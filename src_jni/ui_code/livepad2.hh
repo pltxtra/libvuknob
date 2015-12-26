@@ -37,7 +37,7 @@
 #define VZONES PAD_VZONES
 
 class LivePad2 : public KammoGUI::SVGCanvas::SVGDocument,
-		 public RemoteInterface::RIMachine::RIMachineSetListener,
+		 public RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine>,
 		 public RemoteInterface::GlobalControlObject::PlaybackStateListener,
 		 public KammoGUI::SensorEvent::Listener {
 private:
@@ -132,8 +132,8 @@ public:
 
 	static void use_new_MachineSequencer(std::shared_ptr<RemoteInterface::RIMachine> mseq);
 
-	virtual void ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
-	virtual void ri_machine_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
+	virtual void object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
+	virtual void object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
 
 	// RemoteInterface::GlobalControlObject::PlaybackStateListener
 	virtual void playback_state_changed(bool is_playing) override;

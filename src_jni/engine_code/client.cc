@@ -28,7 +28,7 @@
 
 #include "client.hh"
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 CLIENT_CODE(
@@ -130,8 +130,7 @@ CLIENT_CODE(
 		case __MSG_CREATE_OBJECT:
 		{
 			SATAN_DEBUG("Client - Creating object from message...\n");
-			std::shared_ptr<BaseObject> new_obj = BaseObject::create_object_on_client(msg);
-			new_obj->set_context(this);
+			std::shared_ptr<BaseObject> new_obj = BaseObject::create_object_on_client(this, msg);
 
 			link_object(new_obj);
 		}
@@ -264,20 +263,6 @@ CLIENT_CODE(
 		client->io_workit.reset();
 		client->io_thread.join();
 		client.reset();
-	}
-
-	void Client::register_ri_machine_set_listener(
-		std::weak_ptr<RIMachine::RIMachineSetListener> ri_mset_listener
-		) {
-		std::lock_guard<std::mutex> lock_guard(client_mutex);
-
-		if(!client) create_client();
-
-		client->io_service.post(
-			[ri_mset_listener]()
-			{
-				RIMachine::register_ri_machine_set_listener(ri_mset_listener);
-			});
 	}
 
 	void Client::distribute_message(std::shared_ptr<Message> &msg, bool via_udp) {

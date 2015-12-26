@@ -25,7 +25,7 @@
 #include "remote_interface.hh"
 
 class Sequencer
-	: public RemoteInterface::RIMachine::RIMachineSetListener
+	: public RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine>
 	, public KammoGUI::SVGCanvas::SVGDocument
 {
 
@@ -81,8 +81,8 @@ public:
 	virtual void on_resize() override;
 	virtual void on_render() override;
 
-	virtual void ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
-	virtual void ri_machine_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
+	virtual void object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
+	virtual void object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
 };
 
 #endif

@@ -191,8 +191,6 @@ void RemoteInterface::Message::clear_msg_content() {
  *
  ***************************/
 
-std::atomic_int RemoteInterface::Context::__obj_type_id_counter(0);
-
 RemoteInterface::Context::~Context() {
 	for(auto msg : available_messages)
 		delete msg;
@@ -380,7 +378,9 @@ void RemoteInterface::MessageHandler::deliver_message(std::shared_ptr<Message> &
  *
  ***************************/
 
+static std::mutex __factory_registration_mutex;
 void RemoteInterface::BaseObject::Factory::register_factory() {
+	std::lock_guard<std::mutex> lock_guard(__factory_registration_mutex);
 	if(what_sides & ServerSide) {
 		if(server_factories.find(type) != server_factories.end()) throw FactoryAlreadyCreated();
 		server_factories[type] = this;
@@ -426,11 +426,13 @@ const char* RemoteInterface::BaseObject::Factory::get_type() const {
 	return type;
 }
 
-auto RemoteInterface::BaseObject::Factory::create_static_single_object(int32_t new_obj_id) -> std::shared_ptr<BaseObject> {
+auto RemoteInterface::BaseObject::Factory::create_static_single_object(
+	Context* context,
+	int32_t new_obj_id) -> std::shared_ptr<BaseObject> {
 	std::shared_ptr<BaseObject> retval;
 
 	if(static_single_object)
-		retval = create(new_obj_id);
+		retval = create_and_register(context, new_obj_id);
 
 	return retval;
 }
@@ -550,34 +552,41 @@ void RemoteInterface::BaseObject::set_context(Context* _context) {
 	context = _context;
 }
 
-std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::BaseObject::create_object_on_client(const Message &msg) {
+std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::BaseObject::create_object_on_client(
+	Context* _ctxt,
+	const Message &msg)
+{
 	std::string factory_type = msg.get_value("factory");
 	auto factory_iterator = client_factories.find(factory_type);
 	if(factory_iterator == client_factories.end()) {
 		throw NoSuchFactory();
 	}
 
-	std::shared_ptr<RemoteInterface::BaseObject> o = factory_iterator->second->create(msg);
+	auto o = factory_iterator->second->create_and_register(_ctxt, msg);
 
 	o->post_constructor_client();
 
 	return o;
 }
 
-std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::BaseObject::create_object_on_server(int32_t new_obj_id,
-												  const std::string &factory_type) {
+std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::BaseObject::create_object_on_server(
+	Context* _ctxt,
+	int32_t new_obj_id,
+	const std::string &factory_type)
+{
 	auto factory_iterator = server_factories.find(factory_type);
 	if(factory_iterator == server_factories.end()) throw NoSuchFactory();
 
-	return factory_iterator->second->create(new_obj_id);
+	return factory_iterator->second->create_and_register(_ctxt, new_obj_id);
 }
 
 void RemoteInterface::BaseObject::create_static_single_objects_on_server(
+	Context* context,
 	std::function<int()> get_new_id_callback,
 	std::function<void(std::shared_ptr<BaseObject>)> new_obj_created) {
 
 	for(auto factory : server_factories) {
-		auto obj = factory.second->create_static_single_object(get_new_id_callback());
+		auto obj = factory.second->create_static_single_object(context, get_new_id_callback());
 		if(obj) new_obj_created(obj);
 	}
 }
@@ -747,9 +756,6 @@ namespace RemoteInterface {
 
 	void SimpleBaseObject::serialize(std::shared_ptr<Message> &target) {
 	}
-
-	void SimpleBaseObject::on_delete(Context* context) {
-	}
 };
 
 /***************************
@@ -758,10 +764,13 @@ namespace RemoteInterface {
  *
  ***************************/
 
-RemoteInterface::HandleList::HandleListFactory::HandleListFactory() : Factory(__FCT_HANDLELIST) {}
+RemoteInterface::HandleList::HandleListFactory::HandleListFactory()
+	: FactoryTemplate<HandleList>(__FCT_HANDLELIST) {}
 
-std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::HandleList::HandleListFactory::create(const Message &serialized) {
-	std::shared_ptr<HandleList> hlst = std::make_shared<HandleList>(this, serialized);
+std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::HandleList::HandleListFactory::create(
+	const Message &serialized)
+{
+	auto hlst = std::make_shared<HandleList>(this, serialized);
 	clientside_handle_list = hlst;
 	return hlst;
 }
@@ -851,7 +860,9 @@ void RemoteInterface::HandleList::serialize(std::shared_ptr<Message> &target) {
 	target->set_value("handles", handles_serialized.str());
 }
 
-void RemoteInterface::HandleList::on_delete(Context* context) { /* noop */ }
+void RemoteInterface::HandleList::on_delete(Context* context) {
+	context->unregister_object(shared_from_this());
+}
 
 std::map<std::string, std::string> RemoteInterface::HandleList::get_handles_and_hints() {
 	std::map<std::string, std::string> retval;
@@ -910,7 +921,8 @@ RemoteInterface::HandleList::HandleListFactory RemoteInterface::HandleList::hand
  *
  ***************************/
 
-RemoteInterface::GlobalControlObject::GlobalControlObjectFactory::GlobalControlObjectFactory() : Factory(__FCT_GLOBALCONTROLOBJECT) {}
+RemoteInterface::GlobalControlObject::GlobalControlObjectFactory::GlobalControlObjectFactory()
+	: FactoryTemplate<GlobalControlObject>(__FCT_GLOBALCONTROLOBJECT) {}
 
 std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::GlobalControlObject::GlobalControlObjectFactory::create(const Message &serialized) {
 	std::lock_guard<std::mutex> lock_guard(gco_mutex);
@@ -920,7 +932,7 @@ std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::GlobalControlObjec
 }
 
 std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::GlobalControlObject::GlobalControlObjectFactory::create(int32_t new_obj_id) {
-	return std::make_shared<GlobalControlObject>(new_obj_id, this);
+       return std::make_shared<GlobalControlObject>(new_obj_id, this);
 }
 
 /***************************
@@ -1133,7 +1145,9 @@ void RemoteInterface::GlobalControlObject::serialize(std::shared_ptr<Message> &t
 	target->set_value("is_recording", Machine::get_record_state() ? "true" : "false");
 }
 
-void RemoteInterface::GlobalControlObject::on_delete(Context* context) { /* noop */ }
+void RemoteInterface::GlobalControlObject::on_delete(Context* context) {
+	context->unregister_object(shared_from_this());
+}
 
 std::vector<std::string> RemoteInterface::GlobalControlObject::get_pad_arpeggio_patterns() {
 	std::vector<std::string> retval;
@@ -1337,7 +1351,8 @@ std::vector<std::weak_ptr<RemoteInterface::GlobalControlObject::PlaybackStateLis
  *
  ***************************/
 
-RemoteInterface::SampleBank::SampleBankFactory::SampleBankFactory() : Factory(__FCT_SAMPLEBANK) {}
+RemoteInterface::SampleBank::SampleBankFactory::SampleBankFactory()
+	: FactoryTemplate<SampleBank>(__FCT_SAMPLEBANK) {}
 
 std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::SampleBank::SampleBankFactory::create(const Message &serialized) {
 	std::lock_guard<std::mutex> lock_guard(clientside_samplebanks_mutex);
@@ -1484,6 +1499,8 @@ void RemoteInterface::SampleBank::serialize(std::shared_ptr<Message> &target) {
 }
 
 void RemoteInterface::SampleBank::on_delete(Context* context) {
+	context->unregister_object(shared_from_this());
+
 	std::lock_guard<std::mutex> lock_guard(clientside_samplebanks_mutex);
 
 	auto itr = clientside_samplebanks.begin();
@@ -1811,7 +1828,8 @@ bool RemoteInterface::RIMachine::RIController::has_midi_controller(int &__coarse
  *
  ***************************/
 
-RemoteInterface::RIMachine::RIMachineFactory::RIMachineFactory() : Factory(__FCT_RIMACHINE) {}
+RemoteInterface::RIMachine::RIMachineFactory::RIMachineFactory()
+	: FactoryTemplate<RIMachine>(__FCT_RIMACHINE) {}
 
 std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::RIMachine::RIMachineFactory::create(const Message &serialized) {
 	std::shared_ptr<RIMachine> hlst = std::make_shared<RIMachine>(this, serialized);
@@ -1845,6 +1863,7 @@ static void parse_io(std::vector<std::string> &target, const std::string source)
 
 RemoteInterface::RIMachine::RIMachine(const Factory *factory, const Message &serialized) : BaseObject(factory, serialized) {
 	name = serialized.get_value("name");
+	SATAN_ERROR("Created RIMachine, client side - %s\n", name.c_str());
 	type = serialized.get_value("type");
 	xpos = atof(serialized.get_value("xpos").c_str());
 	ypos = atof(serialized.get_value("ypos").c_str());
@@ -2431,13 +2450,6 @@ void RemoteInterface::RIMachine::post_constructor_client() {
 	if(is_sink) {
 		sink = thiz;
 	}
-
-	for(auto weak_set_listener : set_listeners) {
-		if(auto set_listener = weak_set_listener.lock()) {
-			auto mch = std::dynamic_pointer_cast<RIMachine>(shared_from_this());
-			set_listener->ri_machine_registered(mch);
-		}
-	}
 }
 
 void RemoteInterface::RIMachine::process_message_server(Context* context,
@@ -2953,18 +2965,12 @@ void RemoteInterface::RIMachine::serialize(std::shared_ptr<Message> &target) {
 }
 
 void RemoteInterface::RIMachine::on_delete(Context* context) {
-	std::lock_guard<std::mutex> lock_guard(ri_machine_lock);
-	for(auto weak_set_listener : set_listeners) {
-		if(auto set_listener = weak_set_listener.lock()) {
-			auto mch = std::dynamic_pointer_cast<RIMachine>(shared_from_this());
-			set_listener->ri_machine_unregistered(mch);
-		}
-	}
-}
+	context->unregister_object(shared_from_this());
 
-void RemoteInterface::RIMachine::register_ri_machine_set_listener(std::weak_ptr<RIMachineSetListener> set_listener) {
 	std::lock_guard<std::mutex> lock_guard(ri_machine_lock);
-	set_listeners.insert(set_listener);
+	if(is_sink) {
+		sink.reset();
+	}
 }
 
 std::shared_ptr<RemoteInterface::RIMachine> RemoteInterface::RIMachine::get_sink() {
@@ -2993,8 +2999,6 @@ std::shared_ptr<RemoteInterface::RIMachine> RemoteInterface::RIMachine::get_by_n
 }
 
 RemoteInterface::RIMachine::RIMachineFactory RemoteInterface::RIMachine::rimachine_factory;
-std::set<std::weak_ptr<RemoteInterface::RIMachine::RIMachineSetListener>,
-	 std::owner_less<std::weak_ptr<RemoteInterface::RIMachine::RIMachineSetListener> > > RemoteInterface::RIMachine::set_listeners;
 std::weak_ptr<RemoteInterface::RIMachine> RemoteInterface::RIMachine::sink;
 std::map<std::string, std::weak_ptr<RemoteInterface::RIMachine> > RemoteInterface::RIMachine::name2machine;
 std::mutex RemoteInterface::RIMachine::ri_machine_lock;

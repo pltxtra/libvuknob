@@ -42,6 +42,8 @@
 #include <utility>
 #include <atomic>
 #include <unordered_map>
+#include <typeinfo>
+#include <typeindex>
 
 #include "common.hh"
 
@@ -279,17 +281,11 @@ namespace RemoteInterface {
 		std::deque<Message *> available_messages;
 
 		typedef std::function<void(std::shared_ptr<BaseObject>)> ListenerCB;
-		std::unordered_multimap<int, ListenerCB> register_obj_cbs;
-		std::unordered_multimap<int, ListenerCB> unregister_obj_cbs;
+		typedef std::unordered_multimap<std::type_index, ListenerCB> CallbackMap;
+		CallbackMap register_obj_cbs;
+		CallbackMap unregister_obj_cbs;
 
 		std::thread::id __context_thread_id;
-
-		static std::atomic_int __obj_type_id_counter;
-		template <typename T>
-		static int get_objtype_id() {
-			static int id = ++__obj_type_id_counter;
-			return id;
-		}
 
 	protected:
 		std::thread io_thread;
@@ -301,42 +297,48 @@ namespace RemoteInterface {
 
 		template<typename T>
 		void __register_ObjectSetListener(std::weak_ptr<ObjectSetListener<T> > osl) {
-			auto objid = get_objtype_id<T>();
-
-			register_obj_cbs[objid] =
-				[osl](std::shared_ptr<BaseObject> obj) {
-				if(auto locked = osl.lock()) {
-					auto T_obj = std::dynamic_pointer_cast<T>(obj);
-					if(T_obj)
-						locked->object_registered(T_obj);
-				}
-			};
-			unregister_obj_cbs[objid] =
-				[osl](std::shared_ptr<BaseObject> obj) {
-				if(auto locked = osl.lock()) {
-					auto T_obj = std::dynamic_pointer_cast<T>(obj);
-					if(T_obj)
-						locked->object_unregistered(T_obj);
-				}
-			};
+			static auto objid = std::type_index(typeid(T));
+			register_obj_cbs.insert(
+				CallbackMap::value_type(
+					objid,
+					[osl](std::shared_ptr<BaseObject> obj) {
+						if(auto locked = osl.lock()) {
+							auto T_obj = std::dynamic_pointer_cast<T>(obj);
+							if(T_obj)
+								locked->object_registered(T_obj);
+						}
+					}
+					));
+			unregister_obj_cbs.insert(
+				CallbackMap::value_type(
+					objid,
+					[osl](std::shared_ptr<BaseObject> obj) {
+						if(auto locked = osl.lock()) {
+							auto T_obj = std::dynamic_pointer_cast<T>(obj);
+							if(T_obj)
+								locked->object_unregistered(T_obj);
+						}
+					}
+					));
 		}
 
 	public:
 		template <class T>
 		void unregister_object(std::shared_ptr<T> obj) {
-			auto objid = get_objtype_id<T>();
+			static auto objid = std::type_index(typeid(T));
 			auto range = unregister_obj_cbs.equal_range(objid);
-			for(auto cb : range) {
-				cb.second(obj);
+			for(auto cb = range.first; cb != range.second; ++cb) {
+				cb->second(obj);
 			}
 		}
 
 		template <class T>
 		void register_object(std::shared_ptr<T> obj) {
-			auto objid = get_objtype_id<T>();
+			obj->set_context(this);
+			static auto objid = std::type_index(typeid(T));
 			auto range = register_obj_cbs.equal_range(objid);
-			for(auto cb : range) {
-				cb.second(obj);
+			for(auto cb = range.first; cb != range.second; ++cb) {
+				cb->second(obj);
 			}
 		}
 
@@ -457,7 +459,45 @@ namespace RemoteInterface {
 			virtual std::shared_ptr<BaseObject> create(const Message &serialized) = 0;
 			virtual std::shared_ptr<BaseObject> create(int32_t new_obj_id) = 0;
 
-			std::shared_ptr<BaseObject> create_static_single_object(int32_t new_obj_id);
+			std::shared_ptr<BaseObject> create_static_single_object(
+				Context* context,
+				int32_t new_obj_id);
+
+			virtual std::shared_ptr<BaseObject> create_and_register(
+				Context* _ctxt,
+				const Message& serialized) = 0;
+			virtual std::shared_ptr<BaseObject> create_and_register(
+				Context* _ctxt,
+				int32_t new_obj_id) = 0;
+		};
+
+		template <typename T>
+		class FactoryTemplate : public Factory {
+		public:
+			FactoryTemplate(const char* type, bool static_single_object = false)
+				: Factory(type, static_single_object) {}
+			FactoryTemplate(WhatSide what_side, const char* type, bool static_single_object = false)
+				: Factory(what_side, type, static_single_object) {}
+
+			virtual std::shared_ptr<BaseObject> create_and_register(
+				Context* _ctxt,
+				const Message& serialized) override
+			{
+				auto obj =
+					std::dynamic_pointer_cast<T>(create(serialized));
+				_ctxt->register_object<T>(obj);
+				return obj;
+			}
+
+			virtual std::shared_ptr<BaseObject> create_and_register(
+				Context* _ctxt,
+				int32_t new_obj_id) override
+			{
+				auto obj =
+					std::dynamic_pointer_cast<T>(create(new_obj_id));
+				_ctxt->register_object<T>(obj);
+				return obj;
+			}
 		};
 
 		BaseObject(const Factory *factory, const Message &serialized);
@@ -520,10 +560,16 @@ namespace RemoteInterface {
 		virtual void serialize(std::shared_ptr<Message> &target) = 0;
 		virtual void on_delete(Context* context) = 0; // called on client side when it's about to be deleted
 
-		static std::shared_ptr<BaseObject> create_object_on_client(const Message &msg);
-		static std::shared_ptr<BaseObject> create_object_on_server(int32_t new_obj_id, const std::string &type);
+		static std::shared_ptr<BaseObject> create_object_on_client(
+				Context* _ctxt,
+				const Message &msg);
+		static std::shared_ptr<BaseObject> create_object_on_server(
+				Context* _ctxt,
+				int32_t new_obj_id,
+				const std::string &type);
 
 		static void create_static_single_objects_on_server(
+			Context* context,
 			std::function<int()> get_new_id_callback,
 			std::function<void(std::shared_ptr<BaseObject>)> new_obj_created);
 
@@ -574,7 +620,6 @@ namespace RemoteInterface {
 						    MessageHandler *src,
 						    const Message &msg) override; // client side processing
 		virtual void serialize(std::shared_ptr<Message> &target) override;
-		virtual void on_delete(Context* context) override; // called on client side when it's about to be deleted
 	};
 
 	class HandleList : public BaseObject {
@@ -582,7 +627,7 @@ namespace RemoteInterface {
 		std::map<std::string, std::string> handle2hint;
 		static std::weak_ptr<HandleList> clientside_handle_list;
 
-		class HandleListFactory : public Factory {
+		class HandleListFactory : public FactoryTemplate<HandleList> {
 		public:
 			HandleListFactory();
 
@@ -618,7 +663,7 @@ namespace RemoteInterface {
 
 	class GlobalControlObject : public BaseObject {
 	private:
-		class GlobalControlObjectFactory : public Factory {
+		class GlobalControlObjectFactory : public FactoryTemplate<GlobalControlObject> {
 		public:
 			GlobalControlObjectFactory();
 
@@ -685,7 +730,7 @@ namespace RemoteInterface {
 
 	class SampleBank : public BaseObject {
 	private:
-		class SampleBankFactory : public Factory {
+		class SampleBankFactory : public FactoryTemplate<SampleBank> {
 		public:
 			SampleBankFactory();
 
@@ -779,12 +824,6 @@ namespace RemoteInterface {
 				  const std::string &destination_input_name);
 
 	public: 	/* client side base API */
-		class RIMachineSetListener {
-		public:
-			virtual void ri_machine_registered(std::shared_ptr<RIMachine> ri_machine) = 0;
-			virtual void ri_machine_unregistered(std::shared_ptr<RIMachine> ri_machine) = 0;
-		};
-
 		class RIMachineStateListener {
 		public:
 			virtual void on_move() = 0;
@@ -959,7 +998,7 @@ namespace RemoteInterface {
 
 		};
 
-		class RIMachineFactory : public Factory {
+		class RIMachineFactory : public FactoryTemplate<RIMachine> {
 		public:
 			RIMachineFactory();
 
@@ -971,8 +1010,6 @@ namespace RemoteInterface {
 		static RIMachineFactory rimachine_factory;
 
 		// clientside statics
-		static std::set<std::weak_ptr<RIMachineSetListener>,
-				std::owner_less<std::weak_ptr<RIMachineSetListener> > > set_listeners;
 		static std::weak_ptr<RIMachine> sink;
 		static std::map<std::string, std::weak_ptr<RIMachine> > name2machine;
 		static std::mutex ri_machine_lock;
@@ -1024,7 +1061,6 @@ namespace RemoteInterface {
 			virtual ~NoSuchMachine() {}
 		};
 
-		static void register_ri_machine_set_listener(std::weak_ptr<RIMachineSetListener> set_listener);
 		static std::shared_ptr<RIMachine> get_by_name(const std::string &name);
 		static std::shared_ptr<RIMachine> get_sink();
 	};

@@ -165,6 +165,11 @@ namespace RemoteInterface {
 				virtual void serialize(std::shared_ptr<Message> &target) override;
 				);
 
+			virtual void on_delete(RemoteInterface::Context* context) override {
+				auto sptr = std::dynamic_pointer_cast<std::shared_ptr<Sequence>>(shared_from_this());
+				context->unregister_object(shared_from_this());
+			}
+
 			class SequenceListener {
 			public:
 				virtual void sequence_added(std::shared_ptr<Sequence> seq);
@@ -252,17 +257,21 @@ namespace RemoteInterface {
 
 		public:
 			class SequenceFactory
-				: public Factory
+				: public FactoryTemplate<Sequence>
 			{
 			public:
-				ON_SERVER(SequenceFactory() : Factory(ServerSide, FACTORY_NAME) {});
-				ON_CLIENT(SequenceFactory() : Factory(ClientSide, FACTORY_NAME) {});
+				ON_SERVER(SequenceFactory()
+					  : FactoryTemplate<Sequence>(ServerSide, FACTORY_NAME)
+					  {}
+					);
+				ON_CLIENT(SequenceFactory()
+					  : FactoryTemplate<Sequence>(ClientSide, FACTORY_NAME)
+					  {}
+					);
 				virtual std::shared_ptr<BaseObject> create(const Message &serialized) override;
 				virtual std::shared_ptr<BaseObject> create(int32_t new_obj_id) override;
 
 			};
-
-
 		};
 	};
 };

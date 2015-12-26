@@ -132,7 +132,6 @@ ui_code/scale_slider.cc ui_code/scale_slider.hh \
 ui_code/listview.cc ui_code/listview.hh \
 ui_code/share_ui.cc ui_code/share_ui.hh \
 ui_code/samples_editor_ng.cc \
-ui_code/machine_selector_ui.cc \
 ui_code/load_ui.cc ui_code/save_ui.cc \
 ui_code/new_project_ui.cc \
 ui_code/project_info_entry.cc \
@@ -236,6 +235,7 @@ satan.cc \
 ui_code/logo_screen.cc ui_code/logo_screen.hh \
 ui_code/controller_handler.cc \
 ui_code/livepad2.cc ui_code/livepad2.hh \
+ui_code/machine_selector_ui.cc \
 ui_code/connector.cc ui_code/connector.hh \
 ui_code/sequencer.cc ui_code/sequencer.hh
 

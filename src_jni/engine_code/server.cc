@@ -92,17 +92,10 @@ SERVER_CODE(
 	{
 		int32_t new_obj_id = reserve_new_obj_id();
 
-		std::shared_ptr<BaseObject> new_obj = BaseObject::create_object_on_server(new_obj_id, factory_type);
-		new_obj->set_context(this);
-		all_objects[new_obj_id] = new_obj;
+		std::shared_ptr<BaseObject> new_obj =
+			BaseObject::create_object_on_server(this, new_obj_id, factory_type);
 
-		new_object_init_callback(new_obj);
-
-		std::shared_ptr<Message> create_object_message = acquire_message();
-		add_create_object_header(create_object_message, new_obj);
-		new_obj->serialize(create_object_message);
-		SATAN_DEBUG("Server will distribute new object to clients...\n");
-		distribute_message(create_object_message, false);
+		remember_object(new_obj, new_object_init_callback);
 	}
 
 	void Server::delete_object(std::shared_ptr<BaseObject> obj2delete) {
@@ -445,6 +438,22 @@ SERVER_CODE(
 		}
 	}
 
+	void Server::remember_object(
+		std::shared_ptr<BaseObject> new_obj,
+		std::function<void(std::shared_ptr<BaseObject> nuobj)> new_object_init_callback
+		)
+	{
+		all_objects[new_obj->get_obj_id()] = new_obj;
+
+		new_object_init_callback(new_obj);
+
+		std::shared_ptr<Message> create_object_message = acquire_message();
+		add_create_object_header(create_object_message, new_obj);
+		new_obj->serialize(create_object_message);
+		SATAN_DEBUG("Server will distribute new object to clients...\n");
+		distribute_message(create_object_message, false);
+	}
+
 	void Server::create_service_objects() {
 		{ // create handle list object
 			create_object_from_factory(__FCT_HANDLELIST, [](std::shared_ptr<BaseObject> new_obj){});
@@ -457,17 +466,14 @@ SERVER_CODE(
 		}
 		{
 			BaseObject::create_static_single_objects_on_server(
+				this,
 				[this](void) -> int {
 					return reserve_new_obj_id();
 				},
 				[this](std::shared_ptr<BaseObject> new_obj) {
-					new_obj->set_context(this);
-					all_objects[new_obj->get_obj_id()] = new_obj;
-
-					std::shared_ptr<Message> create_object_message = acquire_message();
-					add_create_object_header(create_object_message, new_obj);
-					new_obj->serialize(create_object_message);
-					distribute_message(create_object_message, false);
+					remember_object(new_obj,
+							[](std::shared_ptr<BaseObject> /*nuobj*/)
+							{/* empty callback */});
 				}
 				);
 		}

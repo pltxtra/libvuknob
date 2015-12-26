@@ -35,7 +35,7 @@ public:
 		virtual ~ServersideOnlyFunction() {}
 	};
 
-	class ScalesFactory : public Factory {
+	class ScalesFactory : public FactoryTemplate<Scales> {
 	private:
 		static std::shared_ptr<Scales> clientside_scales_object;
 		static std::mutex clientside_mtx;
@@ -47,7 +47,7 @@ public:
 
 	public:
 
-		ScalesFactory() : Factory(FACTORY_NAME, true) {}
+		ScalesFactory() : FactoryTemplate<Scales>(FACTORY_NAME, true) {}
 
 		virtual std::shared_ptr<BaseObject> create(const RemoteInterface::Message &serialized) override {
 			std::lock_guard<std::mutex> lck(clientside_mtx);
@@ -161,6 +161,10 @@ public:
 
 	int get_custom_scale_key(int offset);
 	void set_custom_scale_key(int offset, int note);
+
+	virtual void on_delete(RemoteInterface::Context* context) override {
+		context->unregister_object(shared_from_this());
+	}
 
 	static std::shared_ptr<Scales> get_scales_object() {
 		return ScalesFactory::get_clientside_scales_object();

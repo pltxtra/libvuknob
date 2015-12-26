@@ -1084,7 +1084,7 @@ void Connector::zoom_restore() {
 	settings_button.hide();
 }
 
-void Connector::ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
+void Connector::object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
 	if(ri_machine->get_machine_type() == "MachineSequencer") return; // we don't want to show the MachineSequencers in the connector view..
 
 	SATAN_DEBUG("---->     --- (%d) will create MachineGraphic for %s\n", gettid(), ri_machine->get_name().c_str());
@@ -1099,7 +1099,7 @@ void Connector::ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine
 		);
 }
 
-void Connector::ri_machine_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
+void Connector::object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
 	if(ri_machine->get_machine_type() == "MachineSequencer") return; // we don't know any MachineSequencer machines..
 
 	KammoGUI::run_on_GUI_thread(
@@ -1134,7 +1134,10 @@ virtual void on_init(KammoGUI::Widget *wid) {
 	cnvs->set_bg_color(1.0, 1.0, 1.0);
 
 	static std::shared_ptr<Connector> connector_ui = std::make_shared<Connector>(cnvs);
-	RemoteInterface::ClientSpace::Client::register_ri_machine_set_listener(connector_ui);
+	auto ptr =
+		std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> >(connector_ui);
+	std::weak_ptr<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> > w_ptr = ptr;
+	RemoteInterface::ClientSpace::Client::register_object_set_listener(w_ptr);
 }
 
 KammoEventHandler_Instance(ConnectorHandler);

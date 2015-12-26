@@ -22,12 +22,12 @@
 
 #include "remote_interface.hh"
 
-class ControllerHandler : public RemoteInterface::RIMachine::RIMachineSetListener {
+class ControllerHandler : public RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> {
 private:
 	std::map<std::string, std::shared_ptr<RemoteInterface::RIMachine> > machines;
 public:
-	virtual void ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
-	virtual void ri_machine_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
+	virtual void object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
+	virtual void object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
 
 	std::shared_ptr<RemoteInterface::RIMachine> get_machine_by_name(const std::string &name);
 

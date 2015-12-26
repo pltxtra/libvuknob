@@ -99,6 +99,10 @@ SERVER_CODE(
 		void do_udp_receive();
 
 		void disconnect_clients();
+		void remember_object(
+			std::shared_ptr<BaseObject> new_obj,
+			std::function<void(std::shared_ptr<BaseObject> nuobj)> new_object_init_callback
+			);
 		void create_service_objects();
 		void add_create_object_header(std::shared_ptr<Message> &target, std::shared_ptr<BaseObject> obj);
 		void add_destroy_object_header(std::shared_ptr<Message> &target, std::shared_ptr<BaseObject> obj);

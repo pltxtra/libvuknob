@@ -34,7 +34,7 @@
 class Connector
 	: public KammoGUI::SVGCanvas::SVGDocument
 	, public KammoGUI::ScaleGestureDetector::OnScaleGestureListener
-	, public RemoteInterface::RIMachine::RIMachineSetListener
+	, public RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine>
 {
 
 private:
@@ -301,8 +301,8 @@ public:
 	void zoom_in_at(std::shared_ptr<MachineGraphic> selected, double x_pos, double y_pos);
 	void zoom_restore();
 
-	virtual void ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
-	virtual void ri_machine_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
+	virtual void object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
+	virtual void object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
 
 };
 

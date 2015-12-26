@@ -85,8 +85,6 @@ namespace RemoteInterface {
 					);
 			}
 
-			static void register_ri_machine_set_listener(std::weak_ptr<RIMachine::RIMachineSetListener> ri_mset_listener);
-
 		public:
 			virtual void on_message_received(const Message &msg) override;
 			virtual void on_connection_dropped() override;

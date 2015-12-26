@@ -28,10 +28,10 @@
 #include "sequencer.hh"
 #include "timelines.hh"
 #include "svg_loader.hh"
-#include "machine.hh"
 #include "common.hh"
 
 #include "../engine_code/sequence.hh"
+#include "../engine_code/client.hh"
 
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
@@ -149,7 +149,7 @@ void Sequencer::on_resize() {
 void Sequencer::on_render() {
 }
 
-void Sequencer::ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
+void Sequencer::object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
 	// we don't want to show non MachineSequener objects
 	if(ri_machine->get_machine_type() != "MachineSequencer") return;
 
@@ -163,7 +163,7 @@ void Sequencer::ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine
 			ri_machine, new_offset);
 }
 
-void Sequencer::ri_machine_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
+void Sequencer::object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
 	// we don't have any non MachineSequener objects on file
 	if(ri_machine->get_machine_type() != "MachineSequencer") return;
 
@@ -190,7 +190,10 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		static auto current_timelines = new TimeLines(cnvs);
 		static auto current_sequencer = std::make_shared<Sequencer>(cnvs);
 
-		RemoteInterface::RIMachine::register_ri_machine_set_listener(current_sequencer);
+		auto ptr =
+			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> >(current_sequencer);
+		std::weak_ptr<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> > w_ptr = ptr;
+		RemoteInterface::ClientSpace::Client::register_object_set_listener(w_ptr);
 	}
 }
 

@@ -429,13 +429,16 @@ virtual void on_user_event(KammoGUI::UserEvent *ue, std::map<std::string, void *
 
 virtual void on_init(KammoGUI::Widget *wid) {
 	if(wid->get_id() == "cgroups") {
-		RemoteInterface::ClientSpace::Client::register_ri_machine_set_listener(chndl);
+		auto ptr =
+			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> >(chndl);
+		std::weak_ptr<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> > w_ptr = ptr;
+		RemoteInterface::ClientSpace::Client::register_object_set_listener(w_ptr);
 	}
 }
 
 KammoEventHandler_Instance(ControllerHandlerOld);
 
-void ControllerHandler::ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
+void ControllerHandler::object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
 	KammoGUI::run_on_GUI_thread(
 		[this, ri_machine]() {
 			machines[ri_machine->get_name()] = ri_machine;
@@ -443,7 +446,7 @@ void ControllerHandler::ri_machine_registered(std::shared_ptr<RemoteInterface::R
 		);
 }
 
-void ControllerHandler::ri_machine_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
+void ControllerHandler::object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
 	KammoGUI::run_on_GUI_thread(
 		[this, ri_machine]() {
 			auto mch = machines.find(ri_machine->get_name());

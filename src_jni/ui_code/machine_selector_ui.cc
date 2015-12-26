@@ -39,9 +39,10 @@
 #include <condition_variable>
 #include <mutex>
 
+#include "engine_code/client.hh"
 #include "remote_interface.hh"
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 static KammoGUI::UserEvent *callback_event = NULL;
@@ -135,7 +136,9 @@ fail:
 	}
 }
 
-class MachineWaiter : public RemoteInterface::RIMachine::RIMachineSetListener, public std::enable_shared_from_this<MachineWaiter> {
+class MachineWaiter
+	: public RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine>
+	, public std::enable_shared_from_this<MachineWaiter> {
 private:
 	std::string wait_for_name;
 	std::mutex mutex;
@@ -143,7 +146,7 @@ private:
 	std::shared_ptr<RemoteInterface::RIMachine> retval;
 
 public:
-	virtual void ri_machine_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override {
+	virtual void object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override {
 		std::lock_guard<std::mutex> lk(mutex);
 		bool was_found = false;
 
@@ -162,7 +165,7 @@ public:
 		}
 	}
 
-	virtual void ri_machine_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override {
+	virtual void object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override {
 	}
 
 	std::shared_ptr<RemoteInterface::RIMachine> wait_for(const std::string &name) {
@@ -170,7 +173,11 @@ public:
 
 		SATAN_DEBUG("MachineWaiter::wait_for() will wait for %s...\n", wait_for_name.c_str());
 		std::unique_lock<std::mutex> lk(mutex);
-		RemoteInterface::RIMachine::register_ri_machine_set_listener(shared_from_this());
+		auto ptr =
+			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> >(shared_from_this());
+		std::weak_ptr<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> > w_ptr = ptr;
+
+		RemoteInterface::ClientSpace::Client::register_object_set_listener(w_ptr);
 		cv.wait(lk);
 		SATAN_DEBUG("MachineWaiter::wait_for() was notified!\n");
 
