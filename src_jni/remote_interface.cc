@@ -203,7 +203,10 @@ void RemoteInterface::Context::invalidate_object(
 
 void RemoteInterface::Context::post_action(std::function<void()> f, bool do_synch) {
 	auto ttid = std::this_thread::get_id();
-	if(ttid != __context_thread_id && do_synch) {
+	if(ttid == __context_thread_id) {
+		// run directly - already on context thread
+		f();
+	} else if(do_synch) {
 		std::mutex mtx;
 		std::condition_variable cv;
 		std::atomic<bool> ready(false);
