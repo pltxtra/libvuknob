@@ -166,8 +166,7 @@ namespace RemoteInterface {
 				);
 
 			virtual void on_delete(RemoteInterface::Context* context) override {
-				auto sptr = std::dynamic_pointer_cast<std::shared_ptr<Sequence>>(shared_from_this());
-				context->unregister_object(shared_from_this());
+				context->unregister_this_object(this);
 			}
 
 			class SequenceListener {

@@ -163,7 +163,7 @@ public:
 	void set_custom_scale_key(int offset, int note);
 
 	virtual void on_delete(RemoteInterface::Context* context) override {
-		context->unregister_object(shared_from_this());
+		context->unregister_this_object(this);
 	}
 
 	static std::shared_ptr<Scales> get_scales_object() {

@@ -861,7 +861,7 @@ void RemoteInterface::HandleList::serialize(std::shared_ptr<Message> &target) {
 }
 
 void RemoteInterface::HandleList::on_delete(Context* context) {
-	context->unregister_object(shared_from_this());
+	context->unregister_this_object(this);
 }
 
 std::map<std::string, std::string> RemoteInterface::HandleList::get_handles_and_hints() {
@@ -1146,7 +1146,7 @@ void RemoteInterface::GlobalControlObject::serialize(std::shared_ptr<Message> &t
 }
 
 void RemoteInterface::GlobalControlObject::on_delete(Context* context) {
-	context->unregister_object(shared_from_this());
+	context->unregister_this_object(this);
 }
 
 std::vector<std::string> RemoteInterface::GlobalControlObject::get_pad_arpeggio_patterns() {
@@ -1499,7 +1499,7 @@ void RemoteInterface::SampleBank::serialize(std::shared_ptr<Message> &target) {
 }
 
 void RemoteInterface::SampleBank::on_delete(Context* context) {
-	context->unregister_object(shared_from_this());
+	context->unregister_this_object(this);
 
 	std::lock_guard<std::mutex> lock_guard(clientside_samplebanks_mutex);
 
@@ -2965,7 +2965,7 @@ void RemoteInterface::RIMachine::serialize(std::shared_ptr<Message> &target) {
 }
 
 void RemoteInterface::RIMachine::on_delete(Context* context) {
-	context->unregister_object(shared_from_this());
+	context->unregister_this_object(this);
 
 	std::lock_guard<std::mutex> lock_guard(ri_machine_lock);
 	if(is_sink) {

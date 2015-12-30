@@ -324,8 +324,9 @@ namespace RemoteInterface {
 
 	public:
 		template <class T>
-		void unregister_object(std::shared_ptr<T> obj) {
+		void unregister_this_object(T* ptr) {
 			static auto objid = std::type_index(typeid(T));
+			auto obj = std::dynamic_pointer_cast<T>(ptr->shared_from_this());
 			auto range = unregister_obj_cbs.equal_range(objid);
 			for(auto cb = range.first; cb != range.second; ++cb) {
 				cb->second(obj);
