@@ -25,6 +25,7 @@
 
 #include <mutex>
 #include <condition_variable>
+#include <cxxabi.h>
 
 #include "client.hh"
 
@@ -203,7 +204,17 @@ CLIENT_CODE(
 
 			client->io_thread = std::thread([]() {
 					SATAN_DEBUG(" *********  CLIENT THREAD STARTED **********\n");
-					client->io_service.run();
+					try {
+						client->io_service.run();
+					} catch(std::exception& e) {
+						SATAN_ERROR("Client::create_client() caught an exception: %s\n", e.what());
+					} catch(...) {
+						int status = 0;
+						char * buff = __cxxabiv1::__cxa_demangle(
+							__cxxabiv1::__cxa_current_exception_type()->name(),
+							NULL, NULL, &status);
+						SATAN_ERROR("Client::create_client() caught an unknown exception: %s\n", buff);
+					}
 					SATAN_DEBUG(" *********  CLIENT THREAD EXITED ***********\n");
 				}
 				);
