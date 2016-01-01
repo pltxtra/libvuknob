@@ -153,24 +153,32 @@ void Sequencer::object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri
 	// we don't want to show non MachineSequener objects
 	if(ri_machine->get_machine_type() != "MachineSequencer") return;
 
-	int new_offset = (int)machine2sequence.size();
-	SATAN_DEBUG("new_offset is %d\n", new_offset);
+	KammoGUI::run_on_GUI_thread(
+		[this, ri_machine]() {
+			int new_offset = (int)machine2sequence.size();
+			SATAN_DEBUG("new_offset is %d\n", new_offset);
 
-	KammoGUI::SVGCanvas::ElementReference layer(this, "layer1");
-	machine2sequence[ri_machine] =
-		Sequence::create_sequence(
-			layer, sequence_graphic_template,
-			ri_machine, new_offset);
+			KammoGUI::SVGCanvas::ElementReference layer(this, "layer1");
+			machine2sequence[ri_machine] =
+				Sequence::create_sequence(
+					layer, sequence_graphic_template,
+					ri_machine, new_offset);
+		}
+		);
 }
 
 void Sequencer::object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
 	// we don't have any non MachineSequener objects on file
 	if(ri_machine->get_machine_type() != "MachineSequencer") return;
 
-	auto seq = machine2sequence.find(ri_machine);
-	if(seq != machine2sequence.end()) {
-		machine2sequence.erase(seq);
-	}
+	KammoGUI::run_on_GUI_thread(
+		[this, ri_machine]() {
+			auto seq = machine2sequence.find(ri_machine);
+			if(seq != machine2sequence.end()) {
+				machine2sequence.erase(seq);
+			}
+		}
+		);
 }
 
 /***************************
