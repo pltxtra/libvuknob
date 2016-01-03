@@ -156,6 +156,8 @@ namespace RemoteInterface {
 	class Context;
 	class BaseObject;
 
+	typedef std::shared_ptr<BaseObject> ObjectPtr;
+
 	enum WhatSide {
 		ServerSide = 0x0010,
 		ClientSide = 0x0100
@@ -286,6 +288,8 @@ namespace RemoteInterface {
 		typedef std::unordered_multimap<std::type_index, ListenerCB> CallbackMap;
 		CallbackMap register_obj_cbs;
 		CallbackMap unregister_obj_cbs;
+		typedef std::unordered_multimap<std::type_index, ObjectPtr> ObjectMap;
+		ObjectMap registered_objects;
 
 		std::thread::id __context_thread_id;
 
@@ -322,23 +326,53 @@ namespace RemoteInterface {
 						}
 					}
 					));
+
+			if(auto locked = osl.lock()) {
+				auto range = registered_objects.equal_range(objid);
+				for(auto rego = range.first; rego != range.second; ++rego) {
+					auto obj = std::dynamic_pointer_cast<T>(rego->second);
+					locked->object_registered(obj);
+				}
+			}
 		}
 
 	public:
 		template <class T>
 		void unregister_this_object(T* ptr) {
 			static auto objid = std::type_index(typeid(T));
-			auto obj = std::dynamic_pointer_cast<T>(ptr->shared_from_this());
-			auto range = unregister_obj_cbs.equal_range(objid);
-			for(auto cb = range.first; cb != range.second; ++cb) {
-				cb->second(obj);
+			auto b_obj = ptr->shared_from_this();
+			auto obj = std::dynamic_pointer_cast<T>(b_obj);
+			{
+				auto range = unregister_obj_cbs.equal_range(objid);
+				for(auto cb = range.first; cb != range.second; ++cb) {
+					cb->second(obj);
+				}
 			}
+
+			{
+				auto range = registered_objects.equal_range(objid);
+				for(auto rego = range.first; rego != range.second; ++rego) {
+					if(rego->second == b_obj) {
+						registered_objects.erase(rego);
+						break;
+					}
+				}
+			}
+
 		}
 
 		template <class T>
 		void register_object(std::shared_ptr<T> obj) {
 			obj->set_context(this);
 			static auto objid = std::type_index(typeid(T));
+
+			auto base_obj = std::dynamic_pointer_cast<BaseObject>(obj);
+			registered_objects.insert(
+				ObjectMap::value_type(
+					objid,
+					base_obj
+					));
+
 			auto range = register_obj_cbs.equal_range(objid);
 			for(auto cb = range.first; cb != range.second; ++cb) {
 				cb->second(obj);
