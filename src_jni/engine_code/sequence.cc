@@ -516,14 +516,6 @@ CLIENT_CODE(
 	);
 
 SERVER_N_CLIENT_CODE(
-	static std::mutex sequence_global_mutex;
-
-	std::set<
-	std::weak_ptr<Sequence::SequenceListener>,
-	std::owner_less<std::weak_ptr<Sequence::SequenceListener> >
-	> Sequence::seq_listeners;
-
-	std::set<std::shared_ptr<Sequence> > Sequence::sequences;
 
 	void Sequence::process_add_pattern(const std::string& new_name, uint32_t new_id) {
 		auto ptrn = pattern_allocator.allocate();
@@ -718,46 +710,13 @@ SERVER_N_CLIENT_CODE(
 		SATAN_DEBUG("Sequence() created server side.\n");
 	}
 
-	void Sequence::register_sequence_listener(std::weak_ptr<SequenceListener> weak_lstnr) {
-		std::lock_guard<std::mutex> lock_guard(sequence_global_mutex);
-		seq_listeners.insert(weak_lstnr);
-
-		if(auto lstnr = weak_lstnr.lock()) {
-			for(auto seq : sequences) {
-				lstnr->sequence_added(seq);
-			}
-		}
-	}
-
-	void Sequence::remember_sequence(std::shared_ptr<Sequence> seq) {
-		std::lock_guard<std::mutex> lock_guard(sequence_global_mutex);
-		sequences.insert(seq);
-		for(auto weak_lstnr : seq_listeners) {
-			if(auto lstnr = weak_lstnr.lock()) {
-				lstnr->sequence_added(seq);
-			}
-		}
-	}
-
-	void Sequence::forget_sequence(std::shared_ptr<Sequence> seq) {
-		std::lock_guard<std::mutex> lock_guard(sequence_global_mutex);
-		for(auto weak_lstnr : seq_listeners) {
-			if(auto lstnr = weak_lstnr.lock()) {
-				lstnr->sequence_added(seq);
-			}
-		}
-		sequences.erase(seq);
-	}
-
 	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(const Message &serialized) {
 		auto nseq = std::make_shared<Sequence>(this, serialized);
-		remember_sequence(nseq);
 		return nseq;
 	}
 
 	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(int32_t new_obj_id) {
 		auto nseq = std::make_shared<Sequence>(new_obj_id, this);
-		remember_sequence(nseq);
 		return nseq;
 	}
 
