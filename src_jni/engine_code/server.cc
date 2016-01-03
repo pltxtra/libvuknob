@@ -86,18 +86,6 @@ SERVER_CODE(
 		return new_obj_id;
 	}
 
-	void Server::create_object_from_factory(
-		const std::string &factory_type,
-		std::function<void(std::shared_ptr<BaseObject> nuobj)> new_object_init_callback)
-	{
-		int32_t new_obj_id = reserve_new_obj_id();
-
-		std::shared_ptr<BaseObject> new_obj =
-			BaseObject::create_object_on_server(this, new_obj_id, factory_type);
-
-		remember_object(new_obj, new_object_init_callback);
-	}
-
 	void Server::delete_object(std::shared_ptr<BaseObject> obj2delete) {
 		for(auto obj  = all_objects.begin();
 		    obj != all_objects.end();
@@ -140,12 +128,9 @@ SERVER_CODE(
 				MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((m_ptr));
 				if(mseq != NULL) {
 					try {
-						create_object_from_factory(
-							ServerSpace::Sequence::FACTORY_NAME,
-							[this, mseq](std::shared_ptr<BaseObject> nuobj) {
-								auto seq =
-									std::dynamic_pointer_cast<
-									ServerSpace::Sequence>(nuobj);
+						create_object_from_factory<ServerSpace::Sequence>(
+							[this, mseq]
+							(std::shared_ptr<ServerSpace::Sequence> seq) {
 								seq->init_from_machine_sequencer(mseq)
 								SATAN_DEBUG("Serverside sequence initiated.\n");
 
@@ -160,11 +145,9 @@ SERVER_CODE(
 				}
 				if(resp_msg == "") {
 					try {
-						create_object_from_factory(
-							__FCT_RIMACHINE,
-							[this, m_ptr](std::shared_ptr<BaseObject> nuobj) {
-								auto mch = std::dynamic_pointer_cast<
-									RIMachine>(nuobj);
+						create_object_from_factory<RemoteInterface::RIMachine>(
+							[this, m_ptr]
+							(std::shared_ptr<RemoteInterface::RIMachine> mch) {
 								mch->serverside_init_from_machine_ptr(m_ptr);
 								SATAN_DEBUG("Serverside machine initiated.\n");
 
@@ -438,31 +421,21 @@ SERVER_CODE(
 		}
 	}
 
-	void Server::remember_object(
-		std::shared_ptr<BaseObject> new_obj,
-		std::function<void(std::shared_ptr<BaseObject> nuobj)> new_object_init_callback
-		)
-	{
-		all_objects[new_obj->get_obj_id()] = new_obj;
-
-		new_object_init_callback(new_obj);
-
-		std::shared_ptr<Message> create_object_message = acquire_message();
-		add_create_object_header(create_object_message, new_obj);
-		new_obj->serialize(create_object_message);
-		SATAN_DEBUG("Server will distribute new object to clients...\n");
-		distribute_message(create_object_message, false);
-	}
-
 	void Server::create_service_objects() {
 		{ // create handle list object
-			create_object_from_factory(__FCT_HANDLELIST, [](std::shared_ptr<BaseObject> new_obj){});
+			create_object_from_factory<RemoteInterface::HandleList>(
+				[](std::shared_ptr<RemoteInterface::HandleList> new_obj){}
+				);
 		}
 		{ // create global control object
-			create_object_from_factory(__FCT_GLOBALCONTROLOBJECT, [](std::shared_ptr<BaseObject> new_obj){});
+			create_object_from_factory<RemoteInterface::GlobalControlObject>(
+				[](std::shared_ptr<RemoteInterface::GlobalControlObject> new_obj){}
+				);
 		}
 		{ // create global sample bank
-			create_object_from_factory(__FCT_SAMPLEBANK, [](std::shared_ptr<BaseObject> new_obj){});
+			create_object_from_factory<RemoteInterface::SampleBank>(
+				[](std::shared_ptr<RemoteInterface::SampleBank> new_obj){}
+				);
 		}
 		{
 			BaseObject::create_static_single_objects_on_server(
@@ -471,9 +444,11 @@ SERVER_CODE(
 					return reserve_new_obj_id();
 				},
 				[this](std::shared_ptr<BaseObject> new_obj) {
-					remember_object(new_obj,
-							[](std::shared_ptr<BaseObject> /*nuobj*/)
-							{/* empty callback */});
+					remember_object<BaseObject>(
+						new_obj,
+						[](std::shared_ptr<BaseObject> /*nuobj*/)
+						{/* empty callback */}
+						);
 				}
 				);
 		}

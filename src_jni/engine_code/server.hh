@@ -45,8 +45,33 @@ SERVER_CODE(
 		std::map<MachineSequencer *, std::shared_ptr<Sequence> > machine2sequence;
 
 		int32_t reserve_new_obj_id();
-		void create_object_from_factory(const std::string &factory_type,
-						std::function<void(std::shared_ptr<BaseObject> nuobj)> new_object_init_callback);
+
+		template <typename T>
+		void remember_object(
+			std::shared_ptr<T> new_obj,
+			std::function<void(std::shared_ptr<T> nuobj)> new_object_init_callback
+			) {
+			all_objects[new_obj->get_obj_id()] = new_obj;
+
+			new_object_init_callback(new_obj);
+
+			std::shared_ptr<Message> create_object_message = acquire_message();
+			add_create_object_header(create_object_message, new_obj);
+			new_obj->serialize(create_object_message);
+			distribute_message(create_object_message, false);
+		}
+
+		template <typename T>
+		void create_object_from_factory(
+			std::function<void(std::shared_ptr<T> nuobj)> new_object_init_callback) {
+			int32_t new_obj_id = reserve_new_obj_id();
+
+			auto new_obj =
+				BaseObject::create_object_on_server<T>(this, new_obj_id);
+
+			remember_object<T>(new_obj, new_object_init_callback);
+		}
+
 		void delete_object(std::shared_ptr<BaseObject> obj2delete);
 
 		virtual void project_loaded() override; // MachineSetListener interface
@@ -99,10 +124,6 @@ SERVER_CODE(
 		void do_udp_receive();
 
 		void disconnect_clients();
-		void remember_object(
-			std::shared_ptr<BaseObject> new_obj,
-			std::function<void(std::shared_ptr<BaseObject> nuobj)> new_object_init_callback
-			);
 		void create_service_objects();
 		void add_create_object_header(std::shared_ptr<Message> &target, std::shared_ptr<BaseObject> obj);
 		void add_destroy_object_header(std::shared_ptr<Message> &target, std::shared_ptr<BaseObject> obj);
@@ -123,6 +144,29 @@ SERVER_CODE(
 		virtual void on_remove_object(int32_t objid) override;
 
 	public:
+		template <typename T>
+		static std::shared_ptr<T> create_object() {
+			std::lock_guard<std::mutex> lock_guard(server_mutex);
+
+			if(server) {
+				std::shared_ptr<T> retobj;
+				auto f = [&retobj](std::shared_ptr<T> nuobj) {
+					retobj = nuobj;
+				};
+
+				server->post_action(
+					[f]() {
+						server->create_object_from_factory<T>(f);
+					}
+					, true
+					);
+
+				return retobj;
+			}
+
+			throw ContextNotConnected();
+		}
+
 		static int start_server(); // will start a server and return the port number. If the server is already started, it will just return the port number.
 		static bool is_running();
 		static void stop_server();

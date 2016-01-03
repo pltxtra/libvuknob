@@ -44,8 +44,10 @@
 #include <unordered_map>
 #include <typeinfo>
 #include <typeindex>
+#include <cxxabi.h>
 
 #include "common.hh"
+#include "satan_debug.hh"
 
 #define RI_LOOP_NOT_SET -1
 
@@ -430,11 +432,32 @@ namespace RemoteInterface {
 
 		class Factory {
 		private:
-			void register_factory();
+			static std::mutex __factory_registration_mutex;
 
 			const char* type;
 			bool static_single_object;
 			int what_sides; // if this factory is ServerSide, ClientSide or both.
+
+		protected:
+			template <typename T>
+			void register_factory(T* factory_p) {
+				std::lock_guard<std::mutex> lock_guard(__factory_registration_mutex);
+				static auto tidx = std::type_index(typeid(T));
+				if(what_sides & ServerSide) {
+					if(server_factories_by_name.find(type) != server_factories_by_name.end())
+						throw FactoryAlreadyCreated();
+
+					server_factories_by_name[type] = this;
+					server_factories_by_type_index[tidx] = this;
+				}
+				if(what_sides & ClientSide) {
+					if(client_factories_by_name.find(type) != client_factories_by_name.end())
+						throw FactoryAlreadyCreated();
+
+					client_factories_by_name[type] = this;
+					client_factories_by_type_index[tidx] = this;
+				}
+			}
 
 		public:
 			class FactoryAlreadyCreated : public std::runtime_error {
@@ -476,9 +499,14 @@ namespace RemoteInterface {
 		class FactoryTemplate : public Factory {
 		public:
 			FactoryTemplate(const char* type, bool static_single_object = false)
-				: Factory(type, static_single_object) {}
+				: Factory(type, static_single_object) {
+				register_factory(this);
+			}
+
 			FactoryTemplate(WhatSide what_side, const char* type, bool static_single_object = false)
-				: Factory(what_side, type, static_single_object) {}
+				: Factory(what_side, type, static_single_object) {
+				register_factory(this);
+			}
 
 			virtual std::shared_ptr<BaseObject> create_and_register(
 				Context* _ctxt,
@@ -564,10 +592,21 @@ namespace RemoteInterface {
 		static std::shared_ptr<BaseObject> create_object_on_client(
 				Context* _ctxt,
 				const Message &msg);
-		static std::shared_ptr<BaseObject> create_object_on_server(
+		template <typename T>
+		static std::shared_ptr<T> create_object_on_server(
 				Context* _ctxt,
-				int32_t new_obj_id,
-				const std::string &type);
+				int32_t new_obj_id) {
+			static auto tidx = std::type_index(typeid(FactoryTemplate<T>));
+			auto factory_iterator = server_factories_by_type_index.find(tidx);
+			if(factory_iterator == server_factories_by_type_index.end())
+				throw NoSuchFactory();
+
+			auto nobj =
+				std::dynamic_pointer_cast<T>(
+					factory_iterator->second->create_and_register(_ctxt, new_obj_id)
+					);
+			return nobj;
+		}
 
 		static void create_static_single_objects_on_server(
 			Context* context,
@@ -575,8 +614,10 @@ namespace RemoteInterface {
 			std::function<void(std::shared_ptr<BaseObject>)> new_obj_created);
 
 	private:
-		static std::map<std::string, Factory *> server_factories;
-		static std::map<std::string, Factory *> client_factories;
+		static std::map<std::string, Factory*> server_factories_by_name;
+		static std::map<std::string, Factory*> client_factories_by_name;
+		static std::map<std::type_index, Factory*> server_factories_by_type_index;
+		static std::map<std::type_index, Factory*> client_factories_by_type_index;
 
 		int32_t obj_id;
 
@@ -645,8 +686,6 @@ namespace RemoteInterface {
 		virtual void process_message_client(Context* context,
 						    MessageHandler *src,
 						    const Message &msg); // client side processing
-		virtual void serialize(std::shared_ptr<Message> &target);
-		virtual void on_delete(Context* context); // called on client side when it's about to be deleted
 
 	public:
 		class FailedToCreateMachine : public std::runtime_error {
@@ -660,6 +699,9 @@ namespace RemoteInterface {
 
 		static std::map<std::string, std::string> get_handles_and_hints();
 		static std::string create_instance(const std::string &handle, double xpos, double ypos);
+
+		virtual void serialize(std::shared_ptr<Message> &target) override;
+		virtual void on_delete(Context* context) override;
 	};
 
 	class GlobalControlObject : public BaseObject {
@@ -679,14 +721,15 @@ namespace RemoteInterface {
 		virtual void process_message_client(Context* context,
 						    MessageHandler *src,
 						    const Message &msg) override; // client side processing
-		virtual void serialize(std::shared_ptr<Message> &target) override;
-		virtual void on_delete(Context* context) override; // called on client side when it's about to be deleted
 
 		void parse_serialized_arp_patterns(std::vector<std::string> &retval, const std::string &serialized_arp_patterns);
 		void serialize_arp_patterns(std::shared_ptr<Message> &target);
 	public:
 		GlobalControlObject(const Factory *factory, const Message &serialized); // create client side HandleList
 		GlobalControlObject(int32_t new_obj_id, const Factory *factory); // create server side HandleList
+
+		virtual void serialize(std::shared_ptr<Message> &target) override;
+		virtual void on_delete(Context* context) override;
 
 	public: // client side interface
 		class PlaybackStateListener {

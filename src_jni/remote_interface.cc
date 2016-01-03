@@ -381,46 +381,31 @@ void RemoteInterface::MessageHandler::deliver_message(std::shared_ptr<Message> &
  *
  ***************************/
 
-static std::mutex __factory_registration_mutex;
-void RemoteInterface::BaseObject::Factory::register_factory() {
-	std::lock_guard<std::mutex> lock_guard(__factory_registration_mutex);
-	if(what_sides & ServerSide) {
-		if(server_factories.find(type) != server_factories.end()) throw FactoryAlreadyCreated();
-		server_factories[type] = this;
-	}
-	if(what_sides & ClientSide) {
-		if(client_factories.find(type) != client_factories.end()) throw FactoryAlreadyCreated();
-		client_factories[type] = this;
-	}
-}
+std::mutex RemoteInterface::BaseObject::Factory::__factory_registration_mutex;
 
 RemoteInterface::BaseObject::Factory::Factory(const char* _type, bool _static_single_object)
 	: type(_type)
 	, static_single_object(_static_single_object)
 	, what_sides(ServerSide | ClientSide)
-{
-	register_factory();
-}
+{}
 
 RemoteInterface::BaseObject::Factory::Factory(WhatSide _what_sides, const char* _type, bool _static_single_object)
 	: type(_type)
 	, static_single_object(_static_single_object)
 	, what_sides(_what_sides)
-{
-	register_factory();
-}
+{}
 
 RemoteInterface::BaseObject::Factory::~Factory() {
 	if(what_sides & ServerSide) {
-		auto factory_iterator = server_factories.find(type);
-		if(factory_iterator != server_factories.end()) {
-			server_factories.erase(factory_iterator);
+		auto factory_iterator = server_factories_by_name.find(type);
+		if(factory_iterator != server_factories_by_name.end()) {
+			server_factories_by_name.erase(factory_iterator);
 		}
 	}
 	if(what_sides & ClientSide) {
-		auto factory_iterator = client_factories.find(type);
-		if(factory_iterator != client_factories.end()) {
-			client_factories.erase(factory_iterator);
+		auto factory_iterator = client_factories_by_name.find(type);
+		if(factory_iterator != client_factories_by_name.end()) {
+			client_factories_by_name.erase(factory_iterator);
 		}
 	}
 }
@@ -560,8 +545,8 @@ std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::BaseObject::create
 	const Message &msg)
 {
 	std::string factory_type = msg.get_value("factory");
-	auto factory_iterator = client_factories.find(factory_type);
-	if(factory_iterator == client_factories.end()) {
+	auto factory_iterator = client_factories_by_name.find(factory_type);
+	if(factory_iterator == client_factories_by_name.end()) {
 		throw NoSuchFactory();
 	}
 
@@ -572,30 +557,25 @@ std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::BaseObject::create
 	return o;
 }
 
-std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::BaseObject::create_object_on_server(
-	Context* _ctxt,
-	int32_t new_obj_id,
-	const std::string &factory_type)
-{
-	auto factory_iterator = server_factories.find(factory_type);
-	if(factory_iterator == server_factories.end()) throw NoSuchFactory();
-
-	return factory_iterator->second->create_and_register(_ctxt, new_obj_id);
-}
-
 void RemoteInterface::BaseObject::create_static_single_objects_on_server(
 	Context* context,
 	std::function<int()> get_new_id_callback,
 	std::function<void(std::shared_ptr<BaseObject>)> new_obj_created) {
 
-	for(auto factory : server_factories) {
+	for(auto factory : server_factories_by_name) {
 		auto obj = factory.second->create_static_single_object(context, get_new_id_callback());
 		if(obj) new_obj_created(obj);
 	}
 }
 
-std::map<std::string, RemoteInterface::BaseObject::Factory *> RemoteInterface::BaseObject::server_factories;
-std::map<std::string, RemoteInterface::BaseObject::Factory *> RemoteInterface::BaseObject::client_factories;
+std::map<std::string, RemoteInterface::BaseObject::Factory *>
+RemoteInterface::BaseObject::server_factories_by_name;
+std::map<std::string, RemoteInterface::BaseObject::Factory *>
+RemoteInterface::BaseObject::client_factories_by_name;
+std::map<std::type_index, RemoteInterface::BaseObject::Factory *>
+RemoteInterface::BaseObject::server_factories_by_type_index;
+std::map<std::type_index, RemoteInterface::BaseObject::Factory *>
+RemoteInterface::BaseObject::client_factories_by_type_index;
 
 /***************************
  *
