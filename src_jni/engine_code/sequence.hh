@@ -161,7 +161,7 @@ namespace RemoteInterface {
 				virtual std::string internal_get_hint();
 				);
 			ON_SERVER(
-				void init_from_machine_sequencer(MachineSequencer *m_seq);
+				static void create_sequence_for_machine(std::shared_ptr<Machine> m_ptr);
 				virtual void serialize(std::shared_ptr<Message> &target) override;
 				);
 
@@ -170,6 +170,11 @@ namespace RemoteInterface {
 			}
 
 		private:
+			ON_SERVER(
+				static std::map<std::shared_ptr<Machine>,
+				std::shared_ptr<Sequence> > machine2sequence;
+				);
+
 			struct Pattern {
 				uint32_t id;
 				std::string name;

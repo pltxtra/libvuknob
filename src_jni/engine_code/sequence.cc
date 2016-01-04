@@ -26,6 +26,13 @@
 #include "machine.hh"
 #endif
 
+#ifdef __RI__SERVER_SIDE
+#include "server.hh"
+#endif
+
+#define SEQUENCE_MIDI_INPUT_NAME "midi"
+#define SEQUENCE_MIDI_OUTPUT_NAME "midi_OUTPUT"
+
 SERVER_CODE(
 	static IDAllocator pattern_id_allocator;
 
@@ -241,8 +248,47 @@ SERVER_CODE(
 
 	}
 
-	void Sequence::init_from_machine_sequencer(MachineSequencer *__m_seq) {
-		m_seq = __m_seq;
+	std::map<std::shared_ptr<Machine>, std::shared_ptr<Sequence> > Sequence::machine2sequence;
+
+	void Sequence::create_sequence_for_machine(std::shared_ptr<Machine> sibling) {
+		{
+			bool midi_input_found = false;
+
+			try {
+				(void) sibling->get_input_index(MACHINE_SEQUENCER_MIDI_INPUT_NAME);
+				midi_input_found = true;
+			} catch(...) {
+				// ignore
+			}
+
+			if(!midi_input_found) {
+				return; // no midi input to attach MachineSequencer too
+			}
+		}
+
+		Machine::machine_operation_enqueue(
+			[sibling]() {
+				if(machine2sequence.find(sibling) !=
+				   machine2sequence.end()) {
+					SATAN_ERROR("Error. Machine already has a sequencer.\n");
+					throw jException("Trying to create MachineSequencer for a machine that already has one!",
+							 jException::sanity_error);
+				}
+			}
+			);
+
+		std::shared_ptr<Sequence> seq = Server::create_object<Sequence>();
+
+		sibling->attach_input(seq.get(),
+				      MACHINE_SEQUENCER_MIDI_OUTPUT_NAME,
+				      MACHINE_SEQUENCER_MIDI_INPUT_NAME);
+
+		Machine::machine_operation_enqueue(
+			[sibling, seq]() {
+				seq->tightly_connect(sibling.get());
+				machine2sequence[sibling] = seq;
+			}
+			);
 	}
 
 	void Sequence::serialize(std::shared_ptr<Message> &target) {
@@ -254,6 +300,8 @@ SERVER_CODE(
 	bool Sequence::detach_and_destroy() {
 		detach_all_inputs();
 		detach_all_outputs();
+
+		request_delete_me();
 
 		return true;
 	}
@@ -694,6 +742,15 @@ SERVER_N_CLIENT_CODE(
 	: SimpleBaseObject(factory, serialized)
 	ON_SERVER(, Machine("Sequencer", false, 0.0f, 0.0f))
 	{
+		ON_SERVER(
+			Machine::machine_operation_enqueue(
+				[this] {
+					output_descriptor[SEQUENCE_MIDI_OUTPUT_NAME] =
+						Signal::Description(_MIDI, 1, false);
+					setup_machine();
+				}
+				);
+			);
 		register_handlers();
 
 		Serialize::ItemDeserializer serder(serialized.get_value("sequence_data"));
@@ -706,17 +763,39 @@ SERVER_N_CLIENT_CODE(
 	: SimpleBaseObject(new_obj_id, factory)
 	ON_SERVER(, Machine("Sequencer", false, 0.0f, 0.0f))
 	{
+		ON_SERVER(
+			Machine::machine_operation_enqueue(
+				[this] {
+					output_descriptor[SEQUENCE_MIDI_OUTPUT_NAME] =
+						Signal::Description(_MIDI, 1, false);
+					setup_machine();
+				}
+				);
+			);
 		register_handlers();
 		SATAN_DEBUG("Sequence() created server side.\n");
+
 	}
 
 	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(const Message &serialized) {
-		auto nseq = std::make_shared<Sequence>(this, serialized);
+		ON_SERVER(
+			auto nseq_ptr = new Sequence(this, serialized);
+			auto nseq = std::dynamic_pointer_cast<Sequence>(nseq_ptr->get_shared_pointer());
+			);
+		ON_CLIENT(
+			auto nseq = std::make_shared<Sequence>(this, serialized);
+			);
 		return nseq;
 	}
 
 	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(int32_t new_obj_id) {
-		auto nseq = std::make_shared<Sequence>(new_obj_id, this);
+		ON_SERVER(
+			auto nseq_ptr = new Sequence(new_obj_id, this);
+			auto nseq = std::dynamic_pointer_cast<Sequence>(nseq_ptr->get_shared_pointer());
+			);
+		ON_CLIENT(
+			auto nseq = std::make_shared<Sequence>(new_obj_id, this);
+			);
 		return nseq;
 	}
 
