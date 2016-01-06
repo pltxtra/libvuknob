@@ -117,7 +117,12 @@ SERVER_CODE(
 			);
 	}
 
-	void Server::machine_registered(Machine *m_ptr) {
+	void Server::machine_registered(std::shared_ptr<Machine> m_ptr) {
+		auto seqm = std::dynamic_pointer_cast<Sequence>(m_ptr);
+		if(seqm) {
+			return; /* don't need any further action - we already know about this type of object */
+		}
+
 		io_service.post(
 
 			[this, m_ptr]()
@@ -125,41 +130,29 @@ SERVER_CODE(
 				SATAN_DEBUG("RemoteInterface::ServerSpace::Server::machine_registered(%s) was registered\n", m_ptr->get_name().c_str());
 				std::string resp_msg;
 
-				MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((m_ptr));
-				if(mseq != NULL) {
-					try {
-						create_object_from_factory<ServerSpace::Sequence>(
-							[this, mseq]
-							(std::shared_ptr<ServerSpace::Sequence> seq) {
-								seq->init_from_machine_sequencer(mseq)
-								SATAN_DEBUG("Serverside sequence initiated.\n");
+				try {
+					create_object_from_factory<RemoteInterface::RIMachine>(
+						[this, m_ptr]
+						(std::shared_ptr<RemoteInterface::RIMachine> mch) {
+							mch->serverside_init_from_machine_ptr(m_ptr);
+							SATAN_DEBUG("Serverside machine initiated.\n");
 
-								machine2sequence[mseq] = seq;
-							}
-							);
-					} catch(BaseObject::ObjIdOverflow &e) {
-						resp_msg =
-							"Internal server error - Object ID overflow."
-							"Please restart session.";
-					}
-				}
-				if(resp_msg == "") {
-					try {
-						create_object_from_factory<RemoteInterface::RIMachine>(
-							[this, m_ptr]
-							(std::shared_ptr<RemoteInterface::RIMachine> mch) {
-								mch->serverside_init_from_machine_ptr(m_ptr);
-								SATAN_DEBUG("Serverside machine initiated.\n");
+							machine2rimachine[m_ptr] = mch;
+						}
+						);
 
-								machine2rimachine[m_ptr] = mch;
-							}
-							);
-					} catch(BaseObject::ObjIdOverflow &e) {
-						resp_msg =
-							"Internal server error - Object ID overflow."
-							"Please restart session.";
-					}
+					Sequence::create_sequence_for_machine(m_ptr);
+				} catch(...) {
+					SATAN_ERROR("Server::machine_registered() - "
+						    "failed to create RIMachine or sequencer for %s\n",
+						    m_ptr->get_name().c_str());
+					Machine::disconnect_and_destroy(m_ptr.get());
+					resp_msg =
+						"Internal server error - "
+						"failed to create RIMachine or Sequence for new Machine."
+						"Please restart session.";
 				}
+
 				if(resp_msg != "") {
 					std::shared_ptr<Message> response = server->acquire_message();
 					response->set_value("id", std::to_string(__MSG_FAILURE_RESPONSE));
@@ -171,34 +164,25 @@ SERVER_CODE(
 			);
 	}
 
-	void Server::machine_unregistered(Machine *m_ptr) {
+	void Server::machine_unregistered(std::shared_ptr<Machine> m_ptr) {
 		io_service.post(
 
 			[this, m_ptr]()
 			{
-				MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((m_ptr));
-				if(mseq != NULL) {
-					auto seq = machine2sequence.find(mseq);
-					if(seq != machine2sequence.end()) {
-						delete_object(seq->second);
-						machine2sequence.erase(seq);
-					}
-				} else {
-					auto mch = machine2rimachine.find(m_ptr);
-					if(mch != machine2rimachine.end()) {
-						delete_object(mch->second);
-						machine2rimachine.erase(mch);
-					}
+				auto mch = machine2rimachine.find(m_ptr);
+				if(mch != machine2rimachine.end()) {
+					delete_object(mch->second);
+					machine2rimachine.erase(mch);
 				}
-				Machine::dereference_machine(m_ptr);
 			}
 
 			);
 	}
 
-	void Server::machine_input_attached(Machine *source, Machine *destination,
-							     const std::string &output_name,
-							     const std::string &input_name) {
+	void Server::machine_input_attached(std::shared_ptr<Machine> source,
+					    std::shared_ptr<Machine> destination,
+					    const std::string &output_name,
+					    const std::string &input_name) {
 		io_service.post(
 			[this, source, destination, output_name, input_name]()
 			{
@@ -216,9 +200,10 @@ SERVER_CODE(
 			);
 	}
 
-	void Server::machine_input_detached(Machine *source, Machine *destination,
-							     const std::string &output_name,
-							     const std::string &input_name) {
+	void Server::machine_input_detached(std::shared_ptr<Machine> source,
+					    std::shared_ptr<Machine> destination,
+					    const std::string &output_name,
+					    const std::string &input_name) {
 		io_service.post(
 			[this, source, destination, output_name, input_name]()
 			{

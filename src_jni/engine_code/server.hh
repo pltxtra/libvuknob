@@ -41,8 +41,7 @@ SERVER_CODE(
 
 		int32_t last_obj_id; // I am making an assumption here that last_obj_id will not be counted up more than 1/sec. This gives that time until overflow for a session will be more than 20000 days. If this assumption does not hold, an error state will be communicated to the user.
 
-		std::map<Machine*, std::shared_ptr<RIMachine> > machine2rimachine;
-		std::map<MachineSequencer *, std::shared_ptr<Sequence> > machine2sequence;
+		std::map<std::shared_ptr<Machine>, std::shared_ptr<RIMachine> > machine2rimachine;
 
 		int32_t reserve_new_obj_id();
 
@@ -74,15 +73,18 @@ SERVER_CODE(
 
 		void delete_object(std::shared_ptr<BaseObject> obj2delete);
 
-		virtual void project_loaded() override; // MachineSetListener interface
-		virtual void machine_registered(Machine *m_ptr) override; // MachineSetListener interface
-		virtual void machine_unregistered(Machine *m_ptr) override; // MachineSetListener interface
-		virtual void machine_input_attached(Machine *source, Machine *destination,
+		/* these virtual functions implement the MachineSetListener interface */
+		virtual void project_loaded() override;
+		virtual void machine_registered(std::shared_ptr<Machine> m_ptr) override;
+		virtual void machine_unregistered(std::shared_ptr<Machine> m_ptr) override;
+		virtual void machine_input_attached(std::shared_ptr<Machine> source,
+						    std::shared_ptr<Machine> destination,
 						    const std::string &output_name,
-						    const std::string &input_name) override; // MachineSetListener interface
-		virtual void machine_input_detached(Machine *source, Machine *destination,
+						    const std::string &input_name) override;
+		virtual void machine_input_detached(std::shared_ptr<Machine> source,
+						    std::shared_ptr<Machine> destination,
 						    const std::string &output_name,
-						    const std::string &input_name) override; // MachineSetListener interface
+						    const std::string &input_name) override;
 
 		std::shared_ptr<HandleList> handle_list;
 

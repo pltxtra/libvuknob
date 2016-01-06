@@ -798,23 +798,6 @@ void RemoteInterface::HandleList::process_message_server(Context* context,
 		double xpos = atof(msg.get_value("xpos").c_str());
 		double ypos = atof(msg.get_value("ypos").c_str());
 		Machine *new_machine = DynamicMachine::instance(new_m_handle, (float)xpos, (float)ypos);
-		if(new_machine) {
-			try {
-				MachineSequencer::create_sequencer_for_machine(new_machine);
-			} catch(std::exception &e) {
-				SATAN_ERROR("Server->HandleList::process_message_server() - failed to create sequencer for %s (%s)\n",
-					    new_m_handle.c_str(), e.what());
-				// something went wrong - destroy the new machine
-				Machine::disconnect_and_destroy(new_machine);
-				new_machine = NULL;
-			} catch(...) {
-				SATAN_ERROR("Server->HandleList::process_message_server() - failed to create sequencer for %s\n",
-					    new_m_handle.c_str());
-				// something went wrong - destroy the new machine
-				Machine::disconnect_and_destroy(new_machine);
-				new_machine = NULL;
-			}
-		}
 
 		std::shared_ptr<Message> reply = context->acquire_reply(msg);
 		if(new_machine) {
@@ -1928,15 +1911,15 @@ void RemoteInterface::RIMachine::call_state_listeners(std::function<void(std::sh
 	}
 }
 
-void RemoteInterface::RIMachine::serverside_init_from_machine_ptr(Machine *m_ptr) {
+void RemoteInterface::RIMachine::serverside_init_from_machine_ptr(std::shared_ptr<Machine> m_ptr) {
 	name = m_ptr->get_name();
 
 	// set the machine type
 	type = "unknown"; // default
 
 	{ // see if it's a MachineSequencer
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((m_ptr));
-		if(mseq != NULL) {
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(m_ptr);
+		if(mseq) {
 			type = "MachineSequencer";
 			midi_controllers = mseq->available_midi_controllers();
 
@@ -1945,8 +1928,8 @@ void RemoteInterface::RIMachine::serverside_init_from_machine_ptr(Machine *m_ptr
 		}
 	}
 	{ // see if it's a DynamicMachine
-		DynamicMachine *dmch = dynamic_cast<DynamicMachine *>((m_ptr));
-		if(dmch != NULL) {
+		auto dmch = std::dynamic_pointer_cast<DynamicMachine>(m_ptr);
+		if(dmch) {
 			type = "DynamicMachine";
 		}
 	}
@@ -2447,8 +2430,8 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 		int yp = std::stol(msg.get_value("yp"));
 		int zp = std::stol(msg.get_value("zp"));
 
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
-		if(mseq != NULL) {
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
+		if(mseq) {
 			Pad::PadEvent::PadEvent_t pevt = Pad::PadEvent::ms_pad_no_event;
 			switch(event_type) {
 			case RIMachine::ms_pad_press:
@@ -2474,8 +2457,8 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 			    len, data);
 		if(data) {
 			try {
-				MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
-				if(mseq != NULL) {
+				auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
+				if(mseq) {
 					mseq->enqueue_midi_data(len, data);
 				}
 				free(data);
@@ -2488,7 +2471,7 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 		SATAN_DEBUG("Server will now process a setctrlval message.\n");
 		process_setctrl_val_message(src, msg);
 	} else if(command == "deleteme") {
-		Machine::disconnect_and_destroy(real_machine_ptr);
+		Machine::disconnect_and_destroy(real_machine_ptr.get());
 	} else if(command == "setpos") {
 		xpos = atof(msg.get_value("xpos").c_str());
 		ypos = atof(msg.get_value("ypos").c_str());
@@ -2510,9 +2493,9 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 		process_detach_message(context, msg);
 	} else if(command == "getnrloops") {
 		SATAN_DEBUG("Received request for getnrloops.\n");
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
 
-		if(mseq != NULL) { // see if it's a MachineSequencer
+		if(mseq) { // see if it's a MachineSequencer
 			SATAN_DEBUG("Will send getnrloops reply...\n");
 			std::shared_ptr<Message> reply = context->acquire_reply(msg);
 			reply->set_value("nrloops", std::to_string(mseq->get_nr_of_loops()));
@@ -2524,9 +2507,9 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 		}
 	} else if(command == "setloopidat") {
 		SATAN_DEBUG("Received request for setloopidat.\n");
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
 
-		if(mseq != NULL) { // see if it's a MachineSequencer
+		if(mseq) { // see if it's a MachineSequencer
 			int position = std::stoi(msg.get_value("position"));
 			int loop_id = std::stoi(msg.get_value("loopid"));
 			SATAN_DEBUG("Will set loop id at %d to %d...\n", position, loop_id);
@@ -2536,9 +2519,9 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 			throw Context::FailureResponse("Not a MachineSequencer object.");
 		}
 	} else if(command == "export2loop") {
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
 
-		if(mseq != NULL) { // see if it's a MachineSequencer
+		if(mseq) { // see if it's a MachineSequencer
 			int loop_id = std::stoi(msg.get_value("loopid"));
 			mseq->export_pad_to_loop(loop_id);
 		} else {
@@ -2546,9 +2529,9 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 			throw Context::FailureResponse("Not a MachineSequencer object.");
 		}
 	} else if(command == "setoct") {
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
 
-		if(mseq != NULL) { // see if it's a MachineSequencer
+		if(mseq) { // see if it's a MachineSequencer
 			int octave = std::stoi(msg.get_value("octave"));
 			mseq->get_pad()->config.set_octave(octave);
 		} else {
@@ -2556,9 +2539,9 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 			throw Context::FailureResponse("Not a MachineSequencer object.");
 		}
 	} else if(command == "setscl") {
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
 
-		if(mseq != NULL) { // see if it's a MachineSequencer
+		if(mseq) { // see if it's a MachineSequencer
 			int scale = std::stoi(msg.get_value("scale"));
 			mseq->get_pad()->config.set_scale(scale);
 		} else {
@@ -2566,9 +2549,9 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 			throw Context::FailureResponse("Not a MachineSequencer object.");
 		}
 	} else if(command == "setrec") {
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
 
-		if(mseq != NULL) { // see if it's a MachineSequencer
+		if(mseq) { // see if it's a MachineSequencer
 			bool rec = msg.get_value("record") == "true";
 			mseq->get_pad()->set_record(rec);
 		} else {
@@ -2576,9 +2559,9 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 			throw Context::FailureResponse("Not a MachineSequencer object.");
 		}
 	} else if(command == "setqnt") {
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
 
-		if(mseq != NULL) { // see if it's a MachineSequencer
+		if(mseq) { // see if it's a MachineSequencer
 			bool do_quant = msg.get_value("doquantize") == "true";
 			mseq->get_pad()->set_quantize(do_quant);
 		} else {
@@ -2586,9 +2569,9 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 			throw Context::FailureResponse("Not a MachineSequencer object.");
 		}
 	} else if(command == "setctrl") {
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
 
-		if(mseq != NULL) { // see if it's a MachineSequencer
+		if(mseq) { // see if it's a MachineSequencer
 			PadAxis_t axis = (PadAxis_t)(std::stoi(msg.get_value("axis")));
 			Pad::PadConfiguration::PadAxis p_axis = Pad::PadConfiguration::pad_x_axis;
 			std::string ctrl = msg.get_value("midictrl");
@@ -2610,9 +2593,9 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 			throw Context::FailureResponse("Not a MachineSequencer object.");
 		}
 	} else if(command == "setchord") {
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
 
-		if(mseq != NULL) { // see if it's a MachineSequencer
+		if(mseq) { // see if it's a MachineSequencer
 			ChordMode_t chord_mode = (ChordMode_t)std::stoi(msg.get_value("chordmode"));
 			Pad::PadConfiguration::ChordMode cm = Pad::PadConfiguration::chord_off;
 			switch(chord_mode) {
@@ -2632,9 +2615,9 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 			throw Context::FailureResponse("Not a MachineSequencer object.");
 		}
 	} else if(command == "setarp") {
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
 
-		if(mseq != NULL) { // see if it's a MachineSequencer
+		if(mseq) { // see if it's a MachineSequencer
 			std::string arp_pattern = msg.get_value("arppattern");
 			mseq->set_pad_arpeggio_pattern(arp_pattern);
 		} else {
@@ -2642,9 +2625,9 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 			throw Context::FailureResponse("Not a MachineSequencer object.");
 		}
 	} else if(command == "setarpdirection") {
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
 
-		if(mseq != NULL) { // see if it's a MachineSequencer
+		if(mseq) { // see if it's a MachineSequencer
 			ArpeggioDirection_t i_arp_direction = (ArpeggioDirection_t)std::stoi(msg.get_value("direction"));
 			Pad::PadConfiguration::ArpeggioDirection adir =
 				Pad::PadConfiguration::arp_off;
@@ -2668,9 +2651,9 @@ void RemoteInterface::RIMachine::process_message_server(Context* context,
 			throw Context::FailureResponse("Not a MachineSequencer object.");
 		}
 	} else if(command == "padclear") {
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
 
-		if(mseq != NULL) { // see if it's a MachineSequencer
+		if(mseq) { // see if it's a MachineSequencer
 			mseq->get_pad()->clear_pad();
 		} else {
 			// not a MachineSequencer
@@ -2800,7 +2783,7 @@ void RemoteInterface::RIMachine::process_attach_message(Context *context, const 
 	if(is_server_side()) {
 		try {
 			auto mch = std::dynamic_pointer_cast<RIMachine>(context->get_object(identifier));
-			real_machine_ptr->attach_input(mch->real_machine_ptr, src_output, dst_input);
+			real_machine_ptr->attach_input(mch->real_machine_ptr.get(), src_output, dst_input);
 		} catch(NoSuchObject exp) {
 			/* ignored for now */
 		} catch(jException exp) {
@@ -2831,7 +2814,7 @@ void RemoteInterface::RIMachine::process_detach_message(Context *context, const 
 	if(is_server_side()) {
 		try {
 			auto mch = std::dynamic_pointer_cast<RIMachine>(context->get_object(identifier));
-			real_machine_ptr->detach_input(mch->real_machine_ptr, src_output, dst_input);
+			real_machine_ptr->detach_input(mch->real_machine_ptr.get(), src_output, dst_input);
 		} catch(NoSuchObject exp) {
 			/* ignored for now */
 		} catch(jException exp) {
@@ -2892,7 +2875,7 @@ void RemoteInterface::RIMachine::serialize(std::shared_ptr<Message> &target) {
 		target->set_value("type", type);
 		target->set_value("xpos", std::to_string(xpos));
 		target->set_value("ypos", std::to_string(ypos));
-		target->set_value("is_sink", real_machine_ptr == Machine::get_sink() ? "true" : "false");
+		target->set_value("is_sink", real_machine_ptr.get() == Machine::get_sink() ? "true" : "false");
 	}
 	{
 		std::stringstream connection_string;
@@ -2919,8 +2902,8 @@ void RemoteInterface::RIMachine::serialize(std::shared_ptr<Message> &target) {
 	}
 
 	{
-		MachineSequencer *mseq = dynamic_cast<MachineSequencer *>((real_machine_ptr));
-		if(mseq != NULL) {
+		auto mseq = std::dynamic_pointer_cast<MachineSequencer>(real_machine_ptr);
+		if(mseq) {
 			target->set_value("sibling", mseq->get_machine()->get_name());
 		}
 	}

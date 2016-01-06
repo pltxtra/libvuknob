@@ -890,7 +890,7 @@ namespace RemoteInterface {
 		RIMachine(const Factory *factory, const Message &serialized);
 		RIMachine(int32_t new_obj_id, const Factory *factory);
 
-		void serverside_init_from_machine_ptr(Machine *m_ptr);
+		void serverside_init_from_machine_ptr(std::shared_ptr<Machine> m_ptr);
 
 	public:
 		/* mixed server/client side API */
@@ -1106,7 +1106,7 @@ namespace RemoteInterface {
 		std::string name, sibling;
 		std::string type;
 		bool is_sink = false;
-		Machine *real_machine_ptr = nullptr;
+		std::shared_ptr<Machine> real_machine_ptr;
 		double xpos, ypos;
 		std::set<std::string> midi_controllers;
 
