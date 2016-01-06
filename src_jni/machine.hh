@@ -121,17 +121,17 @@ public:
 	public:
 		virtual void project_loaded() = 0;
 
-		virtual void machine_registered(Machine *m_ptr) = 0;
-		virtual void machine_unregistered(Machine *m_ptr) = 0;
+		virtual void machine_registered(std::shared_ptr<Machine> m_ptr) = 0;
+		virtual void machine_unregistered(std::shared_ptr<Machine> m_ptr) = 0;
 
-		virtual void machine_input_attached(Machine *source, Machine *destination,
+		virtual void machine_input_attached(std::shared_ptr<Machine> source,
+						    std::shared_ptr<Machine> destination,
 						    const std::string &output_name,
 						    const std::string &input_name) = 0;
-		virtual void machine_input_detached(Machine *source, Machine *destination,
+		virtual void machine_input_detached(std::shared_ptr<Machine> source,
+						    std::shared_ptr<Machine> destination,
 						    const std::string &output_name,
 						    const std::string &input_name) = 0;
-
-		void machine_dereference(Machine *m_ptr); // call this from your MachineSetListener if you don't intend to use the m_ptr anymore
 	};
 
 	class Controller {
@@ -477,7 +477,6 @@ private:
 
 	/* General machine data */
 	bool has_been_deregistered = true; // default to true - this will be unset when it's registered
-	int reference_counter = 0;
 	std::set<Machine *> tightly_connected; // these are machines that should be destroyed when we are destroyed. (Tightly connected machines should be considered "one")
 	std::map<Machine *, int> dependant; // machines which have output that we depend on.
 	std::string name;
@@ -485,6 +484,8 @@ private:
 	bool base_name_is_name; // indicates that base_name should be use as is
 	Machine *next_render_chain;
 	std::vector<std::string> controller_groups;
+
+	std::weak_ptr<Machine> myself; // weak pointer to myself - created by internal_register_machine()
 
 	// if visualized - the graphical x and y position
 	float x_position, y_position;
@@ -537,6 +538,8 @@ private:
 	 *
 	 ********************************************/
 public:
+	virtual ~Machine();
+
 	void attach_input(Machine *source_machine,
 			  const std::string &output_name,
 			  const std::string &input_name);
@@ -577,6 +580,18 @@ public:
 	/// get a hint about what this machine is (for example, "effect" or "generator")
 	std::string get_hint();
 
+	class MachineIsInvalid : public std::runtime_error {
+	public:
+		MachineIsInvalid() : runtime_error("Trying to get shared pointer for invalid Machine.") {}
+		virtual ~MachineIsInvalid() {}
+	};
+
+	std::shared_ptr<Machine> get_shared_pointer() {
+		if(auto got_me = myself.lock())
+			return got_me;
+		throw MachineIsInvalid();
+	}
+
 	/******************************************************************
 	 *
 	 * a "machine_operation" is an interface that a non audio playback
@@ -613,7 +628,6 @@ protected:
 
 	// constructor/destructor
 	Machine(std::string name_base, bool _base_name_is_name, float _xpos, float _ypos);
-	virtual ~Machine();
 	// Call this AFTER you have initiated
 	// all data in your derived class from the XML block
 	void setup_using_xml(const KXMLDoc &mxml);
@@ -735,7 +749,7 @@ private:
 
 	static Machine *top_render_chain; // whenever a machine is connected to another the chain is recalculated
 	static Machine *sink; // There can only be one...
-	static std::vector<Machine *>machine_set; // global array of all machines
+	static std::map<Machine *, std::shared_ptr<Machine> >machine_set; // global array of all machines
 
 	static std::set<std::weak_ptr<MachineSetListener>, std::owner_less<std::weak_ptr<MachineSetListener> > > machine_set_listeners;
 	static std::vector<__MACHINE_PERIODIC_CALLBACK_F> periodic_callback_set;
@@ -765,8 +779,6 @@ private:
 	static void internal_register_machine(Machine *m);
 	// deregister a machine in the global set (will also dereference it)
 	static void internal_deregister_machine(Machine *m);
-	// dereference a machine
-	static void internal_dereference_machine(Machine *m);
 
 	static void calculate_samples_per_tick();
 	static void reset_global_playback_parameters(int playback_position);
@@ -808,9 +820,6 @@ public:
 
 	/// Register a machine set listener (will be called on machine registered/unregistered events)
 	static void register_machine_set_listener(std::weak_ptr<MachineSetListener> mset_listener);
-
-	/// If you use the MachineSetListener API - you must also use this dereference function when you are no longer interested in a machine
-	static void dereference_machine(Machine *m_ptr);
 
 	/// returns the set of registered machines (deprecated)
 	static std::vector<Machine *> get_machine_set();

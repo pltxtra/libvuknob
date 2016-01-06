@@ -1624,7 +1624,7 @@ bool Machine::is_recording = false;
 std::string Machine::record_fname = ""; // filename to record to
 Machine *Machine::sink = NULL;
 Machine *Machine::top_render_chain = NULL;
-std::vector<Machine *> Machine::machine_set;
+std::map<Machine*, std::shared_ptr<Machine> > Machine::machine_set;
 std::set<std::weak_ptr<Machine::MachineSetListener>, std::owner_less<std::weak_ptr<Machine::MachineSetListener> > > Machine::machine_set_listeners;
 
 std::vector<__MACHINE_PERIODIC_CALLBACK_F> Machine::periodic_callback_set;
@@ -1639,8 +1639,17 @@ extern jThread::Monitor *SIMPLE_JTHREAD_DEBUG_MUTX;
  *
  *********/
 
-void Machine::broadcast_attach(Machine *source_machine, Machine *destination_machine,
+void Machine::broadcast_attach(Machine *source_machine_p, Machine *destination_machine_p,
 			       const std::string &output_name, const std::string &input_name) {
+
+	auto source_machine = source_machine_p->get_shared_pointer();
+	auto destination_machine = destination_machine_p->get_shared_pointer();
+
+	if(!(source_machine && destination_machine)) {
+		SATAN_ERROR("Machine::broadcast_attach() Could not acquire shared pointer for machines.\n");
+		return;
+	}
+
 	for(auto w_mlist : machine_set_listeners) {
 
 		std::shared_ptr<MachineSetListener> mlist = w_mlist.lock();
@@ -1657,8 +1666,16 @@ void Machine::broadcast_attach(Machine *source_machine, Machine *destination_mac
 	}
 }
 
-void Machine::broadcast_detach(Machine *source_machine, Machine *destination_machine,
+void Machine::broadcast_detach(Machine *source_machine_p, Machine *destination_machine_p,
 			       const std::string &output_name, const std::string &input_name) {
+	auto source_machine = source_machine_p->get_shared_pointer();
+	auto destination_machine = destination_machine_p->get_shared_pointer();
+
+	if(!(source_machine && destination_machine)) {
+		SATAN_ERROR("Machine::broadcast_detach() Could not acquire shared pointer for machines.\n");
+		return;
+	}
+
 	for(auto w_mlist : machine_set_listeners) {
 
 		std::shared_ptr<MachineSetListener> mlist = w_mlist.lock();
@@ -1707,23 +1724,22 @@ void Machine::internal_unregister_sink(Machine *s) {
 void Machine::internal_register_machine(Machine *m) {
 	static std::vector<Machine *>::iterator i;
 
-	for(i = machine_set.begin(); i != machine_set.end(); i++) {
-		if((*i) == m)
-			throw jException("Trying to register machine twice.", jException::sanity_error);
-		std::cout << "     PREVIOUSLY REGISTERD ptr: " << (*i) << " ]" << (*i)->name << "[\n";
+	auto ms_i = machine_set.find(m);
+	if(ms_i != machine_set.end()) {
+		throw jException("Trying to register machine twice.", jException::sanity_error);
 	}
 
-	machine_set.push_back(m);
-
-	m->has_been_deregistered = false;
-	m->reference_counter = 1 + machine_set_listeners.size();
+	auto m_ptr = std::shared_ptr<Machine>(m);
+	machine_set[m] = m_ptr;
+	m_ptr->has_been_deregistered = false;
+	m_ptr->myself = m_ptr;
 
 	for(auto w_mlist : machine_set_listeners) {
 		std::shared_ptr<MachineSetListener> mlist = w_mlist.lock();
 		if(mlist) {
 			Machine::run_async_function(
-				[mlist, m]() {
-					mlist->machine_registered(m);
+				[mlist, m_ptr]() {
+					mlist->machine_registered(m_ptr);
 				}
 				);
 		}
@@ -1731,47 +1747,30 @@ void Machine::internal_register_machine(Machine *m) {
 }
 
 void Machine::internal_deregister_machine(Machine *m) {
+	auto ms_i = machine_set.find(m);
+	if(ms_i == machine_set.end()) {
+		throw jException("Trying to deregister unknown machine.", jException::sanity_error);
+	}
+	auto m_ptr = ms_i->second;
+
 	// notify listeners that the machine is no longer in use
 	for(auto w_mlist : machine_set_listeners) {
 		std::shared_ptr<MachineSetListener> mlist = w_mlist.lock();
 
 		if(mlist) {
 			Machine::run_async_function(
-				[mlist, m]() {
-					mlist->machine_unregistered(m);
+				[mlist, m_ptr]() {
+					mlist->machine_unregistered(m_ptr);
 				}
 				);
 		}
 	}
 
-	{ // remove the machine from our internal set.
-		std::vector<Machine *>::iterator i;
+	m->has_been_deregistered = true;
+	machine_set.erase(ms_i);
 
-		for(i = machine_set.begin(); i != machine_set.end(); i++) {
-			if((*i) == m) {
-				m->has_been_deregistered = true;
-				machine_set.erase(i);
-
-				if(sink == m) {
-					internal_unregister_sink(m);
-				}
-
-				internal_dereference_machine(m);
-				return;
-			}
-		}
-	}
-
-	throw jException("Trying to deregister unknown machine.", jException::sanity_error);
-}
-
-void Machine::internal_dereference_machine(Machine *m) {
-	m->reference_counter -= 1;
-	SATAN_DEBUG("Machine reference counter for %p is now %d\n", m, m->reference_counter);
-	if(m->reference_counter <= 0) {
-		SATAN_DEBUG(" Machine %p will be deleted.\n", m);
-
-		delete m;
+	if(sink == m) {
+		internal_unregister_sink(m);
 	}
 }
 
@@ -1921,12 +1920,8 @@ void Machine::internal_disconnect_and_destroy(Machine *m) {
 }
 
 void Machine::reset_all_machines() {
-	std::vector<Machine *>::iterator machine;
-
-	for(machine  = machine_set.begin();
-	    machine != machine_set.end();
-	    machine++) {
-		(*machine)->reset();
+	for(auto machine : machine_set) {
+		machine.second->reset();
 	}
 }
 
@@ -1966,8 +1961,8 @@ Machine *Machine::internal_get_by_name(const std::string &name) {
 
 	static std::vector<Machine *>::iterator i;
 
-	for(i = machine_set.begin(); i != machine_set.end(); i++) {
-		if((*i)->name == name) {
+	for(auto machine : machine_set) {
+		if(machine.first->name == name) {
 			m = (*i);
 			break;
 		}
@@ -2003,8 +1998,8 @@ void Machine::register_machine_set_listener(std::weak_ptr<MachineSetListener> ms
 			machine_set_listeners.insert(mset_listener);
 
 			std::shared_ptr<MachineSetListener> mlist = mset_listener.lock();
-			for(auto mch : machine_set) {
-				mch->reference_counter++;
+			for(auto mch_it : machine_set) {
+				auto mch = mch_it.second;
 				Machine::run_async_function(
 					[mch, mlist]() {
 						mlist->machine_registered(mch);
@@ -2015,26 +2010,16 @@ void Machine::register_machine_set_listener(std::weak_ptr<MachineSetListener> ms
 		NULL, true);
 }
 
-void Machine::dereference_machine(Machine *m_ptr) {
-	Machine::machine_operation_enqueue(
-		[m_ptr] (void *d) {
-			internal_dereference_machine(m_ptr);
-		},
-		NULL, false);
-}
-
 std::vector<Machine *> Machine::get_machine_set() {
-	typedef struct {
-		std::vector<Machine *> retval;
-	} Param;
-	Param param;
+	std::vector<Machine*> retval;
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-			p->retval = machine_set;
-		},
-		&param, true);
-	return param.retval;
+		[&retval] () {
+			for(auto mchn : machine_set) {
+				retval.push_back(mchn.first);
+			}
+		}
+		);
+	return retval;
 }
 
 void Machine::jump_to(int _position) {
