@@ -47,7 +47,6 @@
 #include <cxxabi.h>
 
 #include "common.hh"
-#include "satan_debug.hh"
 
 #define RI_LOOP_NOT_SET -1
 
