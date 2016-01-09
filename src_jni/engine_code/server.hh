@@ -147,23 +147,17 @@ SERVER_CODE(
 
 	public:
 		template <typename T>
-		static std::shared_ptr<T> create_object() {
+		static void create_object(
+			std::function<void(std::shared_ptr<T> nuobj)> new_object_init_callback) {
 			std::lock_guard<std::mutex> lock_guard(server_mutex);
 
 			if(server) {
-				std::shared_ptr<T> retobj;
-				auto f = [&retobj](std::shared_ptr<T> nuobj) {
-					retobj = nuobj;
-				};
-
 				server->post_action(
-					[f]() {
-						server->create_object_from_factory<T>(f);
+					[new_object_init_callback]() {
+						server->create_object_from_factory<T>(new_object_init_callback);
 					}
 					, true
 					);
-
-				return retobj;
 			}
 
 			throw ContextNotConnected();
