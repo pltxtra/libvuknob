@@ -158,6 +158,7 @@ SERVER_CODE(
 					}
 					, true
 					);
+				return;
 			}
 
 			throw ContextNotConnected();
