@@ -22,52 +22,45 @@
 
 #include <map>
 #include <kamogui.hh>
-#include "remote_interface.hh"
+#include "engine_code/sequence.hh"
+
+typedef RemoteInterface::ClientSpace::Sequence RISequence;
 
 class Sequencer
-	: public RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine>
+	: public RemoteInterface::Context::ObjectSetListener<RISequence>
 	, public KammoGUI::SVGCanvas::SVGDocument
 {
 
 private:
 	class Sequence
 		: public KammoGUI::SVGCanvas::ElementReference
-		, public RemoteInterface::RIMachine::RIMachineStateListener
 		, public std::enable_shared_from_this<Sequence>
 	{
 	private:
-		std::shared_ptr<RemoteInterface::RIMachine> ri_machine;
+		std::shared_ptr<RISequence> ri_seq;
 		int offset;
 
 	public:
-		virtual void on_move() override;
-		virtual void on_attach(std::shared_ptr<RemoteInterface::RIMachine> src_machine,
-				       const std::string src_output,
-				       const std::string dst_input) override;
-		virtual void on_detach(std::shared_ptr<RemoteInterface::RIMachine> src_machine,
-				       const std::string src_output,
-				       const std::string dst_input) override;
-
 		void set_graphic_parameters(double graphic_scaling_factor,
 					    double width, double height,
 					    double canvas_w, double canvas_h);
 
 		Sequence(
 			KammoGUI::SVGCanvas::ElementReference elref,
-			std::shared_ptr<RemoteInterface::RIMachine> ri_machine,
+			std::shared_ptr<RISequence> ri_seq,
 			int offset);
 
 		static std::shared_ptr<Sequence> create_sequence(
 			KammoGUI::SVGCanvas::ElementReference &root,
 			KammoGUI::SVGCanvas::ElementReference &sequence_graphic_template,
-			std::shared_ptr<RemoteInterface::RIMachine> ri_machine,
+			std::shared_ptr<RISequence> ri_seq,
 			int offset);
 	};
 
 	KammoGUI::SVGCanvas::ElementReference root;
 	KammoGUI::SVGCanvas::ElementReference sequence_graphic_template;
 
-	std::map<std::shared_ptr<RemoteInterface::RIMachine>, std::shared_ptr<Sequence> >machine2sequence;
+	std::map<std::shared_ptr<RISequence>, std::shared_ptr<Sequence> >machine2sequence;
 
 	double finger_width = 10.0, finger_height = 10.0; // sizes in pixels
 	int canvas_width_fingers = 8, canvas_height_fingers = 8; // sizes in "fingers"
@@ -81,8 +74,8 @@ public:
 	virtual void on_resize() override;
 	virtual void on_render() override;
 
-	virtual void object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
-	virtual void object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
+	virtual void object_registered(std::shared_ptr<RISequence> ri_seq) override;
+	virtual void object_unregistered(std::shared_ptr<RISequence> ri_seq) override;
 };
 
 #endif

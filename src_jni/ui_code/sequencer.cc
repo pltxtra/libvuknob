@@ -43,30 +43,20 @@
  ***************************/
 
 Sequencer::Sequence::Sequence(KammoGUI::SVGCanvas::ElementReference elref,
-			      std::shared_ptr<RemoteInterface::RIMachine> _ri_machine,
+			      std::shared_ptr<RISequence> _ri_seq,
 			      int _offset)
 	: KammoGUI::SVGCanvas::ElementReference(elref)
-	, ri_machine(_ri_machine)
+	, ri_seq(_ri_seq)
 	, offset(_offset)
 {
 	SATAN_DEBUG("Sequencer::Sequence::Sequence()\n");
 	set_display("inline");
 
-	find_child_by_class("machineId").set_text_content(ri_machine->get_sibling_name());
+	SATAN_DEBUG("Sequencer::Sequence::Sequence() --> ri_seq->get_name() = %s\n",
+		    ri_seq->get_name().c_str());
 
-}
+	find_child_by_class("machineId").set_text_content(ri_seq->get_name());
 
-void Sequencer::Sequence::on_move() {
-}
-
-void Sequencer::Sequence::on_attach(std::shared_ptr<RemoteInterface::RIMachine> src_machine,
-				    const std::string src_output,
-				    const std::string dst_input) {
-}
-
-void Sequencer::Sequence::on_detach(std::shared_ptr<RemoteInterface::RIMachine> src_machine,
-				    const std::string src_output,
-				    const std::string dst_input) {
 }
 
 void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
@@ -90,13 +80,16 @@ void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
 auto Sequencer::Sequence::create_sequence(
 	KammoGUI::SVGCanvas::ElementReference &root,
 	KammoGUI::SVGCanvas::ElementReference &sequence_graphic_template,
-	std::shared_ptr<RemoteInterface::RIMachine> ri_machine,
+	std::shared_ptr<RISequence> ri_machine,
 	int offset) -> std::shared_ptr<Sequence> {
 
-	KammoGUI::SVGCanvas::ElementReference new_graphic =
-		root.add_element_clone(ri_machine->get_name(), sequence_graphic_template);
+	char bfr[32];
+	snprintf(bfr, 32, "seq_%p", ri_machine.get());
 
-	SATAN_DEBUG("Sequencer::Sequence::create_sequence()\n");
+	KammoGUI::SVGCanvas::ElementReference new_graphic =
+		root.add_element_clone(bfr, sequence_graphic_template);
+
+	SATAN_DEBUG("Sequencer::Sequence::create_sequence() -- bfr: %s\n", bfr);
 
 	return std::make_shared<Sequence>(new_graphic, ri_machine, offset);
 }
@@ -149,31 +142,25 @@ void Sequencer::on_resize() {
 void Sequencer::on_render() {
 }
 
-void Sequencer::object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
-	// we don't want to show non MachineSequener objects
-	if(ri_machine->get_machine_type() != "MachineSequencer") return;
-
+void Sequencer::object_registered(std::shared_ptr<RemoteInterface::ClientSpace::Sequence> ri_seq) {
 	KammoGUI::run_on_GUI_thread(
-		[this, ri_machine]() {
+		[this, ri_seq]() {
 			int new_offset = (int)machine2sequence.size();
 			SATAN_DEBUG("new_offset is %d\n", new_offset);
 
 			KammoGUI::SVGCanvas::ElementReference layer(this, "layer1");
-			machine2sequence[ri_machine] =
+			machine2sequence[ri_seq] =
 				Sequence::create_sequence(
 					layer, sequence_graphic_template,
-					ri_machine, new_offset);
+					ri_seq, new_offset);
 		}
 		);
 }
 
-void Sequencer::object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
-	// we don't have any non MachineSequener objects on file
-	if(ri_machine->get_machine_type() != "MachineSequencer") return;
-
+void Sequencer::object_unregistered(std::shared_ptr<RemoteInterface::ClientSpace::Sequence> ri_seq) {
 	KammoGUI::run_on_GUI_thread(
-		[this, ri_machine]() {
-			auto seq = machine2sequence.find(ri_machine);
+		[this, ri_seq]() {
+			auto seq = machine2sequence.find(ri_seq);
 			if(seq != machine2sequence.end()) {
 				machine2sequence.erase(seq);
 			}
@@ -199,8 +186,8 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		static auto current_sequencer = std::make_shared<Sequencer>(cnvs);
 
 		auto ptr =
-			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> >(current_sequencer);
-		std::weak_ptr<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> > w_ptr = ptr;
+			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RISequence> >(current_sequencer);
+		std::weak_ptr<RemoteInterface::Context::ObjectSetListener<RISequence> > w_ptr = ptr;
 		RemoteInterface::ClientSpace::Client::register_object_set_listener(w_ptr);
 	}
 }
