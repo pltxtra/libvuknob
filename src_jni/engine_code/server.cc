@@ -23,6 +23,8 @@
 #error "CAN'T FIND config.h"
 #endif
 
+#include <cxxabi.h>
+
 #include "server.hh"
 #include "sequence.hh"
 
@@ -143,6 +145,12 @@ SERVER_CODE(
 
 					Sequence::create_sequence_for_machine(m_ptr);
 				} catch(...) {
+					int status = 0;
+					char * buff = __cxxabiv1::__cxa_demangle(
+						__cxxabiv1::__cxa_current_exception_type()->name(),
+						NULL, NULL, &status);
+					SATAN_ERROR("Server::machine_registered() - "
+						    "caught an unknown exception: %s\n", buff);
 					SATAN_ERROR("Server::machine_registered() - "
 						    "failed to create RIMachine or sequencer for %s\n",
 						    m_ptr->get_name().c_str());
