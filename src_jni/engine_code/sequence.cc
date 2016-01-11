@@ -277,16 +277,23 @@ SERVER_CODE(
 			}
 			);
 
-		std::shared_ptr<Sequence> seq = Server::create_object<Sequence>();
+		Server::create_object<Sequence>(
+			[sibling](std::shared_ptr<Sequence> seq) {
 
-		sibling->attach_input(seq.get(),
-				      MACHINE_SEQUENCER_MIDI_OUTPUT_NAME,
-				      MACHINE_SEQUENCER_MIDI_INPUT_NAME);
+				sibling->attach_input(seq.get(),
+						      MACHINE_SEQUENCER_MIDI_OUTPUT_NAME,
+						      MACHINE_SEQUENCER_MIDI_INPUT_NAME);
+				seq->sequence_name = sibling->get_name();
 
-		Machine::machine_operation_enqueue(
-			[sibling, seq]() {
-				seq->tightly_connect(sibling.get());
-				machine2sequence[sibling] = seq;
+				SATAN_DEBUG("Sequence::create_sequence_for_machine() -- sequence_name = %s\n",
+					    seq->sequence_name.c_str());
+
+				Machine::machine_operation_enqueue(
+					[sibling, seq]() {
+						seq->tightly_connect(sibling.get());
+						machine2sequence[sibling] = seq;
+					}
+					);
 			}
 			);
 	}
@@ -315,6 +322,16 @@ SERVER_CODE(
 	}
 
 	void Sequence::fill_buffers() {
+		// get output signal buffer and clear it.
+		Signal *out_sig = output[MACHINE_SEQUENCER_MIDI_OUTPUT_NAME];
+
+		int output_limit = out_sig->get_samples();
+		void **output_buffer = (void **)out_sig->get_buffer();
+
+		memset(output_buffer,
+		       0,
+		       sizeof(void *) * output_limit
+			);
 	}
 
 	void Sequence::reset() {
@@ -561,6 +578,10 @@ CLIENT_CODE(
 		);
 	}
 
+	std::string Sequence::get_name() {
+		return sequence_name;
+	}
+
 	);
 
 SERVER_N_CLIENT_CODE(
@@ -735,6 +756,10 @@ SERVER_N_CLIENT_CODE(
 
 	template <class SerderClassT>
 	void Sequence::serderize_sequence(SerderClassT& iserder) {
+		iserder.process(sequence_name);
+		SATAN_DEBUG("serderize_sequence() -- sequence_name: %s\n",
+			    sequence_name.c_str());
+
 		iserder.process(patterns);
 	}
 

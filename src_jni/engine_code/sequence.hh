@@ -126,6 +126,8 @@ namespace RemoteInterface {
 					);
 				void get_notes(uint32_t pattern_id, std::list<Note> &storage);
 				void delete_note(uint32_t pattern_id, const Note& note);
+
+				std::string get_name();
 				);
 
 			Sequence(const Factory *factory, const RemoteInterface::Message &serialized);
@@ -192,6 +194,7 @@ namespace RemoteInterface {
 			ON_SERVER(MachineSequencer* m_seq);
 			std::map<uint32_t, Pattern*> patterns;
 			LinkedList<PatternInstance> instance_list;
+			std::string sequence_name;
 
 			/* internal processing of commands - on both the server & client */
 			void process_add_pattern(const std::string& new_name, uint32_t new_id);
