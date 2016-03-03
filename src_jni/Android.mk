@@ -70,6 +70,11 @@ LOCAL_SRC_FILES := ../libkamoflage/export/armeabi/libkamoflage.so
 include $(PREBUILT_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
+LOCAL_MODULE := libgnuVG
+LOCAL_SRC_FILES := ../gnuVGdroid_tiger/prereqs/lib/libgnuVG.so
+include $(PREBUILT_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
 LOCAL_MODULE := libkissfft
 LOCAL_CFLAGS += $(FLOAT_CFLAGS)
 LOCAL_SRC_FILES =\
@@ -90,6 +95,7 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 -I../libsvgandroid/prereqs/include \
 -I../libkamoflage/android/src_jni/libkamoflage/ \
 -I../libkamoflage/android/src_jni/ \
+-I../gnuVGdroid_tiger/prereqs/include/gnuVG \
 -I../prereqs/include/ \
 -I../build/ \
 -Wall \
@@ -152,7 +158,7 @@ ui_code/scale_editor.cc ui_code/scale_editor.hh
 LOCAL_STATIC_LIBRARIES := cpufeatures libvorbis libogg libvorbisenc libkissfft
 LOCAL_LDFLAGS += -Xlinker --threads
 LOCAL_LDLIBS += -ldl -llog
-LOCAL_SHARED_LIBRARIES := libsvgandroid libkamoflage libpathvariable
+LOCAL_SHARED_LIBRARIES := libsvgandroid libgnuVG libkamoflage libpathvariable
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -224,6 +230,7 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 -I../libsvgandroid/prereqs/include \
 -I../libkamoflage/android/src_jni/libkamoflage/ \
 -I../libkamoflage/android/src_jni/ \
+-I../gnuVGdroid_tiger/prereqs/include/gnuVG \
 -I../prereqs/include/ \
 -I../build/ \
 -Wall \
@@ -233,6 +240,7 @@ LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 LOCAL_SRC_FILES := \
 satan.cc \
 ui_code/logo_screen.cc ui_code/logo_screen.hh \
+ui_code/test_gnuvg.cc ui_code/test_gnuvg.hh \
 ui_code/controller_handler.cc \
 ui_code/livepad2.cc ui_code/livepad2.hh \
 ui_code/machine_selector_ui.cc \
