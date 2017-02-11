@@ -71,7 +71,7 @@ include $(PREBUILT_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := libgnuVG
-LOCAL_SRC_FILES := ../gnuVGdroid_tiger/prereqs/lib/libgnuVG.so
+LOCAL_SRC_FILES := ../libkamoflage/prereqs/lib/libgnuVG.so
 include $(PREBUILT_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -95,7 +95,7 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 -I../libsvgandroid/prereqs/include \
 -I../libkamoflage/android/src_jni/libkamoflage/ \
 -I../libkamoflage/android/src_jni/ \
--I../gnuVGdroid_tiger/prereqs/include/gnuVG \
+-I../libkamoflage/prereqs/include/gnuVG \
 -I../prereqs/include/ \
 -I../build/ \
 -Wall \
@@ -230,7 +230,7 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 -I../libsvgandroid/prereqs/include \
 -I../libkamoflage/android/src_jni/libkamoflage/ \
 -I../libkamoflage/android/src_jni/ \
--I../gnuVGdroid_tiger/prereqs/include/gnuVG \
+-I../libkamoflage/prereqs/include/gnuVG \
 -I../prereqs/include/ \
 -I../build/ \
 -Wall \
