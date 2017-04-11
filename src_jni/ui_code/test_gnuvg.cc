@@ -132,16 +132,17 @@ void TestGnuVG::on_resize() {
 }
 
 void TestGnuVG::on_render() {
-	if(0)
+	if(1)
 	{ /* process thump */
 		KammoGUI::GnuVGCanvas::SVGMatrix logo_base_t;
 		KammoGUI::GnuVGCanvas::SVGMatrix logo_thump_t;
 
-		logo_thump_t.translate(-250.0, -200.0);
+		logo_thump_t.translate(-600.0, -500.0);
+		logo_thump_t.rotate(2.0 * 3.14 * thump_offset);
 		logo_thump_t.scale(1.0 + 0.1 * thump_offset,
 				   1.0 + 0.1 * thump_offset
 			);
-		logo_thump_t.translate(250.0, 200.0);
+		logo_thump_t.translate(600.0, 500.0);
 
 		if(!logo_base_got) {
 			knobBody_element->get_transform(knob_base_t);
