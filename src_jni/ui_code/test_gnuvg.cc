@@ -162,10 +162,10 @@ void TestGnuVG::on_render() {
 
 void TestGnuVG::element_on_event(KammoGUI::GnuVGCanvas::SVGDocument *source,
 				 KammoGUI::GnuVGCanvas::ElementReference *e_ref,
-				 const KammoGUI::GnuVGCanvas::MotionEvent &event) {
+				 const KammoGUI::MotionEvent &event) {
 	TestGnuVG *ctx = (TestGnuVG *)source;
 
-	if(event.get_action() == KammoGUI::GnuVGCanvas::MotionEvent::ACTION_UP) {
+	if(event.get_action() == KammoGUI::MotionEvent::ACTION_UP) {
 		if(e_ref == ctx->knobBody_element) {
 			ThumpAnimation *thump = ThumpAnimation::start_thump(&(ctx->thump_offset), 5.0);
 			if(thump)

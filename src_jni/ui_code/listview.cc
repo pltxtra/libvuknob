@@ -46,7 +46,7 @@ static int listview_dummy_pointer = 0;
 
 void ListView::Row::on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 			     KammoGUI::SVGCanvas::ElementReference *e_ref,
-			     const KammoGUI::SVGCanvas::MotionEvent &event) {
+			     const KammoGUI::MotionEvent &event) {
 	Row *row = (Row *)e_ref;
 	double x = event.get_x();
 	double y = event.get_y();
@@ -58,17 +58,17 @@ void ListView::Row::on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 	{
 		double scroll;
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 			start_x = x;
 			scroll_start = start_y = y;
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			scroll = y - scroll_start;
 			row->parent->offset += scroll;
 
@@ -79,7 +79,7 @@ void ListView::Row::on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 
 			scroll_start = y;
 
-			if(event.get_action() == KammoGUI::SVGCanvas::MotionEvent::ACTION_UP) {
+			if(event.get_action() == KammoGUI::MotionEvent::ACTION_UP) {
 				x = x - start_x;
 				y = y - start_y;
 				if(x < 0) x = -x; if(y < 0) y = -y;
@@ -138,7 +138,7 @@ void ListView::hide() {
 
 void ListView::on_cancel_event(KammoGUI::SVGCanvas::SVGDocument *source,
 			       KammoGUI::SVGCanvas::ElementReference *e_ref,
-			       const KammoGUI::SVGCanvas::MotionEvent &event) {
+			       const KammoGUI::MotionEvent &event) {
 	ListView *ctx = (ListView *)source;
 
 	ctx->hide();

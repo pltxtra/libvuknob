@@ -79,7 +79,7 @@ void CornerButton::run_transition() {
 
 void CornerButton::on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 			  KammoGUI::SVGCanvas::ElementReference *e_ref,
-			  const KammoGUI::SVGCanvas::MotionEvent &event) {
+			  const KammoGUI::MotionEvent &event) {
 	SATAN_DEBUG(" CornerButton::on_event. (doc %p - CornerButton %p)\n", source, e_ref);
 	CornerButton *ctx = (CornerButton *)source;
 
@@ -87,13 +87,13 @@ void CornerButton::on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 	double now_y = event.get_y();
 
 	switch(event.get_action()) {
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 		ctx->is_a_tap = false;
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+	case KammoGUI::MotionEvent::ACTION_MOVE:
 		// check if the user is moving the finger too far, indicating abort action
 		// if so - disable is_a_tap
 		if(ctx->is_a_tap) {
@@ -103,12 +103,12 @@ void CornerButton::on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 				ctx->is_a_tap = false;
 		}
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+	case KammoGUI::MotionEvent::ACTION_DOWN:
 		ctx->is_a_tap = true;
 		ctx->first_selection_x = now_x;
 		ctx->first_selection_y = now_y;
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+	case KammoGUI::MotionEvent::ACTION_UP:
 		if(ctx->is_a_tap) {
 			ctx->callback_function();
 		}

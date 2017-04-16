@@ -65,7 +65,7 @@ void ScaleSlider::on_render() {
 		KammoGUI::SVGCanvas::SVGMatrix menu_t;
 		menu_t.scale(scale, scale);
 		menu_t.translate(translate_x, translate_y);
-		
+
 		KammoGUI::SVGCanvas::ElementReference root(this);
 		root.set_transform(menu_t);
 	}
@@ -73,7 +73,7 @@ void ScaleSlider::on_render() {
 	{ // move the scale knob into position
 		scale_knob->get_boundingbox(knob_size);
 		knob_size.height /= scale;
-		
+
 		KammoGUI::SVGCanvas::SVGMatrix knob_t;
 		knob_t.translate(0.0, (1.0 - value) * (document_size.height - knob_size.height));
 
@@ -95,17 +95,17 @@ void ScaleSlider::on_resize() {
 
 void ScaleSlider::on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 			   KammoGUI::SVGCanvas::ElementReference *e_ref,
-			   const KammoGUI::SVGCanvas::MotionEvent &event) {
+			   const KammoGUI::MotionEvent &event) {
 	ScaleSlider *ctx = (ScaleSlider *)source;
 
 	double now_y = event.get_y();
 
 	switch(event.get_action()) {
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+	case KammoGUI::MotionEvent::ACTION_MOVE:
 	{
 		double diff_y = ctx->last_y - now_y;
 		diff_y /= ctx->scale;
@@ -118,10 +118,10 @@ void ScaleSlider::on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 		ctx->last_y = now_y;
 	}
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+	case KammoGUI::MotionEvent::ACTION_DOWN:
 		ctx->last_y = now_y;
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+	case KammoGUI::MotionEvent::ACTION_UP:
 		if(ctx->listener) {
 			ctx->listener->on_scale_slider_changed(ctx, ctx->value);
 		}
@@ -137,14 +137,14 @@ void ScaleSlider::interpolate(double value) {
 		}
 		value = 1.0 - value;
 	}
-	
+
 	double ix, iy, iw, ih;
 
 	ix = (x - initial_x) * value + initial_x;
 	iy = (y - initial_y) * value + initial_y;
 	iw = (width - initial_width) * value + initial_width;
 	ih = (height - initial_height) * value + initial_height;
-	
+
 	double scale_w = iw / document_size.width;
 	double scale_h = ih / document_size.height;
 
@@ -162,7 +162,7 @@ void ScaleSlider::show(
 	double _initial_x, double _initial_y,
 	double _initial_width, double _initial_height,
 	double _x, double _y, double _width, double _height) {
-	
+
 	KammoGUI::SVGCanvas::ElementReference root(this);
 	root.set_display("inline"); // time to show this
 
@@ -190,7 +190,7 @@ void ScaleSlider::hide(double final_x, double final_y, double final_width, doubl
 	initial_y = final_y;
 	initial_width = final_width;
 	initial_height = final_height;
-	
+
 	transition_to_active_state = false;
 	Transition *transition = new Transition(this, transition_progressed);
 	if(transition) {
@@ -239,4 +239,3 @@ ScaleSlider::ScaleSlider(KammoGUI::SVGCanvas *cnvs) : SVGDocument(std::string(SV
 ScaleSlider::~ScaleSlider() {
 	QUALIFIED_DELETE(scale_knob);
 }
-

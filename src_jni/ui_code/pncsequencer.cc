@@ -583,19 +583,19 @@ void PncSequenceFlingAnimation::on_touch_event() {
 bool PncSequence::zone_event(void *cbd, PncSeqZone *psz, KammoGUI::canvasEvent_t ce, int x, int y) {
 	PncSequence *pnbc = (PncSequence *)cbd;
 
-	KammoGUI::SVGCanvas::MotionEvent newStyle_event;
+	KammoGUI::MotionEvent newStyle_event;
 	switch(ce) {
 	case KammoGUI::cvButtonPress:
-		newStyle_event.init(0, 0, KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN, 1, 0, x, y);
+		newStyle_event.init(0, 0, KammoGUI::MotionEvent::ACTION_DOWN, 1, 0, x, y);
 		newStyle_event.init_pointer(0, 0, x, y, 1.0);
 		break;
 	case KammoGUI::cvButtonRelease:
-		newStyle_event.init(0, 0, KammoGUI::SVGCanvas::MotionEvent::ACTION_UP, 1, 0, x, y);
+		newStyle_event.init(0, 0, KammoGUI::MotionEvent::ACTION_UP, 1, 0, x, y);
 		newStyle_event.init_pointer(0, 0, x, y, 1.0);
 		break;
 	case KammoGUI::cvButtonHold:
 	case KammoGUI::cvMotion:
-		newStyle_event.init(0, 0, KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE, 1, 0, x, y);
+		newStyle_event.init(0, 0, KammoGUI::MotionEvent::ACTION_MOVE, 1, 0, x, y);
 		newStyle_event.init_pointer(0, 0, x, y, 1.0);
 		break;
 	}

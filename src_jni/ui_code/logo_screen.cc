@@ -244,10 +244,10 @@ void LogoScreen::select_server(std::function<void()> on_select_callback) {
 
 void LogoScreen::element_on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 				  KammoGUI::SVGCanvas::ElementReference *e_ref,
-				  const KammoGUI::SVGCanvas::MotionEvent &event) {
+				  const KammoGUI::MotionEvent &event) {
 	LogoScreen *ctx = (LogoScreen *)source;
 
-	if(event.get_action() == KammoGUI::SVGCanvas::MotionEvent::ACTION_UP) {
+	if(event.get_action() == KammoGUI::MotionEvent::ACTION_UP) {
 		if(e_ref == ctx->knobBody_element) {
 			ThumpAnimation *thump = ThumpAnimation::start_thump(&(ctx->thump_offset), 0.2);
 			if(thump)

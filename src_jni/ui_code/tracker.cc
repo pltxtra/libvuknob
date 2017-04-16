@@ -156,20 +156,20 @@ void TrackerMenu::on_resize() {
 
 void TrackerMenu::menu_selection_on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 					  KammoGUI::SVGCanvas::ElementReference *e_ref,
-					  const KammoGUI::SVGCanvas::MotionEvent &event) {
+					  const KammoGUI::MotionEvent &event) {
 	TrackerMenu *ctx = (TrackerMenu *)source;
 
 	double now_x = event.get_x();
 	double now_y = event.get_y();
 
 	switch(event.get_action()) {
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 		ctx->is_a_tap = false;
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+	case KammoGUI::MotionEvent::ACTION_MOVE:
 		// check if the user is moving the finger too far, indicating abort action
 		// if so - disable is_a_tap
 		if(ctx->is_a_tap) {
@@ -179,12 +179,12 @@ void TrackerMenu::menu_selection_on_event(KammoGUI::SVGCanvas::SVGDocument *sour
 				ctx->is_a_tap = false;
 		}
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+	case KammoGUI::MotionEvent::ACTION_DOWN:
 		ctx->is_a_tap = true;
 		ctx->first_selection_x = now_x;
 		ctx->first_selection_y = now_y;
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+	case KammoGUI::MotionEvent::ACTION_UP:
 		if(ctx->is_a_tap && ctx->tracker) {
 			HelpTextAnimation *helpanim = NULL;
 			if(e_ref == &(ctx->menu_copy)) {
@@ -255,19 +255,19 @@ void TrackerMenu::menu_selection_on_event(KammoGUI::SVGCanvas::SVGDocument *sour
 
 void TrackerMenu::menu_center_on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 				       KammoGUI::SVGCanvas::ElementReference *e_ref,
-				       const KammoGUI::SVGCanvas::MotionEvent &event) {
+				       const KammoGUI::MotionEvent &event) {
 	TrackerMenu *ctx = (TrackerMenu *)source;
 
 	switch(event.get_action()) {
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+	case KammoGUI::MotionEvent::ACTION_MOVE:
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+	case KammoGUI::MotionEvent::ACTION_DOWN:
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+	case KammoGUI::MotionEvent::ACTION_UP:
 		ctx->rim_visible = ctx->rim_visible ? false : true;
 		break;
 	}
@@ -340,18 +340,18 @@ void TrackerMenu::set_loop_number(int loop_nr) {
 
 void SelectNoneButton::on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 	      KammoGUI::SVGCanvas::ElementReference *e_ref,
-	      const KammoGUI::SVGCanvas::MotionEvent &event) {
+	      const KammoGUI::MotionEvent &event) {
 	SelectNoneButton *ctx = (SelectNoneButton *)source;
 
 	double now_x = event.get_x();
 	double now_y = event.get_y();
 
 	switch(event.get_action()) {
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+	case KammoGUI::MotionEvent::ACTION_MOVE:
 		// check if the user is moving the finger too far, indicating abort action
 		// if so - disable is_a_tap
 		if(ctx->is_a_tap) {
@@ -361,12 +361,12 @@ void SelectNoneButton::on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 				ctx->is_a_tap = false;
 		}
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+	case KammoGUI::MotionEvent::ACTION_DOWN:
 		ctx->is_a_tap = true;
 		ctx->first_selection_x = now_x;
 		ctx->first_selection_y = now_y;
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+	case KammoGUI::MotionEvent::ACTION_UP:
 		if(ctx->is_a_tap && ctx->tracker) {
 			ctx->tracker->select_none();
 		}
@@ -538,7 +538,7 @@ void Tracker::NoteGraphic::add_graphic(KammoGUI::SVGCanvas::ElementReference *no
 }
 
 void Tracker::NoteGraphic::on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-				    const KammoGUI::SVGCanvas::MotionEvent &event) {
+				    const KammoGUI::MotionEvent &event) {
 	NoteGraphic *ctx = (NoteGraphic *)e_ref;
 
 	static double start_x;
@@ -554,11 +554,11 @@ void Tracker::NoteGraphic::on_event(KammoGUI::SVGCanvas::SVGDocument *source, Ka
 	double dist_y = fabs(now_y - start_y);
 
 	switch(event.get_action()) {
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+	case KammoGUI::MotionEvent::ACTION_MOVE:
 	{
 		if(just_tap) {
 			if(dist_y > Tracker::bar_height)
@@ -595,12 +595,12 @@ void Tracker::NoteGraphic::on_event(KammoGUI::SVGCanvas::SVGDocument *source, Ka
 		}
 	}
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+	case KammoGUI::MotionEvent::ACTION_DOWN:
 		start_x = now_x;
 		start_y = now_y;
 		just_tap = true;
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+	case KammoGUI::MotionEvent::ACTION_UP:
 		if(just_tap) {
 			ctx->set_selected(ctx->selected ? false : true);
 		}
@@ -1538,38 +1538,38 @@ void Tracker::update_add_graphic() {
 
 void Tracker::bar_on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 			   KammoGUI::SVGCanvas::ElementReference *e_ref,
-			   const KammoGUI::SVGCanvas::MotionEvent &event) {
+			   const KammoGUI::MotionEvent &event) {
 	Tracker *ctx = (Tracker *)source;
 	Bar *b = (Bar *)e_ref;
 
 	if(ctx->bar_mode == bar_default_mode) {
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 			SATAN_DEBUG("START ADD key: %d (%s)\n", b->key, b->str.c_str());
 			ctx->start_add(b->key, event.get_x(), event.get_y());
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			break;
 		}
 	} else if(ctx->bar_mode == bar_add_mode) {
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			ctx->stop_add(event.get_x(), event.get_y());
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
 			ctx->bar_current_x = event.get_x();
 			ctx->bar_current_y = event.get_y();
 
@@ -1581,7 +1581,7 @@ void Tracker::bar_on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 
 void Tracker::scroll_on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 			      KammoGUI::SVGCanvas::ElementReference *e_ref,
-			      const KammoGUI::SVGCanvas::MotionEvent &event) {
+			      const KammoGUI::MotionEvent &event) {
 	static double scroll_start_x = 0, scroll_start_y = 0;
 	double scroll_x, scroll_y;
 
@@ -1622,17 +1622,17 @@ void Tracker::scroll_on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 		}
 
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 			scroll_start_x = event.get_x();
 			scroll_start_y = event.get_y();
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			scroll_x = event.get_x() - scroll_start_x;
 			scroll_y = event.get_y() - scroll_start_y;
 
@@ -1646,14 +1646,14 @@ void Tracker::scroll_on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 	} else {
 		ignore_scroll = true;
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			// when the last finger is lifted, break the ignore_scroll lock
 			ignore_scroll = false;
 			SATAN_DEBUG(" reset ignore_scroll!\n");

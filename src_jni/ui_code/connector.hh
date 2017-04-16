@@ -183,7 +183,7 @@ private:
 				    KammoGUI::SVGCanvas::ElementReference &template_socket,
 				    void (*this_on_event)(KammoGUI::SVGCanvas::SVGDocument *source,
 							  KammoGUI::SVGCanvas::ElementReference *e_ref,
-							  const KammoGUI::SVGCanvas::MotionEvent &event));
+							  const KammoGUI::MotionEvent &event));
 
 		void select(const std::string &output_socket_name);
 		void deselect();
@@ -194,13 +194,13 @@ private:
 		static void transition_progressed(MachineGraphic *ctx, float progress);
 		static void on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 				     KammoGUI::SVGCanvas::ElementReference *e_ref,
-				     const KammoGUI::SVGCanvas::MotionEvent &event);
+				     const KammoGUI::MotionEvent &event);
 		static void on_output_socket_event(KammoGUI::SVGCanvas::SVGDocument *source,
 						   KammoGUI::SVGCanvas::ElementReference *e_ref,
-						   const KammoGUI::SVGCanvas::MotionEvent &event);
+						   const KammoGUI::MotionEvent &event);
 		static void on_input_socket_event(KammoGUI::SVGCanvas::SVGDocument *source,
 						  KammoGUI::SVGCanvas::ElementReference *e_ref,
-						  const KammoGUI::SVGCanvas::MotionEvent &event);
+						  const KammoGUI::MotionEvent &event);
 
 		std::string name_copy;
 
@@ -281,7 +281,7 @@ private:
 
 	static void on_pan_and_zoom_event(KammoGUI::SVGCanvas::SVGDocument *source,
 					  KammoGUI::SVGCanvas::ElementReference *e_ref,
-					  const KammoGUI::SVGCanvas::MotionEvent &event);
+					  const KammoGUI::MotionEvent &event);
 
 public:
 

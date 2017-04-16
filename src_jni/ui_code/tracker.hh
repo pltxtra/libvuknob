@@ -62,7 +62,7 @@ private:
 		static void add_graphic(KammoGUI::SVGCanvas::ElementReference *note_container, const std::string &id);
 
 		static void on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-				     const KammoGUI::SVGCanvas::MotionEvent &event);
+				     const KammoGUI::MotionEvent &event);
 	public:
 
 		// this will delete the graphic, but not the note in the actual loop
@@ -208,9 +208,9 @@ private:
 	static void scrolled_horizontal(Tracker *ctx, float pixels_changed);
 
 	static void bar_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-				     const KammoGUI::SVGCanvas::MotionEvent &event);
+				     const KammoGUI::MotionEvent &event);
 	static void scroll_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-				    const KammoGUI::SVGCanvas::MotionEvent &event);
+				    const KammoGUI::MotionEvent &event);
 public:
 	bool anything_selected();
 
@@ -291,10 +291,10 @@ private:
 	bool is_a_tap;
 	static void menu_selection_on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 					    KammoGUI::SVGCanvas::ElementReference *e_ref,
-					    const KammoGUI::SVGCanvas::MotionEvent &event);
+					    const KammoGUI::MotionEvent &event);
 	static void menu_center_on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 					 KammoGUI::SVGCanvas::ElementReference *e_ref,
-					 const KammoGUI::SVGCanvas::MotionEvent &event);
+					 const KammoGUI::MotionEvent &event);
 
 public:
 	Tracker *tracker;
@@ -319,7 +319,7 @@ private:
 
 	static void on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 			     KammoGUI::SVGCanvas::ElementReference *e_ref,
-			     const KammoGUI::SVGCanvas::MotionEvent &event);
+			     const KammoGUI::MotionEvent &event);
 public:
 	Tracker *tracker;
 

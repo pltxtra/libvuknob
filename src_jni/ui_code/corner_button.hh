@@ -31,7 +31,7 @@ private:
 	KammoGUI::SVGCanvas::SVGMatrix base_transform_t;
 	KammoGUI::SVGCanvas::ElementReference button;
 	WhatCorner my_corner;
-	
+
 	class Transition : public KammoGUI::Animation {
 	private:
 		CornerButton *ctx;
@@ -44,23 +44,23 @@ private:
 	};
 
 	KammoGUI::SVGCanvas::ElementReference elref;
-	
+
 	double first_selection_x, first_selection_y;
 	bool is_a_tap;
 
 	bool hidden;
 	double offset_factor, offset_target_x, offset_target_y;
-	
-	static void transition_progressed(CornerButton *ctx, float progress);	
+
+	static void transition_progressed(CornerButton *ctx, float progress);
 	void run_transition();
 
 	std::function<void()> callback_function;
 
 	static void on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 			     KammoGUI::SVGCanvas::ElementReference *e_ref,
-			     const KammoGUI::SVGCanvas::MotionEvent &event);
+			     const KammoGUI::MotionEvent &event);
 public:
-	
+
 	CornerButton(KammoGUI::SVGCanvas *cnv, const std::string &svg_file, WhatCorner corner);
 	~CornerButton();
 
@@ -74,4 +74,3 @@ public:
 };
 
 #endif
-

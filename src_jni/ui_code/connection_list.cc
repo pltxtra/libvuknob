@@ -52,8 +52,8 @@ ConnectionList::ConnectionGraphic::ConnectionGraphic(ConnectionList *context, co
 	delete_button.set_event_handler(
 		[this, context, on_delete](KammoGUI::SVGCanvas::SVGDocument *,
 		       KammoGUI::SVGCanvas::ElementReference *,
-		       const KammoGUI::SVGCanvas::MotionEvent &event) {
-			if(event.get_action() == KammoGUI::SVGCanvas::MotionEvent::ACTION_UP) {
+		       const KammoGUI::MotionEvent &event) {
+			if(event.get_action() == KammoGUI::MotionEvent::ACTION_UP) {
 				on_delete();
 				context->hide();
 			}
@@ -72,14 +72,14 @@ auto ConnectionList::ConnectionGraphic::create(ConnectionList *context, int id,
 	id_stream << "graphic_" << id;
 
 	SATAN_DEBUG("Create ConnectionList::ConnectionGraphic - context: %p\n", context);
-	
+
 	KammoGUI::SVGCanvas::ElementReference graphic_template = KammoGUI::SVGCanvas::ElementReference(context, "connectionTemplate");
 	KammoGUI::SVGCanvas::ElementReference connection_layer = KammoGUI::SVGCanvas::ElementReference(context, "connectionLayer");
 
 	(void) connection_layer.add_element_clone(id_stream.str(), graphic_template);
-	
+
 	auto retval = std::make_shared<ConnectionGraphic>(context, id_stream.str(), on_delete, src, dst);
-		
+
 	return retval;
 }
 
@@ -120,8 +120,8 @@ ConnectionList::ConnectionList(KammoGUI::SVGCanvas *cnvs) : SVGDocument(SVGLoade
 	backdrop.set_event_handler(
 		[this](KammoGUI::SVGCanvas::SVGDocument *,
 		       KammoGUI::SVGCanvas::ElementReference *,
-		       const KammoGUI::SVGCanvas::MotionEvent &event) {
-			if(event.get_action() == KammoGUI::SVGCanvas::MotionEvent::ACTION_UP) {
+		       const KammoGUI::MotionEvent &event) {
+			if(event.get_action() == KammoGUI::MotionEvent::ACTION_UP) {
 				hide();
 			}
 		}
@@ -134,7 +134,7 @@ void ConnectionList::on_render() {
 	// Translate the document, and scale it properly to fit the defined viewbox
 	{
 		KammoGUI::SVGCanvas::ElementReference root(this);
-		
+
 		KammoGUI::SVGCanvas::SVGMatrix transform_t = base_transform_t;
 		root.set_transform(transform_t);
 	}
@@ -153,7 +153,7 @@ void ConnectionList::on_render() {
 	// translate each list element
 	{
 		KammoGUI::SVGCanvas::SVGMatrix element_transform_t;
-		
+
 		for(auto gfx : graphics) {
 			gfx->set_transform(element_transform_t);
 			element_transform_t.translate(0.0, element_vertical_offset);
@@ -177,7 +177,7 @@ void ConnectionList::on_render() {
 void ConnectionList::on_resize() {
 	int canvas_w, canvas_h;
 	float canvas_w_inches, canvas_h_inches;
-	
+
 	// get data
 	KammoGUI::SVGCanvas::ElementReference root(this);
 	root.get_viewport(document_size);
@@ -185,21 +185,21 @@ void ConnectionList::on_resize() {
 	get_canvas_size_inches(canvas_w_inches, canvas_h_inches);
 
 	element_vertical_offset = document_size.height;
-	
+
 	{ // calculate transform for the main part of the document
 		double tmp;
 
-		// calculate the width of the canvas in "fingers" 
+		// calculate the width of the canvas in "fingers"
 		tmp = canvas_w_inches / INCHES_PER_FINGER;
 		double canvas_width_fingers = tmp;
 
 		// calculate the size of a finger in pixels
 		tmp = canvas_w / (canvas_width_fingers);
 		double finger_width = tmp;
-				
+
 		// calculate scaling factor
 		double scaling = (4.0 * finger_width) / (double)document_size.width;
-				
+
 		// calculate translation
 		double translate_x, translate_y;
 
@@ -243,4 +243,3 @@ void ConnectionList::hide() {
 							, 1.0, 0.0001);
 	start_animation(transition);
 }
-

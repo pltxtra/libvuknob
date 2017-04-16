@@ -213,7 +213,7 @@ void EnvelopeEditor::on_render() {
 }
 
 void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-					    const KammoGUI::SVGCanvas::MotionEvent &event) {
+					    const KammoGUI::MotionEvent &event) {
 	EnvelopeEditor *ctx = (EnvelopeEditor *)source;
 
 	SATAN_DEBUG("--------------------\n");
@@ -240,16 +240,16 @@ void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source
 			static int scroll_start;
 			double scroll;
 			switch(event.get_action()) {
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+			case KammoGUI::MotionEvent::ACTION_CANCEL:
+			case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+			case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+			case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 				break;
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+			case KammoGUI::MotionEvent::ACTION_DOWN:
 				scroll_start = event.get_x();
 				break;
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+			case KammoGUI::MotionEvent::ACTION_MOVE:
+			case KammoGUI::MotionEvent::ACTION_UP:
 				scroll = event.get_x() - scroll_start;
 				ctx->offset += scroll * ctx->screen_resolution;
 				if(ctx->offset > 0.0) ctx->offset = 0.0;
@@ -259,14 +259,14 @@ void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source
 		} else {
 			ignore_scroll = true;
 			switch(event.get_action()) {
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+			case KammoGUI::MotionEvent::ACTION_CANCEL:
+			case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+			case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+			case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+			case KammoGUI::MotionEvent::ACTION_DOWN:
+			case KammoGUI::MotionEvent::ACTION_MOVE:
 				break;
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+			case KammoGUI::MotionEvent::ACTION_UP:
 				// when the last finger is lifted, break the ignore_scroll lock
 				ignore_scroll = false;
 				SATAN_DEBUG(" reset ignore_scroll!\n");
@@ -278,17 +278,17 @@ void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source
 
 	case add_point: {
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 			/* ignore */
 			break;
 
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 			/* show the "oneSinglePoint" graphic, then fall through */
 			ctx->oneSinglePoint_element->set_display("inline");
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
 			/* move the "oneSinglePoint" graphic */
 		{
 			KammoGUI::SVGCanvas::SVGMatrix mtrx = ctx->oneSinglePoint_matrix; // copy the original matrix
@@ -298,7 +298,7 @@ void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source
 			ctx->oneSinglePoint_element->set_transform(mtrx);
 		}
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			/* hide the "oneSinglePoint" graphic */
 			ctx->oneSinglePoint_element->set_display("none");
 
@@ -339,21 +339,21 @@ void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source
 		static std::pair<int, int>first_coord;
 
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 			/* ignore */
 			break;
 
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 			/* show the "oneSinglePoint" graphic, then fall through */
 			ctx->oneSinglePoint_element->set_display("inline");
 
 			/* remember the first coordinates */
 			first_coord = ctx->get_envelope_coordinates(x, y);
 
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
 			/* move the "oneSinglePoint" graphic */
 		{
 			KammoGUI::SVGCanvas::SVGMatrix mtrx = ctx->oneSinglePoint_matrix; // copy the original matrix
@@ -385,7 +385,7 @@ void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source
 
 		}
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			/* hide the "oneSinglePoint" graphic */
 			ctx->oneSinglePoint_element->set_display("none");
 
@@ -400,14 +400,14 @@ void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source
 		static float first_x, first_y;
 
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 			/* ignore */
 			break;
 
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 			/* show the needed graphics */
 			ctx->oneSinglePoint_element->set_display("inline");
 			ctx->oneSingleLineFirstPoint_element->set_display("inline");
@@ -426,7 +426,7 @@ void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source
 			first_x = x; first_y = y;
 
 			/* then fall through to next case */
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
 			/* move the second point */
 		{
 			KammoGUI::SVGCanvas::SVGMatrix mtrx = ctx->oneSinglePoint_matrix; // copy the original matrix
@@ -440,7 +440,7 @@ void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source
 			ctx->oneSingleLine_element->set_line_coords(first_x, first_y, x, y);
 		}
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			/* hide the graphics */
 			ctx->oneSinglePoint_element->set_display("none");
 			ctx->oneSingleLineFirstPoint_element->set_display("none");
@@ -484,14 +484,14 @@ void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source
 		static float first_x, first_y;
 
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 			/* ignore */
 			break;
 
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 			/* show the needed graphics */
 			ctx->oneSinglePoint_element->set_display("inline");
 			ctx->oneSingleLineFirstPoint_element->set_display("inline");
@@ -509,7 +509,7 @@ void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source
 			first_x = x; first_y = y;
 
 			/* then fall through to next case */
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
 			/* move the second point */
 		{
 			KammoGUI::SVGCanvas::SVGMatrix mtrx = ctx->oneSinglePoint_matrix; // copy the original matrix
@@ -519,7 +519,7 @@ void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source
 			ctx->oneSinglePoint_element->set_transform(mtrx);
 		}
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			/* hide the graphics */
 			ctx->oneSinglePoint_element->set_display("none");
 			ctx->oneSingleLineFirstPoint_element->set_display("none");
@@ -562,7 +562,7 @@ void EnvelopeEditor::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source
 }
 
 void EnvelopeEditor::controlPoint_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-					       const KammoGUI::SVGCanvas::MotionEvent &event) {
+					       const KammoGUI::MotionEvent &event) {
 	EnvelopeEditor *ctx = (EnvelopeEditor *)source;
 	ControlPoint *cont_p = (ControlPoint *)e_ref;
 
@@ -577,21 +577,21 @@ void EnvelopeEditor::controlPoint_on_event(KammoGUI::SVGCanvas::SVGDocument *sou
 	switch(ctx->current_mode) {
 	case scroll_and_zoom: {
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 			/* ignore */
 			break;
 
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 		{
 			/* hide the real controlPoint element */
 			e_ref->set_display("none");
 			/* show the "oneSinglePoint" graphic, then fall through */
 			ctx->oneSinglePoint_element->set_display("inline");
 		}
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
 			/* move the "oneSinglePoint" graphic */
 		{
 			KammoGUI::SVGCanvas::SVGMatrix mtrx = ctx->oneSinglePoint_matrix; // copy the original matrix
@@ -601,7 +601,7 @@ void EnvelopeEditor::controlPoint_on_event(KammoGUI::SVGCanvas::SVGDocument *sou
 			ctx->oneSinglePoint_element->set_transform(mtrx);
 		}
 		break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			/* switch back to scroll and zoom mode */
 			ctx->current_mode = scroll_and_zoom;
 
@@ -656,20 +656,20 @@ void EnvelopeEditor::controlPoint_on_event(KammoGUI::SVGCanvas::SVGDocument *sou
 	case delete_point: {
 		static float start_x, start_y;
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
 			/* ignore */
 			break;
 
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 			/* get start x and y */
 			start_x = x;
 			start_y = y;
 		break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			/* switch back to scroll and zoom mode */
 			ctx->current_mode = scroll_and_zoom;
 
@@ -856,7 +856,7 @@ void EnvelopeEditor::listview_callback(void *context, bool row_selected, int row
 }
 
 void EnvelopeEditor::button_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-					   const KammoGUI::SVGCanvas::MotionEvent &event) {
+					   const KammoGUI::MotionEvent &event) {
 	SATAN_DEBUG("event trigger for active element - %s\n", e_ref->get_id().c_str());
 
 	EnvelopeEditor *ctx = (EnvelopeEditor *)source;
@@ -867,17 +867,17 @@ void EnvelopeEditor::button_on_event(KammoGUI::SVGCanvas::SVGDocument *source, K
 
 		static float start_x, start_y;
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 			start_x = x;
 			start_y = y;
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			x = start_x - x;
 			y = start_y - y;
 			x = x < 0 ? -x : x;

@@ -42,18 +42,18 @@ ScaleEditor::Key::Key(ScaleEditor *parent, const std::string &id,
 	set_event_handler(
 		[id, index, callback](KammoGUI::SVGCanvas::SVGDocument *source,
 				      KammoGUI::SVGCanvas::ElementReference *e_ref,
-				      const KammoGUI::SVGCanvas::MotionEvent &event) {
+				      const KammoGUI::MotionEvent &event) {
 			switch(event.get_action()) {
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+			case KammoGUI::MotionEvent::ACTION_CANCEL:
+			case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+			case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+			case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+			case KammoGUI::MotionEvent::ACTION_MOVE:
 				break;
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+			case KammoGUI::MotionEvent::ACTION_DOWN:
 				callback(true, index);
 				break;
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+			case KammoGUI::MotionEvent::ACTION_UP:
 				callback(false, index);
 				break;
 			}
@@ -74,17 +74,17 @@ ScaleEditor::Setting::Setting(ScaleEditor *parent, int _offset, const std::strin
 	set_event_handler(
 		[this, id, set_callback](KammoGUI::SVGCanvas::SVGDocument *source,
 			       KammoGUI::SVGCanvas::ElementReference *e_ref,
-			       const KammoGUI::SVGCanvas::MotionEvent &event) {
+			       const KammoGUI::MotionEvent &event) {
 			SATAN_DEBUG("Setting pressed: %s\n", id.c_str());
 			switch(event.get_action()) {
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+			case KammoGUI::MotionEvent::ACTION_CANCEL:
+			case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+			case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+			case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+			case KammoGUI::MotionEvent::ACTION_MOVE:
+			case KammoGUI::MotionEvent::ACTION_DOWN:
 				break;
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+			case KammoGUI::MotionEvent::ACTION_UP:
 				set_callback(this);
 				break;
 			}
@@ -94,18 +94,18 @@ ScaleEditor::Setting::Setting(ScaleEditor *parent, int _offset, const std::strin
 	play_button.set_event_handler(
 		[this, play_callback](KammoGUI::SVGCanvas::SVGDocument *source,
 				KammoGUI::SVGCanvas::ElementReference *e_ref,
-				const KammoGUI::SVGCanvas::MotionEvent &event) {
+				const KammoGUI::MotionEvent &event) {
 			switch(event.get_action()) {
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+			case KammoGUI::MotionEvent::ACTION_CANCEL:
+			case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+			case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+			case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+			case KammoGUI::MotionEvent::ACTION_MOVE:
 				break;
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+			case KammoGUI::MotionEvent::ACTION_DOWN:
 				play_callback(true, key);
 				break;
-			case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+			case KammoGUI::MotionEvent::ACTION_UP:
 				play_callback(false, key);
 				break;
 			}
@@ -147,7 +147,7 @@ ScaleEditor::ScaleEditor(KammoGUI::SVGCanvas *cnv)
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/ScaleEditor.svg"), cnv) {
 	auto on_cancel_event = [this](KammoGUI::SVGCanvas::SVGDocument *source,
 				   KammoGUI::SVGCanvas::ElementReference *e_ref,
-				   const KammoGUI::SVGCanvas::MotionEvent &event) {
+				   const KammoGUI::MotionEvent &event) {
 		SATAN_DEBUG("cancel ScaleEditor.\n");
 		hide();
 	};
@@ -157,7 +157,7 @@ ScaleEditor::ScaleEditor(KammoGUI::SVGCanvas *cnv)
 	no_event = KammoGUI::SVGCanvas::ElementReference(this, "noEvent");
 	no_event.set_event_handler([](KammoGUI::SVGCanvas::SVGDocument *source,
 				      KammoGUI::SVGCanvas::ElementReference *e_ref,
-				      const KammoGUI::SVGCanvas::MotionEvent &event) {
+				      const KammoGUI::MotionEvent &event) {
 					   SATAN_DEBUG("no event area pressed.\n");
 				   }
 		);
@@ -245,8 +245,8 @@ ScaleEditor::ScaleEditor(KammoGUI::SVGCanvas *cnv)
 	bt_OK.set_event_handler(
 		[this](KammoGUI::SVGCanvas::SVGDocument *source,
 		       KammoGUI::SVGCanvas::ElementReference *e_ref,
-		       const KammoGUI::SVGCanvas::MotionEvent &event) {
-			if(event.get_action() != KammoGUI::SVGCanvas::MotionEvent::ACTION_UP) return;
+		       const KammoGUI::MotionEvent &event) {
+			if(event.get_action() != KammoGUI::MotionEvent::ACTION_UP) return;
 
 			if(auto scalo = Scales::get_scales_object()) {
 				for(auto sett : settings) {

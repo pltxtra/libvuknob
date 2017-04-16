@@ -1,3 +1,4 @@
+
 /*
  * VuKNOB
  * (C) 2015 by Anton Persson
@@ -64,8 +65,8 @@ Connector::ConnectionGraphic::ConnectionGraphic(Connector *_context,
 	selectButton.set_event_handler(
 		[this, _context](KammoGUI::SVGCanvas::SVGDocument *,
 		       KammoGUI::SVGCanvas::ElementReference *,
-		       const KammoGUI::SVGCanvas::MotionEvent &event) {
-			if(event.get_action() == KammoGUI::SVGCanvas::MotionEvent::ACTION_UP) {
+		       const KammoGUI::MotionEvent &event) {
+			if(event.get_action() == KammoGUI::MotionEvent::ACTION_UP) {
 				auto s_m = source.lock();
 				auto d_m = destination.lock();
 				if(s_m && d_m) {
@@ -450,7 +451,7 @@ void Connector::MachineGraphic::create_sockets(std::vector<IOSocket *> &vctr, st
 					       KammoGUI::SVGCanvas::ElementReference &template_socket,
 					       void (*this_on_event)(KammoGUI::SVGCanvas::SVGDocument *source,
 								     KammoGUI::SVGCanvas::ElementReference *e_ref,
-								     const KammoGUI::SVGCanvas::MotionEvent &event)) {
+								     const KammoGUI::MotionEvent &event)) {
 	double angle_step = 180.0 / 5.0; // divide one side into 5 segments (an input or output takes one segment on one side.)
 
 	double angle = (-angle_step) * (((double)names.size() - 1.0) / 2.0);
@@ -563,20 +564,20 @@ void Connector::MachineGraphic::transition_progressed(MachineGraphic *ctx, float
 
 void Connector::MachineGraphic::on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 					 KammoGUI::SVGCanvas::ElementReference *e_ref,
-					 const KammoGUI::SVGCanvas::MotionEvent &event) {
+					 const KammoGUI::MotionEvent &event) {
 	MachineGraphic *ctx = (MachineGraphic *)e_ref;
 
 	double now_x = event.get_x();
 	double now_y = event.get_y();
 
 	switch(event.get_action()) {
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 		ctx->is_a_tap = false;
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+	case KammoGUI::MotionEvent::ACTION_MOVE:
 		// check if the user is moving the finger too far, indicating abort action
 		// if so - disable is_a_tap
 		if(ctx->is_a_tap) {
@@ -592,12 +593,12 @@ void Connector::MachineGraphic::on_event(KammoGUI::SVGCanvas::SVGDocument *sourc
 			ctx->refresh_position(move_x, move_y);
 		}
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+	case KammoGUI::MotionEvent::ACTION_DOWN:
 		ctx->is_a_tap = true;
 		ctx->first_selection_x = now_x;
 		ctx->first_selection_y = now_y;
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+	case KammoGUI::MotionEvent::ACTION_UP:
 		if(ctx->is_a_tap) {
 			if(ctx->selected_animation) {
 				ctx->deselect();
@@ -631,8 +632,8 @@ void Connector::MachineGraphic::on_event(KammoGUI::SVGCanvas::SVGDocument *sourc
 
 void Connector::MachineGraphic::on_output_socket_event(KammoGUI::SVGCanvas::SVGDocument *source,
 						       KammoGUI::SVGCanvas::ElementReference *e_ref,
-						       const KammoGUI::SVGCanvas::MotionEvent &event) {
-	if(event.get_action() == KammoGUI::SVGCanvas::MotionEvent::ACTION_UP) {
+						       const KammoGUI::MotionEvent &event) {
+	if(event.get_action() == KammoGUI::MotionEvent::ACTION_UP) {
 		IOSocket *io_sock = (IOSocket *)e_ref;
 
 		if(current_output) {
@@ -647,8 +648,8 @@ void Connector::MachineGraphic::on_output_socket_event(KammoGUI::SVGCanvas::SVGD
 
 void Connector::MachineGraphic::on_input_socket_event(KammoGUI::SVGCanvas::SVGDocument *source,
 						      KammoGUI::SVGCanvas::ElementReference *e_ref,
-						      const KammoGUI::SVGCanvas::MotionEvent &event) {
-	if(event.get_action() == KammoGUI::SVGCanvas::MotionEvent::ACTION_UP) {
+						      const KammoGUI::MotionEvent &event) {
+	if(event.get_action() == KammoGUI::MotionEvent::ACTION_UP) {
 		IOSocket *io_sock = (IOSocket *)e_ref;
 
 		if(current_output) {
@@ -866,7 +867,7 @@ void Connector::on_scale_end(KammoGUI::ScaleGestureDetector *detector) {
 
 void Connector::on_pan_and_zoom_event(KammoGUI::SVGCanvas::SVGDocument *source,
 				      KammoGUI::SVGCanvas::ElementReference *e_ref,
-				      const KammoGUI::SVGCanvas::MotionEvent &event) {
+				      const KammoGUI::MotionEvent &event) {
 	Connector *ctx = (Connector *)source;
 
 	static bool ignore_scroll = false;
@@ -881,13 +882,13 @@ void Connector::on_pan_and_zoom_event(KammoGUI::SVGCanvas::SVGDocument *source,
 		double now_y = event.get_y();
 
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 			ctx->is_a_tap = false;
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
 			// check if the user is moving the finger too far, indicating abort action
 			// if so - disable is_a_tap
 			if(ctx->is_a_tap) {
@@ -902,28 +903,28 @@ void Connector::on_pan_and_zoom_event(KammoGUI::SVGCanvas::SVGDocument *source,
 				ctx->last_selection_y = now_y;
 			}
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 			ctx->is_a_tap = true;
 			ctx->first_selection_x = now_x;
 			ctx->first_selection_y = now_y;
 			ctx->last_selection_x = now_x;
 			ctx->last_selection_y = now_y;
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			break;
 		}
 
 	} else {
 		ignore_scroll = true;
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			// when the last finger is lifted, break the ignore_scroll lock
 			ignore_scroll = false;
 			SATAN_DEBUG(" reset ignore_scroll!\n");

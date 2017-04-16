@@ -74,7 +74,7 @@ private:
 	void select_server(std::function<void()> on_select_callback);
 
 	static void element_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-				     const KammoGUI::SVGCanvas::MotionEvent &event);
+				     const KammoGUI::MotionEvent &event);
 public:
 	LogoScreen(bool hide_network_element, KammoGUI::SVGCanvas *cnv, std::string file_name);
 

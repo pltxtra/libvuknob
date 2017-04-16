@@ -20,7 +20,7 @@
 #ifndef VUKNOB_TIMELINES
 #define VUKNOB_TIMELINES
 
-#include <kamogui.hh>
+#include <gnuVGcanvas.hh>
 #include <kamogui_scale_detector.hh>
 #include <kamogui_fling_detector.hh>
 
@@ -61,7 +61,7 @@ private:
 	void regenerate_graphics(); // this calls the others
 
 	void scrolled_horizontal(float pixels_changed);
-	void on_time_index_event(const KammoGUI::SVGCanvas::MotionEvent &event);
+	void on_time_index_event(const KammoGUI::MotionEvent &event);
 
 	// BEGIN scale detector
 	KammoGUI::ScaleGestureDetector *sgd;

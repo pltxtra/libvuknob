@@ -32,7 +32,7 @@ private:
 
 		static void on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 				     KammoGUI::SVGCanvas::ElementReference *e_ref,
-				     const KammoGUI::SVGCanvas::MotionEvent &event);
+				     const KammoGUI::MotionEvent &event);
 
 		Row(ListView *parent, const std::string &text, int row_index, const std::string &id);
 	public:
@@ -63,7 +63,7 @@ private:
 
 	static void on_cancel_event(KammoGUI::SVGCanvas::SVGDocument *source,
 				    KammoGUI::SVGCanvas::ElementReference *e_ref,
-				    const KammoGUI::SVGCanvas::MotionEvent &event);
+				    const KammoGUI::MotionEvent &event);
 
 	void row_selected(int row_index, const std::string &selected_text);
 

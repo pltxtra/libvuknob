@@ -48,11 +48,11 @@ private:
 
 	static void listview_callback(void *context, bool row_selected, int row_index, const std::string &content);
 	static void graphArea_on_event(SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-				       const KammoGUI::SVGCanvas::MotionEvent &event);
+				       const KammoGUI::MotionEvent &event);
 	static void button_on_event(SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-				    const KammoGUI::SVGCanvas::MotionEvent &event);
+				    const KammoGUI::MotionEvent &event);
 	static void controlPoint_on_event(SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-					  const KammoGUI::SVGCanvas::MotionEvent &event);
+					  const KammoGUI::MotionEvent &event);
 
 	virtual bool on_scale(KammoGUI::ScaleGestureDetector *detector);
 	virtual bool on_scale_begin(KammoGUI::ScaleGestureDetector *detector);

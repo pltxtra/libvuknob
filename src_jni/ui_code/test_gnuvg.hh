@@ -70,7 +70,7 @@ private:
 	void select_server(std::function<void()> on_select_callback);
 
 	static void element_on_event(KammoGUI::GnuVGCanvas::SVGDocument *source, KammoGUI::GnuVGCanvas::ElementReference *e_ref,
-				     const KammoGUI::GnuVGCanvas::MotionEvent &event);
+				     const KammoGUI::MotionEvent &event);
 
 public:
 	TestGnuVG(KammoGUI::GnuVGCanvas *cnv, std::string file_name);

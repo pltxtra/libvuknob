@@ -29,7 +29,7 @@ public:
 	public:
 		virtual void on_scale_slider_changed(ScaleSlider *scl, double new_value) = 0;
 	};
-	
+
 
 private:
 	class Transition : public KammoGUI::Animation {
@@ -49,15 +49,15 @@ private:
 	// graphical data
 	KammoGUI::SVGCanvas::SVGRect document_size; // the size of the document as loaded
 	KammoGUI::SVGCanvas::SVGRect knob_size; // visual size of the knob (in document coordinates, not screen)
-	
+
 	double x, y, width, height; // the viewport which we should squeeze the document into (animate TO)
 	double initial_x, initial_y, initial_width, initial_height; // the viewport which we animate FROM
 	double translate_x, translate_y, scale; // current translation and scale
 
 	double last_y;
-	
+
 	bool transition_to_active_state;
-	
+
 	KammoGUI::SVGCanvas::ElementReference *scale_knob;
 
 	KammoGUI::SVGCanvas::ElementReference front_text;
@@ -67,11 +67,11 @@ private:
 
 	void interpolate(double value);
 	static void transition_progressed(ScaleSlider *sc, float progress);
-	
+
 	static void on_event(KammoGUI::SVGCanvas::SVGDocument *source,
 			     KammoGUI::SVGCanvas::ElementReference *e_ref,
-			     const KammoGUI::SVGCanvas::MotionEvent &event);
-	
+			     const KammoGUI::MotionEvent &event);
+
 public:
 	ScaleSlider(KammoGUI::SVGCanvas *cnv);
 	~ScaleSlider();
@@ -82,12 +82,12 @@ public:
 	void hide(double final_x, double final_y, double final_width, double final_height);
 
 	void set_label(const std::string &label);
-	
+
 	void set_value(double val);
 	double get_value();
 
 	void set_listener(ScaleSliderChangedListener *scl);
-	
+
 	virtual void on_resize();
 	virtual void on_render();
 };

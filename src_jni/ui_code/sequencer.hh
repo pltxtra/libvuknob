@@ -21,7 +21,7 @@
 #define VUKNOB_SEQUENCER
 
 #include <map>
-#include <kamogui.hh>
+#include <gnuVGcanvas.hh>
 #include "engine_code/sequence.hh"
 
 typedef RemoteInterface::ClientSpace::Sequence RISequence;

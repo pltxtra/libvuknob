@@ -157,7 +157,7 @@ void TimeLines::create_time_index() {
 		time_index_container->set_event_handler(
 			[this](KammoGUI::SVGCanvas::SVGDocument *NOT_USED(source),
 			       KammoGUI::SVGCanvas::ElementReference *NOT_USED(e_ref),
-			       const KammoGUI::SVGCanvas::MotionEvent &event) {
+			       const KammoGUI::MotionEvent &event) {
 				on_time_index_event(event);
 			}
 			);
@@ -189,7 +189,7 @@ bool TimeLines::on_scale(KammoGUI::ScaleGestureDetector *detector) {
 bool TimeLines::on_scale_begin(KammoGUI::ScaleGestureDetector *detector) { return true; }
 void TimeLines::on_scale_end(KammoGUI::ScaleGestureDetector *detector) { }
 
-void TimeLines::on_time_index_event(const KammoGUI::SVGCanvas::MotionEvent &event) {
+void TimeLines::on_time_index_event(const KammoGUI::MotionEvent &event) {
 	double scroll_x, scroll_y;
 
 	bool scroll_event = sgd->on_touch_event(event);
@@ -231,17 +231,17 @@ void TimeLines::on_time_index_event(const KammoGUI::SVGCanvas::MotionEvent &even
 		}
 
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 			scroll_start_x = event.get_x();
 			scroll_start_y = event.get_y();
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			scroll_x = event.get_x() - scroll_start_x;
 			scroll_y = event.get_y() - scroll_start_y;
 
@@ -255,14 +255,14 @@ void TimeLines::on_time_index_event(const KammoGUI::SVGCanvas::MotionEvent &even
 	} else {
 		ignore_scroll = true;
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			// when the last finger is lifted, break the ignore_scroll lock
 			ignore_scroll = false;
 			SATAN_DEBUG(" reset ignore_scroll!\n");

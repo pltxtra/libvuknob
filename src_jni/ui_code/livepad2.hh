@@ -119,9 +119,9 @@ private:
 	void ask_clear_pad();
 
 	static void button_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-				    const KammoGUI::SVGCanvas::MotionEvent &event);
+				    const KammoGUI::MotionEvent &event);
 	static void graphArea_on_event(SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-				       const KammoGUI::SVGCanvas::MotionEvent &event);
+				       const KammoGUI::MotionEvent &event);
 
 public:
 	LivePad2(KammoGUI::SVGCanvas *cnv, std::string file_name);

@@ -556,7 +556,7 @@ void LivePad2::ask_clear_pad() {
 }
 
 void LivePad2::button_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-			       const KammoGUI::SVGCanvas::MotionEvent &event) {
+			       const KammoGUI::MotionEvent &event) {
 	SATAN_DEBUG("event trigger for active element - %s\n", e_ref->get_id().c_str());
 
 	LivePad2 *ctx = (LivePad2 *)source;
@@ -567,17 +567,17 @@ void LivePad2::button_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGU
 
 		static float start_x, start_y;
 		switch(event.get_action()) {
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+		case KammoGUI::MotionEvent::ACTION_CANCEL:
+		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		case KammoGUI::MotionEvent::ACTION_MOVE:
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+		case KammoGUI::MotionEvent::ACTION_DOWN:
 			start_x = x;
 			start_y = y;
 			break;
-		case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+		case KammoGUI::MotionEvent::ACTION_UP:
 			x = start_x - x;
 			y = start_y - y;
 			x = x < 0 ? -x : x;
@@ -617,7 +617,7 @@ void LivePad2::button_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGU
 }
 
 void LivePad2::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
-				  const KammoGUI::SVGCanvas::MotionEvent &event) {
+				  const KammoGUI::MotionEvent &event) {
 	LivePad2 *ctx = (LivePad2 *)source;
 
 	if(!(ctx->mseq)) {
@@ -649,19 +649,19 @@ void LivePad2::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source, Kamm
 	auto z_value = ctx->do_pitch_bend ? ctx->l_ev_z : 0.5f;
 
 	switch(event.get_action()) {
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_CANCEL:
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
 		pevt = RemoteInterface::RIMachine::ms_pad_press;
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_POINTER_UP:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 		pevt = RemoteInterface::RIMachine::ms_pad_release;
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_DOWN:
+	case KammoGUI::MotionEvent::ACTION_DOWN:
 		pevt = RemoteInterface::RIMachine::ms_pad_press;
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_MOVE:
+	case KammoGUI::MotionEvent::ACTION_MOVE:
 		if(ctx->mseq) {
 			for(int k = 0; k < event.get_pointer_count(); k++) {
 				int f = event.get_pointer_id(k);
@@ -686,7 +686,7 @@ void LivePad2::graphArea_on_event(KammoGUI::SVGCanvas::SVGDocument *source, Kamm
 			}
 		}
 		break;
-	case KammoGUI::SVGCanvas::MotionEvent::ACTION_UP:
+	case KammoGUI::MotionEvent::ACTION_UP:
 		pevt = RemoteInterface::RIMachine::ms_pad_release;
 		break;
 	}
