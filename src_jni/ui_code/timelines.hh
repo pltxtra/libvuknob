@@ -27,15 +27,15 @@
 #include "machine_sequencer.hh"
 
 class TimeLines
-	: public KammoGUI::SVGCanvas::SVGDocument
+	: public KammoGUI::GnuVGCanvas::SVGDocument
 	, public KammoGUI::ScaleGestureDetector::OnScaleGestureListener
 {
 private:
 	// fling detector
 	KammoGUI::FlingGestureDetector fling_detector;
 
-	KammoGUI::SVGCanvas::ElementReference *timeline_container = 0;
-	KammoGUI::SVGCanvas::ElementReference *time_index_container = 0;
+	KammoGUI::GnuVGCanvas::ElementReference *timeline_container = 0;
+	KammoGUI::GnuVGCanvas::ElementReference *time_index_container = 0;
 
 	// sizes in pixels
 	double finger_width = 10.0, finger_height = 10.0;
@@ -50,7 +50,7 @@ private:
 	double horizontal_zoom_factor = 1.0, line_offset = 0.0;
 	int minor_width, canvas_w, canvas_h;
 	int minors_per_major = 16;
-	std::vector<KammoGUI::SVGCanvas::ElementReference *> major_n_minors;
+	std::vector<KammoGUI::GnuVGCanvas::ElementReference *> major_n_minors;
 	std::string prefix_string = "1:";
 
 	// clear/generate graphics
@@ -71,7 +71,7 @@ private:
 	// END scale detector
 
 public:
-	TimeLines(KammoGUI::SVGCanvas* cnvs);
+	TimeLines(KammoGUI::GnuVGCanvas* cnvs);
 	~TimeLines();
 
 	void set_minor_steps(int minor_steps_per_major);

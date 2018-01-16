@@ -34,7 +34,7 @@
 #include "satan_debug.hh"
 
 void TimeLines::create_timelines() {
-	KammoGUI::SVGCanvas::ElementReference root_element(this);
+	KammoGUI::GnuVGCanvas::ElementReference root_element(this);
 
 	{ // timeline group creation block
 		std::stringstream ss;
@@ -46,7 +46,7 @@ void TimeLines::create_timelines() {
 		   << "/>\n";
 		root_element.add_svg_child(ss.str());
 
-		timeline_container = new KammoGUI::SVGCanvas::ElementReference(this, "timeline_container");
+		timeline_container = new KammoGUI::GnuVGCanvas::ElementReference(this, "timeline_container");
 	}
 
 	{ // timeline creation block
@@ -89,7 +89,7 @@ void TimeLines::create_timelines() {
 					;
 				timeline_container->add_svg_child(ss.str());
 
-				major_n_minors.push_back(new KammoGUI::SVGCanvas::ElementReference(this, new_id.str()));
+				major_n_minors.push_back(new KammoGUI::GnuVGCanvas::ElementReference(this, new_id.str()));
 			} else {
 				// create minors_per_major - 1 dashed lines marking the "in between" minors per major timeline
 
@@ -105,7 +105,7 @@ void TimeLines::create_timelines() {
 				   << "/>\n";
 				timeline_container->add_svg_child(ss.str());
 
-				major_n_minors.push_back(new KammoGUI::SVGCanvas::ElementReference(this, new_id.str()));
+				major_n_minors.push_back(new KammoGUI::GnuVGCanvas::ElementReference(this, new_id.str()));
 			}
 		}
 	}
@@ -133,7 +133,7 @@ void TimeLines::clear_time_index() {
 }
 
 void TimeLines::create_time_index() {
-	KammoGUI::SVGCanvas::ElementReference root_element(this);
+	KammoGUI::GnuVGCanvas::ElementReference root_element(this);
 
 	{ // time index container
 		std::stringstream ss;
@@ -153,10 +153,10 @@ void TimeLines::create_time_index() {
 		   << "</svg>\n";
 		root_element.add_svg_child(ss.str());
 
-		time_index_container = new KammoGUI::SVGCanvas::ElementReference(this, "time_index_container");
+		time_index_container = new KammoGUI::GnuVGCanvas::ElementReference(this, "time_index_container");
 		time_index_container->set_event_handler(
-			[this](KammoGUI::SVGCanvas::SVGDocument *NOT_USED(source),
-			       KammoGUI::SVGCanvas::ElementReference *NOT_USED(e_ref),
+			[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+			       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
 			       const KammoGUI::MotionEvent &event) {
 				on_time_index_event(event);
 			}
@@ -333,7 +333,7 @@ void TimeLines::on_render() {
 
 //		SATAN_DEBUG("skip_interval: %d\n", skip_interval);
 
-		KammoGUI::SVGCanvas::SVGMatrix mtrx;
+		KammoGUI::GnuVGCanvas::SVGMatrix mtrx;
 
 		// translate by graphics_offset
 		mtrx.translate(graphics_offset, 0);
@@ -357,7 +357,7 @@ void TimeLines::on_render() {
 
 					major_n_minors[k]->find_child_by_class("timetext").set_text_content(
 						prefix_string + ss.str());
-				} catch(KammoGUI::SVGCanvas::NoSuchElementException e) { /* timetext only available on major lines, not minors */ }
+				} catch(KammoGUI::GnuVGCanvas::NoSuchElementException e) { /* timetext only available on major lines, not minors */ }
 			} else {
 				major_n_minors[k]->set_display("none");
 			}
@@ -365,7 +365,7 @@ void TimeLines::on_render() {
 	}
 }
 
-TimeLines::TimeLines(KammoGUI::SVGCanvas* cnvs)
+TimeLines::TimeLines(KammoGUI::GnuVGCanvas* cnvs)
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/empty.svg"), cnvs) {
 	sgd = new KammoGUI::ScaleGestureDetector(this);
 }

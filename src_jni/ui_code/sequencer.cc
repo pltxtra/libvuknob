@@ -42,10 +42,10 @@
  *
  ***************************/
 
-Sequencer::Sequence::Sequence(KammoGUI::SVGCanvas::ElementReference elref,
+Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 			      std::shared_ptr<RISequence> _ri_seq,
 			      int _offset)
-	: KammoGUI::SVGCanvas::ElementReference(elref)
+	: KammoGUI::GnuVGCanvas::ElementReference(elref)
 	, ri_seq(_ri_seq)
 	, offset(_offset)
 {
@@ -57,16 +57,75 @@ Sequencer::Sequence::Sequence(KammoGUI::SVGCanvas::ElementReference elref,
 
 	find_child_by_class("machineId").set_text_content(ri_seq->get_name());
 
+	sequence_background = find_child_by_class("seqBackground");
+	sequence_background.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			SATAN_ERROR("seqBackground event detected.\n");
+			on_sequence_event(event);
+		}
+		);
+
+}
+
+void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) {
+	auto evt_x = inverse_scaling_factor * event.get_x();
+	auto evt_y = inverse_scaling_factor * event.get_y();
+	switch(event.get_action()) {
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		break;
+	case KammoGUI::MotionEvent::ACTION_DOWN:
+		display_action = true;
+		event_current_x = event_start_x = evt_x;
+		event_current_y = event_start_y = evt_y;
+
+		SATAN_ERROR("event_start_x: %f\n", event_start_x);
+		break;
+	case KammoGUI::MotionEvent::ACTION_MOVE:
+		event_current_x = evt_x;
+		event_current_y = evt_y;
+
+		SATAN_ERROR("event_current_x: %f\n", event_current_x);
+		break;
+	case KammoGUI::MotionEvent::ACTION_UP:
+		display_action = false;
+		break;
+	}
+
+	auto newPieceIndicator = find_child_by_class("newPieceIndicator");
+
+	newPieceIndicator.set_display(display_action ? "inline" : "none");
+	if(display_action) {
+		float b_x, e_x;
+
+		if(event_current_x < event_start_x) {
+			b_x = event_current_x;
+			e_x = event_start_x - event_current_x;
+		} else {
+			b_x = event_start_x;
+			e_x = event_current_x - event_start_x;
+		}
+		SATAN_ERROR("b_x: %f, e_x: %f\n", b_x, e_x);
+		newPieceIndicator.set_rect_coords(b_x, 0, e_x, height);
+	}
 }
 
 void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
-						 double width, double height,
+						 double _width, double _height,
 						 double canvas_w, double canvas_h) {
+	width = _width; height = _height;
+
+	inverse_scaling_factor = 1.0 / graphic_scaling_factor;
+
 	find_child_by_class("seqBackground").set_rect_coords(
 		width, 0, canvas_w, height);
 
 	// initiate transform_t
-	KammoGUI::SVGCanvas::SVGMatrix transform_t;
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 
 	transform_t.init_identity();
 	transform_t.translate(0.0, (double)(1 + offset) * height);
@@ -78,15 +137,15 @@ void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
 }
 
 auto Sequencer::Sequence::create_sequence(
-	KammoGUI::SVGCanvas::ElementReference &root,
-	KammoGUI::SVGCanvas::ElementReference &sequence_graphic_template,
+	KammoGUI::GnuVGCanvas::ElementReference &root,
+	KammoGUI::GnuVGCanvas::ElementReference &sequence_graphic_template,
 	std::shared_ptr<RISequence> ri_machine,
 	int offset) -> std::shared_ptr<Sequence> {
 
 	char bfr[32];
 	snprintf(bfr, 32, "seq_%p", ri_machine.get());
 
-	KammoGUI::SVGCanvas::ElementReference new_graphic =
+	KammoGUI::GnuVGCanvas::ElementReference new_graphic =
 		root.add_element_clone(bfr, sequence_graphic_template);
 
 	SATAN_DEBUG("Sequencer::Sequence::create_sequence() -- bfr: %s\n", bfr);
@@ -100,10 +159,10 @@ auto Sequencer::Sequence::create_sequence(
  *
  ***************************/
 
-Sequencer::Sequencer(KammoGUI::SVGCanvas* cnvs)
+Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/sequencerMachine.svg"), cnvs) {
-	sequence_graphic_template = KammoGUI::SVGCanvas::ElementReference(this, "sequencerMachineTemplate");
-	root = KammoGUI::SVGCanvas::ElementReference(this);
+	sequence_graphic_template = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerMachineTemplate");
+	root = KammoGUI::GnuVGCanvas::ElementReference(this);
 
 	sequence_graphic_template.set_display("none");
 }
@@ -124,7 +183,7 @@ void Sequencer::on_resize() {
 	tmp = canvas_h / ((double)canvas_height_fingers);
 	finger_height = tmp;
 
-	KammoGUI::SVGCanvas::SVGRect document_size;
+	KammoGUI::GnuVGCanvas::SVGRect document_size;
 
 	// get data
 	root.get_viewport(document_size);
@@ -139,7 +198,49 @@ void Sequencer::on_resize() {
 	}
 }
 
+static double rolling_avg_time = 0.0;
+
+void print_timing_report() {
+	static struct timespec last_time;
+	struct timespec this_time, time_difference;
+
+	(void) clock_gettime(CLOCK_MONOTONIC_RAW, &this_time);
+
+	time_difference.tv_sec = this_time.tv_sec - last_time.tv_sec;
+	time_difference.tv_nsec = this_time.tv_nsec - last_time.tv_nsec;
+	if(time_difference.tv_nsec < 0)
+		time_difference.tv_sec--;
+
+	if(time_difference.tv_sec >= 1) {
+		last_time = this_time;
+		SATAN_ERROR(" ==========> rolling_avg_time: %f\n", rolling_avg_time);
+	}
+}
+
+#include <time.h>
 void Sequencer::on_render() {
+	static struct timespec last_time;
+	struct timespec new_time, time_diff;
+
+	(void) clock_gettime(CLOCK_MONOTONIC_RAW, &new_time);
+
+	time_diff.tv_sec = new_time.tv_sec - last_time.tv_sec;
+	time_diff.tv_nsec = new_time.tv_nsec - last_time.tv_nsec;
+	if(time_diff.tv_nsec < 0) {
+		time_diff.tv_sec  -= 1;
+		time_diff.tv_nsec += 1000000000;
+	}
+
+	last_time.tv_sec = new_time.tv_sec;
+	last_time.tv_nsec = new_time.tv_nsec;
+
+	double latest_time =
+		(double)time_diff.tv_sec +
+		(double)time_diff.tv_nsec / 1000000000.0;
+
+	rolling_avg_time = (0.95 * rolling_avg_time) + (0.05 * latest_time);
+
+	print_timing_report();
 }
 
 void Sequencer::object_registered(std::shared_ptr<RemoteInterface::ClientSpace::Sequence> ri_seq) {
@@ -148,7 +249,7 @@ void Sequencer::object_registered(std::shared_ptr<RemoteInterface::ClientSpace::
 			int new_offset = (int)machine2sequence.size();
 			SATAN_DEBUG("new_offset is %d\n", new_offset);
 
-			KammoGUI::SVGCanvas::ElementReference layer(this, "layer1");
+			KammoGUI::GnuVGCanvas::ElementReference layer(this, "layer1");
 			machine2sequence[ri_seq] =
 				Sequence::create_sequence(
 					layer, sequence_graphic_template,
@@ -179,7 +280,7 @@ KammoEventHandler_Declare(SequencerHandler,"sequence_container");
 virtual void on_init(KammoGUI::Widget *wid) {
 	SATAN_DEBUG("on_init() for sequence_container\n");
 	if(wid->get_id() == "sequence_container") {
-		KammoGUI::SVGCanvas *cnvs = (KammoGUI::SVGCanvas *)wid;
+		KammoGUI::GnuVGCanvas *cnvs = (KammoGUI::GnuVGCanvas *)wid;
 		cnvs->set_bg_color(1.0, 1.0, 1.0);
 
 		static auto current_timelines = new TimeLines(cnvs);

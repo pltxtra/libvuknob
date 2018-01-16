@@ -22,23 +22,33 @@
 
 #include <map>
 #include <gnuVGcanvas.hh>
+//#include <kamogui.hh>
 #include "engine_code/sequence.hh"
 
 typedef RemoteInterface::ClientSpace::Sequence RISequence;
 
 class Sequencer
 	: public RemoteInterface::Context::ObjectSetListener<RISequence>
-	, public KammoGUI::SVGCanvas::SVGDocument
+	, public KammoGUI::GnuVGCanvas::SVGDocument
 {
 
 private:
 	class Sequence
-		: public KammoGUI::SVGCanvas::ElementReference
+		: public KammoGUI::GnuVGCanvas::ElementReference
 		, public std::enable_shared_from_this<Sequence>
 	{
 	private:
+		KammoGUI::GnuVGCanvas::ElementReference sequence_background;
+		double inverse_scaling_factor;
+		double event_start_x, event_start_y;
+		double event_current_x, event_current_y;
+		double width, height;
+		bool display_action = false;
+
 		std::shared_ptr<RISequence> ri_seq;
 		int offset;
+
+		void on_sequence_event(const KammoGUI::MotionEvent &event);
 
 	public:
 		void set_graphic_parameters(double graphic_scaling_factor,
@@ -46,19 +56,19 @@ private:
 					    double canvas_w, double canvas_h);
 
 		Sequence(
-			KammoGUI::SVGCanvas::ElementReference elref,
+			KammoGUI::GnuVGCanvas::ElementReference elref,
 			std::shared_ptr<RISequence> ri_seq,
 			int offset);
 
 		static std::shared_ptr<Sequence> create_sequence(
-			KammoGUI::SVGCanvas::ElementReference &root,
-			KammoGUI::SVGCanvas::ElementReference &sequence_graphic_template,
+			KammoGUI::GnuVGCanvas::ElementReference &root,
+			KammoGUI::GnuVGCanvas::ElementReference &sequence_graphic_template,
 			std::shared_ptr<RISequence> ri_seq,
 			int offset);
 	};
 
-	KammoGUI::SVGCanvas::ElementReference root;
-	KammoGUI::SVGCanvas::ElementReference sequence_graphic_template;
+	KammoGUI::GnuVGCanvas::ElementReference root;
+	KammoGUI::GnuVGCanvas::ElementReference sequence_graphic_template;
 
 	std::map<std::shared_ptr<RISequence>, std::shared_ptr<Sequence> >machine2sequence;
 
@@ -69,7 +79,7 @@ private:
 
 public:
 
-	Sequencer(KammoGUI::SVGCanvas* cnvs);
+	Sequencer(KammoGUI::GnuVGCanvas* cnvs);
 
 	virtual void on_resize() override;
 	virtual void on_render() override;
