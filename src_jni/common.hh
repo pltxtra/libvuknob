@@ -51,6 +51,8 @@ private:
 
 	uint32_t total_amount;
 public:
+	static constexpr uint32_t NO_ID_AVAILABLE = 0xffffffff;
+
 	class IDFreedTwice : public std::runtime_error {
 	public:
 		IDFreedTwice() : runtime_error("Tried to free an ID twice.") {}
