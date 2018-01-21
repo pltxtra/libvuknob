@@ -41,7 +41,7 @@ SERVER_CODE(
 					      const RemoteInterface::Message& msg) {
 		std::string new_name = msg.get_value("name");
 		uint32_t new_id = 0;
-
+		SATAN_ERROR("::handle_req_add_pattern()\n");
 		Machine::machine_operation_enqueue(
 			[this, &new_id, new_name] {
 				new_id = pattern_id_allocator.get_id();
@@ -371,7 +371,11 @@ CLIENT_CODE(
 		auto new_name = msg.get_value("name");
 		auto new_id = std::stoul(msg.get_value("pattern_id"));
 
+		SATAN_ERROR("(client) ::handle_cmd_add_pattern() -- %d\n", sequence_listeners.size());
 		process_add_pattern(new_name, new_id);
+
+		for(auto sl : sequence_listeners)
+			sl->pattern_added(new_name, new_id);
 	}
 
 	void Sequence::handle_cmd_del_pattern(RemoteInterface::Context *context,
@@ -381,6 +385,8 @@ CLIENT_CODE(
 		auto pattern_id = std::stoul(msg.get_value("pattern_id"));
 
 		(void) process_del_pattern(pattern_id);
+		for(auto sl : sequence_listeners)
+			sl->pattern_deleted(pattern_id);
 	}
 
 	void Sequence::handle_cmd_add_pattern_instance(RemoteInterface::Context *context,
@@ -392,7 +398,15 @@ CLIENT_CODE(
 		auto loop_length = std::stoi(msg.get_value("loop_length"));
 		auto stop_at = std::stoi(msg.get_value("stop_at"));
 
-		(void) process_add_pattern_instance(pattern_id, start_at, loop_length, stop_at);
+		if(process_add_pattern_instance(pattern_id, start_at, loop_length, stop_at)) {
+			PatternInstance pi;
+			pi.pattern_id = pattern_id;
+			pi.start_at = start_at;
+			pi.loop_length = loop_length;
+			pi.stop_at = stop_at;
+			for(auto sl : sequence_listeners)
+				sl->instance_added(pi);
+		}
 	}
 
 	void Sequence::handle_cmd_del_pattern_instance(RemoteInterface::Context *context,
@@ -408,6 +422,9 @@ CLIENT_CODE(
 		};
 
 		process_del_pattern_instance(to_del);
+
+		for(auto sl : sequence_listeners)
+			sl->instance_deleted(to_del);
 	}
 
 	void Sequence::handle_cmd_add_note(RemoteInterface::Context *context,
@@ -579,7 +596,13 @@ CLIENT_CODE(
 	}
 
 	std::string Sequence::get_name() {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		return sequence_name;
+	}
+
+	void Sequence::add_sequence_listener(std::shared_ptr<Sequence::SequenceListener> sel) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+		sequence_listeners.insert(sel);
 	}
 
 	);

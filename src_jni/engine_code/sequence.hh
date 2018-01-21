@@ -108,6 +108,14 @@ namespace RemoteInterface {
 			};
 
 			ON_CLIENT(
+				class SequenceListener {
+				public:
+					virtual void pattern_added(const std::string &name, uint32_t id) = 0;
+					virtual void pattern_deleted(uint32_t id) = 0;
+					virtual void instance_added(const PatternInstance& instance) = 0;
+					virtual void instance_deleted(const PatternInstance& instance) = 0;
+				};
+
 				void add_pattern(const std::string& name);
 				void get_pattern_ids(std::list<uint32_t> &storage);
 				void delete_pattern(uint32_t pattern_id);
@@ -128,6 +136,8 @@ namespace RemoteInterface {
 				void delete_note(uint32_t pattern_id, const Note& note);
 
 				std::string get_name();
+
+				void add_sequence_listener(std::shared_ptr<SequenceListener> sel);
 				);
 
 			Sequence(const Factory *factory, const RemoteInterface::Message &serialized);
@@ -175,6 +185,10 @@ namespace RemoteInterface {
 			ON_SERVER(
 				static std::map<std::shared_ptr<Machine>,
 				std::shared_ptr<Sequence> > machine2sequence;
+				);
+
+			ON_CLIENT(
+				std::set<std::shared_ptr<SequenceListener> > sequence_listeners;
 				);
 
 			struct Pattern {
