@@ -92,6 +92,13 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 		SATAN_ERROR("event_current_x: %f\n", event_current_x);
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
+		if(evt_x > event_start_x) {
+			if(active_pattern_id == NO_ACTIVE_PATTERN) {
+				ri_seq->add_pattern("New pattern");
+			} else {
+				ri_seq->insert_pattern_in_sequence(active_pattern_id, 0, -1, 100);
+			}
+		}
 		display_action = false;
 		break;
 	}
@@ -112,6 +119,24 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 		SATAN_ERROR("b_x: %f, e_x: %f\n", b_x, e_x);
 		newPieceIndicator.set_rect_coords(b_x, 0, e_x, height);
 	}
+}
+
+void Sequencer::Sequence::pattern_added(const std::string &name, uint32_t id) {
+	SATAN_ERROR("::pattern_added(%s, %d)\n", name.c_str(), id);
+	active_pattern_id = id;
+}
+
+void Sequencer::Sequence::pattern_deleted(uint32_t id) {
+	SATAN_ERROR("::pattern_deleted()\n");
+}
+
+
+void Sequencer::Sequence::instance_added(const RIPatternInstance& instance) {
+	SATAN_ERROR("::instance_added()\n");
+}
+
+void Sequencer::Sequence::instance_deleted(const RIPatternInstance& instance) {
+	SATAN_ERROR("::instance_deleted()\n");
 }
 
 void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
@@ -150,7 +175,9 @@ auto Sequencer::Sequence::create_sequence(
 
 	SATAN_DEBUG("Sequencer::Sequence::create_sequence() -- bfr: %s\n", bfr);
 
-	return std::make_shared<Sequence>(new_graphic, ri_machine, offset);
+	auto new_sequence = std::make_shared<Sequence>(new_graphic, ri_machine, offset);
+	ri_machine->add_sequence_listener(new_sequence);
+	return new_sequence;
 }
 
 /***************************

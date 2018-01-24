@@ -48,9 +48,17 @@ private:
 		std::shared_ptr<RISequence> ri_seq;
 		int offset;
 
+		static constexpr uint32_t NO_ACTIVE_PATTERN = IDAllocator::NO_ID_AVAILABLE;
+		uint32_t active_pattern_id = NO_ACTIVE_PATTERN;
+
 		void on_sequence_event(const KammoGUI::MotionEvent &event);
 
 	public:
+		virtual void pattern_added(const std::string &name, uint32_t id);
+		virtual void pattern_deleted(uint32_t id);
+		virtual void instance_added(const RIPatternInstance& instance);
+		virtual void instance_deleted(const RIPatternInstance& instance);
+
 		void set_graphic_parameters(double graphic_scaling_factor,
 					    double width, double height,
 					    double canvas_w, double canvas_h);
