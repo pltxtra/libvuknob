@@ -54,6 +54,9 @@ private:
 		std::shared_ptr<TimeLines> timelines;
 		int offset;
 
+		std::map<uint32_t, std::string> patterns;
+		std::map<int, RIPatternInstance> instances;
+
 		static constexpr uint32_t NO_ACTIVE_PATTERN = IDAllocator::NO_ID_AVAILABLE;
 		uint32_t active_pattern_id = NO_ACTIVE_PATTERN;
 

@@ -104,7 +104,9 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 				SATAN_ERROR("Start: %f - Stop: %f\n",
 					    start_at_sequence_position,
 					    stop_at_sequence_position);
-				ri_seq->insert_pattern_in_sequence(active_pattern_id, 0, -1, 100);
+				ri_seq->insert_pattern_in_sequence(active_pattern_id,
+								   start_at_sequence_position, -1,
+								   stop_at_sequence_position);
 			}
 		}
 		display_action = false;
@@ -132,19 +134,31 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 void Sequencer::Sequence::pattern_added(const std::string &name, uint32_t id) {
 	SATAN_ERROR("::pattern_added(%s, %d)\n", name.c_str(), id);
 	active_pattern_id = id;
+
+	patterns[id] = name;
 }
 
 void Sequencer::Sequence::pattern_deleted(uint32_t id) {
 	SATAN_ERROR("::pattern_deleted()\n");
+
+	auto pattern_to_erase = patterns.find(id);
+	if(pattern_to_erase != patterns.end())
+		patterns.erase(pattern_to_erase);
 }
 
 
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance) {
 	SATAN_ERROR("::instance_added()\n");
+
+	instances[instance.start_at] = instance;
 }
 
 void Sequencer::Sequence::instance_deleted(const RIPatternInstance& instance) {
 	SATAN_ERROR("::instance_deleted()\n");
+
+	auto instance_to_erase = instances.find(instance.start_at);
+	if(instance_to_erase != instances.end())
+		instances.erase(instance_to_erase);
 }
 
 void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
