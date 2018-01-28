@@ -208,6 +208,14 @@ namespace RemoteInterface {
 			virtual ~NoSuchKey() {}
 		};
 
+		class SettingSameKeyTwice : public std::runtime_error {
+		public:
+			const char *keyname;
+
+			SettingSameKeyTwice(const char *_keyname) : runtime_error("Trying to set the same key twice."), keyname(_keyname) {}
+			virtual ~SettingSameKeyTwice() {}
+		};
+
 		class IllegalChar : public std::runtime_error {
 		public:
 			IllegalChar() : runtime_error("Key or value contains illegal character.") {}

@@ -76,6 +76,9 @@ void RemoteInterface::Message::set_value(const std::string &key, const std::stri
 	auto enc_key = Serialize::encode_string(key);
 	auto enc_val = Serialize::encode_string(value);
 
+	if(key2val.find(enc_key) != key2val.end())
+		throw SettingSameKeyTwice(key.c_str());
+
 	key2val[enc_key] = enc_val;
 
 	data2send += enc_key.size() + enc_val.size() + 2; // +2 for the '=' and ';' that encode will add later
