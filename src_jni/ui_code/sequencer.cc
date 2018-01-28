@@ -44,9 +44,11 @@
 
 Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 			      std::shared_ptr<RISequence> _ri_seq,
+			      std::shared_ptr<TimeLines> _timelines,
 			      int _offset)
 	: KammoGUI::GnuVGCanvas::ElementReference(elref)
 	, ri_seq(_ri_seq)
+	, timelines(_timelines)
 	, offset(_offset)
 {
 	SATAN_DEBUG("Sequencer::Sequence::Sequence()\n");
@@ -83,6 +85,8 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 		event_current_x = event_start_x = evt_x;
 		event_current_y = event_start_y = evt_y;
 
+		start_at_sequence_position = timelines->get_sequence_minor_position_at(event.get_x());
+
 		SATAN_ERROR("event_start_x: %f\n", event_start_x);
 		break;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
@@ -92,10 +96,14 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 		SATAN_ERROR("event_current_x: %f\n", event_current_x);
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
+		stop_at_sequence_position = timelines->get_sequence_minor_position_at(event.get_x());
 		if(evt_x > event_start_x) {
 			if(active_pattern_id == NO_ACTIVE_PATTERN) {
 				ri_seq->add_pattern("New pattern");
 			} else {
+				SATAN_ERROR("Start: %f - Stop: %f\n",
+					    start_at_sequence_position,
+					    stop_at_sequence_position);
 				ri_seq->insert_pattern_in_sequence(active_pattern_id, 0, -1, 100);
 			}
 		}
@@ -165,6 +173,7 @@ auto Sequencer::Sequence::create_sequence(
 	KammoGUI::GnuVGCanvas::ElementReference &root,
 	KammoGUI::GnuVGCanvas::ElementReference &sequence_graphic_template,
 	std::shared_ptr<RISequence> ri_machine,
+	std::shared_ptr<TimeLines> _timelines,
 	int offset) -> std::shared_ptr<Sequence> {
 
 	char bfr[32];
@@ -175,7 +184,7 @@ auto Sequencer::Sequence::create_sequence(
 
 	SATAN_DEBUG("Sequencer::Sequence::create_sequence() -- bfr: %s\n", bfr);
 
-	auto new_sequence = std::make_shared<Sequence>(new_graphic, ri_machine, offset);
+	auto new_sequence = std::make_shared<Sequence>(new_graphic, ri_machine, _timelines, offset);
 	ri_machine->add_sequence_listener(new_sequence);
 	return new_sequence;
 }
@@ -186,8 +195,10 @@ auto Sequencer::Sequence::create_sequence(
  *
  ***************************/
 
-Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
-	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/sequencerMachine.svg"), cnvs) {
+Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> _timelines)
+	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/sequencerMachine.svg"), cnvs)
+	, timelines(_timelines)
+{
 	sequence_graphic_template = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerMachineTemplate");
 	root = KammoGUI::GnuVGCanvas::ElementReference(this);
 
@@ -238,7 +249,7 @@ void print_timing_report() {
 	if(time_difference.tv_nsec < 0)
 		time_difference.tv_sec--;
 
-	if(time_difference.tv_sec >= 1) {
+	if(time_difference.tv_sec >= 100) {
 		last_time = this_time;
 		SATAN_ERROR(" ==========> rolling_avg_time: %f\n", rolling_avg_time);
 	}
@@ -280,7 +291,8 @@ void Sequencer::object_registered(std::shared_ptr<RemoteInterface::ClientSpace::
 			machine2sequence[ri_seq] =
 				Sequence::create_sequence(
 					layer, sequence_graphic_template,
-					ri_seq, new_offset);
+					ri_seq, timelines,
+					new_offset);
 		}
 		);
 }
@@ -310,8 +322,8 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		KammoGUI::GnuVGCanvas *cnvs = (KammoGUI::GnuVGCanvas *)wid;
 		cnvs->set_bg_color(1.0, 1.0, 1.0);
 
-		static auto current_timelines = new TimeLines(cnvs);
-		static auto current_sequencer = std::make_shared<Sequencer>(cnvs);
+		static auto current_timelines = std::make_shared<TimeLines>(cnvs);
+		static auto current_sequencer = std::make_shared<Sequencer>(cnvs, current_timelines);
 
 		auto ptr =
 			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RISequence> >(current_sequencer);

@@ -53,6 +53,9 @@ private:
 	std::vector<KammoGUI::GnuVGCanvas::ElementReference *> major_n_minors;
 	std::string prefix_string = "1:";
 
+	// for calculating sequencer positions from pixel offsets
+	double minor_spacing, line_offset_d;
+
 	// clear/generate graphics
 	void create_timelines();
 	void clear_timelines();
@@ -73,6 +76,8 @@ private:
 public:
 	TimeLines(KammoGUI::GnuVGCanvas* cnvs);
 	~TimeLines();
+
+	int get_sequence_minor_position_at(int horizontal_pixel_value);
 
 	void set_minor_steps(int minor_steps_per_major);
 	void set_prefix_string(const std::string &prefix);

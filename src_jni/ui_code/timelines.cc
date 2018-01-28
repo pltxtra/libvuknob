@@ -295,6 +295,17 @@ void TimeLines::on_resize() {
 	regenerate_graphics();
 }
 
+int TimeLines::get_sequence_minor_position_at(int horizontal_pixel_value) {
+	SATAN_DEBUG("pixel value: %d - spacing: %f - offset: %f\n",
+		    horizontal_pixel_value,
+		    minor_spacing,
+		    line_offset_d);
+	double rval = (double)horizontal_pixel_value;
+	rval /= minor_spacing;
+	rval -= (line_offset_d * minors_per_major);
+	return (int)rval;
+}
+
 void TimeLines::set_minor_steps(int minor_steps_per_major) {
 	minors_per_major = minor_steps_per_major;
 	regenerate_graphics();
@@ -306,10 +317,10 @@ void TimeLines::set_prefix_string(const std::string &_prefix) {
 
 void TimeLines::on_render() {
 	// calcualte current space between minor lines, given the current zoom factor
-	double minor_spacing = horizontal_zoom_factor * minor_width;
+	minor_spacing = horizontal_zoom_factor * minor_width;
 
 	// calculate line offset
-	double line_offset_d = line_offset / (minor_spacing * (double)minors_per_major);
+	line_offset_d = line_offset / (minor_spacing * (double)minors_per_major);
 	int line_offset_i = line_offset_d; // we need the pure integer version too
 
 	// calculate the pixel offset for the first line

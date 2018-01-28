@@ -25,7 +25,10 @@
 //#include <kamogui.hh>
 #include "engine_code/sequence.hh"
 
+#include "timelines.hh"
+
 typedef RemoteInterface::ClientSpace::Sequence RISequence;
+typedef RemoteInterface::ClientSpace::Sequence::PatternInstance RIPatternInstance;
 
 class Sequencer
 	: public RemoteInterface::Context::ObjectSetListener<RISequence>
@@ -35,6 +38,7 @@ class Sequencer
 private:
 	class Sequence
 		: public KammoGUI::GnuVGCanvas::ElementReference
+		, public RISequence::SequenceListener
 		, public std::enable_shared_from_this<Sequence>
 	{
 	private:
@@ -42,10 +46,12 @@ private:
 		double inverse_scaling_factor;
 		double event_start_x, event_start_y;
 		double event_current_x, event_current_y;
+		double start_at_sequence_position, stop_at_sequence_position;
 		double width, height;
 		bool display_action = false;
 
 		std::shared_ptr<RISequence> ri_seq;
+		std::shared_ptr<TimeLines> timelines;
 		int offset;
 
 		static constexpr uint32_t NO_ACTIVE_PATTERN = IDAllocator::NO_ID_AVAILABLE;
@@ -66,12 +72,14 @@ private:
 		Sequence(
 			KammoGUI::GnuVGCanvas::ElementReference elref,
 			std::shared_ptr<RISequence> ri_seq,
+			std::shared_ptr<TimeLines> timelines,
 			int offset);
 
 		static std::shared_ptr<Sequence> create_sequence(
 			KammoGUI::GnuVGCanvas::ElementReference &root,
 			KammoGUI::GnuVGCanvas::ElementReference &sequence_graphic_template,
 			std::shared_ptr<RISequence> ri_seq,
+			std::shared_ptr<TimeLines> timelines,
 			int offset);
 	};
 
@@ -79,6 +87,7 @@ private:
 	KammoGUI::GnuVGCanvas::ElementReference sequence_graphic_template;
 
 	std::map<std::shared_ptr<RISequence>, std::shared_ptr<Sequence> >machine2sequence;
+	std::shared_ptr<TimeLines> timelines;
 
 	double finger_width = 10.0, finger_height = 10.0; // sizes in pixels
 	int canvas_width_fingers = 8, canvas_height_fingers = 8; // sizes in "fingers"
@@ -87,7 +96,7 @@ private:
 
 public:
 
-	Sequencer(KammoGUI::GnuVGCanvas* cnvs);
+	Sequencer(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
 
 	virtual void on_resize() override;
 	virtual void on_render() override;
