@@ -484,7 +484,7 @@ CLIENT_CODE(
 		send_message_to_server(
 			req_del_pattern,
 			[pattern_id](std::shared_ptr<RemoteInterface::Message> &msg2send) {
-				msg2send->set_value("id", std::to_string(pattern_id));
+				msg2send->set_value("pattern_id", std::to_string(pattern_id));
 			}
 		);
 	}
@@ -497,7 +497,7 @@ CLIENT_CODE(
 			req_add_pattern_instance,
 			[pattern_id, start_at, loop_length, stop_at]
 			(std::shared_ptr<RemoteInterface::Message> &msg2send) {
-				msg2send->set_value("id", std::to_string(pattern_id));
+				msg2send->set_value("pattern_id", std::to_string(pattern_id));
 				msg2send->set_value("start_at", std::to_string(start_at));
 				msg2send->set_value("loop_length", std::to_string(loop_length));
 				msg2send->set_value("stop_at", std::to_string(stop_at));
@@ -526,7 +526,7 @@ CLIENT_CODE(
 			req_del_pattern_instance,
 			[pattern_id, start_at, loop_length, stop_at]
 			(std::shared_ptr<RemoteInterface::Message> &msg2send) {
-				msg2send->set_value("id", std::to_string(pattern_id));
+				msg2send->set_value("pattern_id", std::to_string(pattern_id));
 				msg2send->set_value("start_at", std::to_string(start_at));
 				msg2send->set_value("loop_length", std::to_string(loop_length));
 				msg2send->set_value("stop_at", std::to_string(stop_at));
@@ -543,7 +543,7 @@ CLIENT_CODE(
 			[pattern_id, channel, program, velocity,
 			 note, on_at, length]
 			(std::shared_ptr<RemoteInterface::Message> &msg2send) {
-				msg2send->set_value("id", std::to_string(pattern_id));
+				msg2send->set_value("pattern_id", std::to_string(pattern_id));
 				msg2send->set_value("channel", std::to_string(channel));
 				msg2send->set_value("program", std::to_string(program));
 				msg2send->set_value("velocity", std::to_string(velocity));
@@ -584,7 +584,7 @@ CLIENT_CODE(
 			[pattern_id, channel, program, velocity,
 			 note, on_at, length]
 			(std::shared_ptr<RemoteInterface::Message> &msg2send) {
-				msg2send->set_value("id", std::to_string(pattern_id));
+				msg2send->set_value("pattern_id", std::to_string(pattern_id));
 				msg2send->set_value("channel", std::to_string(channel));
 				msg2send->set_value("program", std::to_string(program));
 				msg2send->set_value("velocity", std::to_string(velocity));
