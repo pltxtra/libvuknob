@@ -38,6 +38,56 @@
 
 /***************************
  *
+ *  Class Sequencer::PatternInstance
+ *
+ ***************************/
+
+Sequencer::PatternInstance::PatternInstance(
+	KammoGUI::GnuVGCanvas::ElementReference &elref,
+	const RIPatternInstance &_instance_data
+	)
+	: KammoGUI::GnuVGCanvas::ElementReference(elref)
+	, instance_data(_instance_data)
+{
+}
+
+std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_new_pattern_instance(
+	const RIPatternInstance &_instance_data,
+	KammoGUI::GnuVGCanvas::ElementReference *parent
+	)
+{
+	std::stringstream ss_new_id;
+	ss_new_id << "pattern_instance_" << _instance_data.pattern_id;
+
+	std::stringstream ss;
+	ss << "<svg id=\"" << ss_new_id.str() << "\" "
+	   << " x=\"" << 0 << "\" \n"
+	   << " y=\"" << 20 << "\" \n"
+	   << " width=\"" << 400 << "\" \n"
+	   << " height=\"" << 50 << "\" \n"
+	   << ">\n"
+
+	   << "<rect"
+	   << "style=\"fill:#00000000;fill-opacity:1;stroke:none;\""
+	   << "id=\"" << ss_new_id.str() << "_rect\""
+	   << "width=\"100%\""
+	   << "height=\"100%\""
+	   << "x=\"0.0\""
+	   << "y=\"0.0\" />"
+
+
+	   << "</svg>";
+	parent->add_svg_child(ss.str());
+
+	KammoGUI::GnuVGCanvas::ElementReference elref(parent, ss_new_id.str());
+
+	auto rval = std::make_shared<PatternInstance>(elref, _instance_data);
+
+	return rval;
+}
+
+/***************************
+ *
  *  Class Sequencer::Sequence
  *
  ***************************/
@@ -69,6 +119,11 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 		}
 		);
 
+	_timelines->add_scroll_callback(
+		[this](int left_side_minor_offset, int right_side_minor_offset) {
+
+		}
+		);
 }
 
 void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) {
@@ -150,15 +205,22 @@ void Sequencer::Sequence::pattern_deleted(uint32_t id) {
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance) {
 	SATAN_ERROR("::instance_added()\n");
 
-	instances[instance.start_at] = instance;
+	auto i = PatternInstance::create_new_pattern_instance(
+		instance,
+		this
+		);
+
+	instances[instance.start_at] = i;
 }
 
 void Sequencer::Sequence::instance_deleted(const RIPatternInstance& instance) {
 	SATAN_ERROR("::instance_deleted()\n");
 
 	auto instance_to_erase = instances.find(instance.start_at);
-	if(instance_to_erase != instances.end())
+	if(instance_to_erase != instances.end()) {
+		instance_to_erase->second->drop_element();
 		instances.erase(instance_to_erase);
+	}
 }
 
 void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,

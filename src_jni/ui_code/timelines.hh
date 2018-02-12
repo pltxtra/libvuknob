@@ -73,9 +73,18 @@ private:
 	virtual void on_scale_end(KammoGUI::ScaleGestureDetector *detector);
 	// END scale detector
 
+	struct CallbackContainer {
+		std::function<void(int, int)> cb;
+		CallbackContainer(std::function<void(int, int)>_cb) : cb(_cb) {}
+	};
+
+	std::set<std::shared_ptr<CallbackContainer> > scroll_callbacks;
+
 public:
 	TimeLines(KammoGUI::GnuVGCanvas* cnvs);
 	~TimeLines();
+
+	void add_scroll_callback(std::function<void(int, int)>);
 
 	int get_sequence_minor_position_at(int horizontal_pixel_value);
 

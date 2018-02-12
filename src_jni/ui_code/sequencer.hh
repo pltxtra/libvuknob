@@ -36,6 +36,25 @@ class Sequencer
 {
 
 private:
+	class PatternInstance
+		: public KammoGUI::GnuVGCanvas::ElementReference
+		, public std::enable_shared_from_this<PatternInstance>
+	{
+	private:
+		RIPatternInstance instance_data;
+
+	public:
+		PatternInstance(
+			KammoGUI::GnuVGCanvas::ElementReference &elref,
+			const RIPatternInstance &instance_data
+			);
+
+		static std::shared_ptr<PatternInstance> create_new_pattern_instance(
+			const RIPatternInstance &instance_data,
+			KammoGUI::GnuVGCanvas::ElementReference *parent
+			);
+	};
+
 	class Sequence
 		: public KammoGUI::GnuVGCanvas::ElementReference
 		, public RISequence::SequenceListener
@@ -55,7 +74,7 @@ private:
 		int offset;
 
 		std::map<uint32_t, std::string> patterns;
-		std::map<int, RIPatternInstance> instances;
+		std::map<int, std::shared_ptr<PatternInstance> > instances;
 
 		static constexpr uint32_t NO_ACTIVE_PATTERN = IDAllocator::NO_ID_AVAILABLE;
 		uint32_t active_pattern_id = NO_ACTIVE_PATTERN;
