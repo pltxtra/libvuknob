@@ -51,7 +51,7 @@ private:
 
 		static std::shared_ptr<PatternInstance> create_new_pattern_instance(
 			const RIPatternInstance &instance_data,
-			KammoGUI::GnuVGCanvas::ElementReference *parent
+			KammoGUI::GnuVGCanvas::ElementReference &parent
 			);
 	};
 

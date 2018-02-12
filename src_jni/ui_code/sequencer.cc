@@ -53,33 +53,26 @@ Sequencer::PatternInstance::PatternInstance(
 
 std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_new_pattern_instance(
 	const RIPatternInstance &_instance_data,
-	KammoGUI::GnuVGCanvas::ElementReference *parent
+	KammoGUI::GnuVGCanvas::ElementReference &parent
 	)
 {
 	std::stringstream ss_new_id;
 	ss_new_id << "pattern_instance_" << _instance_data.pattern_id;
 
 	std::stringstream ss;
-	ss << "<svg id=\"" << ss_new_id.str() << "\" "
-	   << " x=\"" << 0 << "\" \n"
-	   << " y=\"" << 20 << "\" \n"
-	   << " width=\"" << 400 << "\" \n"
-	   << " height=\"" << 50 << "\" \n"
-	   << ">\n"
-
-	   << "<rect"
-	   << "style=\"fill:#00000000;fill-opacity:1;stroke:none;\""
-	   << "id=\"" << ss_new_id.str() << "_rect\""
-	   << "width=\"100%\""
-	   << "height=\"100%\""
-	   << "x=\"0.0\""
+	ss << "<rect "
+	   << "style=\"fill:#ff0000;fill-opacity:1\" "
+	   << "id=\"" << ss_new_id.str() << "\" "
+	   << "width=\"400\" "
+	   << "height=\"200\" "
+	   << "x=\"0.0\" "
 	   << "y=\"0.0\" />"
 
+		;
 
-	   << "</svg>";
-	parent->add_svg_child(ss.str());
+	parent.add_svg_child(ss.str());
 
-	KammoGUI::GnuVGCanvas::ElementReference elref(parent, ss_new_id.str());
+	KammoGUI::GnuVGCanvas::ElementReference elref(&parent, ss_new_id.str());
 
 	auto rval = std::make_shared<PatternInstance>(elref, _instance_data);
 
@@ -205,9 +198,11 @@ void Sequencer::Sequence::pattern_deleted(uint32_t id) {
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance) {
 	SATAN_ERROR("::instance_added()\n");
 
+	auto seqContainer = find_child_by_class("seqContainer");
+
 	auto i = PatternInstance::create_new_pattern_instance(
 		instance,
-		this
+		seqContainer
 		);
 
 	instances[instance.start_at] = i;
