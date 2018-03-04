@@ -53,6 +53,9 @@ private:
 			const RIPatternInstance &instance_data,
 			KammoGUI::GnuVGCanvas::ElementReference &parent
 			);
+
+		void calculate_visibility(int minimum_minor_offset,
+					  int maximum_minor_offset);
 	};
 
 	class Sequence

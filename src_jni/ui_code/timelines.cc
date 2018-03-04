@@ -178,7 +178,7 @@ void TimeLines::scrolled_horizontal(float pixels_changed) {
 	auto max_visible_offset = get_sequence_minor_position_at(canvas_w);
 
 	for(auto cbc : scroll_callbacks)
-		cbc->cb(min_visible_offset, max_visible_offset);
+		cbc->cb(line_offset, min_visible_offset, max_visible_offset);
 }
 
 bool TimeLines::on_scale(KammoGUI::ScaleGestureDetector *detector) {
@@ -301,7 +301,7 @@ void TimeLines::on_resize() {
 	regenerate_graphics();
 }
 
-void TimeLines::add_scroll_callback(std::function<void(int, int)> _cb) {
+void TimeLines::add_scroll_callback(std::function<void(double, int, int)> _cb) {
 	auto cbc = std::make_shared<CallbackContainer>(_cb);
 	scroll_callbacks.insert(cbc);
 }

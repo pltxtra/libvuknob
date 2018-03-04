@@ -51,6 +51,10 @@ Sequencer::PatternInstance::PatternInstance(
 {
 }
 
+void Sequencer::PatternInstance::calculate_visibility(int minimum_minor_offset,
+						      int maximum_minor_offset) {
+}
+
 std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_new_pattern_instance(
 	const RIPatternInstance &_instance_data,
 	KammoGUI::GnuVGCanvas::ElementReference &parent
@@ -113,8 +117,24 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 		);
 
 	_timelines->add_scroll_callback(
-		[this](int left_side_minor_offset, int right_side_minor_offset) {
+		[this](double line_offset, int left_side_minor_offset, int right_side_minor_offset) {
+			KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
+			transform_t.init_identity();
+			transform_t.translate(-(line_offset), 0.0);
 
+			SATAN_DEBUG("Will try to find instanceContainer - by class...");
+			auto instanceContainer = find_child_by_class("instanceContainer");
+			SATAN_DEBUG("instanceContaainer found!");
+			instanceContainer.set_transform(transform_t);
+
+			for(auto p : instances) {
+				auto inst = p.second;
+
+				inst->calculate_visibility(
+					left_side_minor_offset, right_side_minor_offset
+					);
+			}
+			SATAN_DEBUG("Scroll callback complete.");
 		}
 		);
 }
@@ -199,11 +219,11 @@ void Sequencer::Sequence::pattern_deleted(uint32_t id) {
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance) {
 	SATAN_DEBUG("::instance_added() callback...\n");
 
-	auto seqContainer = find_child_by_class("seqContainer");
+	auto instanceContainer = ElementReference(this, "instanceContainer");
 
 	auto i = PatternInstance::create_new_pattern_instance(
 		instance,
-		seqContainer
+		instanceContainer
 		);
 
 	instances[instance.start_at] = i;
@@ -228,6 +248,15 @@ void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
 
 	find_child_by_class("seqBackground").set_rect_coords(
 		width, 0, canvas_w, height);
+
+	SATAN_DEBUG("Trying to find instanceWindow - by class...");
+	auto instance_window = find_child_by_class("instanceWindow");
+	SATAN_DEBUG("instanceWindow found! setting w/h to %f/%f", canvas_w, height);
+
+	instance_window.set_attribute("x", 0);
+	instance_window.set_attribute("y", 0);
+	instance_window.set_attribute("width", 1832);//canvas_w);
+	instance_window.set_attribute("height", height);
 
 	// initiate transform_t
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
