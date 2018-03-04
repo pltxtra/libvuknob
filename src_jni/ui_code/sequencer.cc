@@ -107,7 +107,7 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
 		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
 		       const KammoGUI::MotionEvent &event) {
-			SATAN_ERROR("seqBackground event detected.\n");
+			SATAN_DEBUG("seqBackground event detected.\n");
 			on_sequence_event(event);
 		}
 		);
@@ -135,13 +135,13 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 
 		start_at_sequence_position = timelines->get_sequence_minor_position_at(event.get_x());
 
-		SATAN_ERROR("event_start_x: %f\n", event_start_x);
+		SATAN_DEBUG("event_start_x: %f\n", event_start_x);
 		break;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
 		event_current_x = evt_x;
 		event_current_y = evt_y;
 
-		SATAN_ERROR("event_current_x: %f\n", event_current_x);
+		SATAN_DEBUG("event_current_x: %f\n", event_current_x);
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
 		stop_at_sequence_position = timelines->get_sequence_minor_position_at(event.get_x());
@@ -149,7 +149,7 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 			if(active_pattern_id == NO_ACTIVE_PATTERN) {
 				ri_seq->add_pattern("New pattern");
 			} else {
-				SATAN_ERROR("Start: %f - Stop: %f\n",
+				SATAN_DEBUG("Start: %f - Stop: %f\n",
 					    start_at_sequence_position,
 					    stop_at_sequence_position);
 				ri_seq->insert_pattern_in_sequence(active_pattern_id,
@@ -174,20 +174,21 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 			b_x = event_start_x;
 			e_x = event_current_x - event_start_x;
 		}
-		SATAN_ERROR("b_x: %f, e_x: %f\n", b_x, e_x);
+		SATAN_DEBUG("b_x: %f, e_x: %f\n", b_x, e_x);
 		newPieceIndicator.set_rect_coords(b_x, 0, e_x, height);
 	}
 }
 
 void Sequencer::Sequence::pattern_added(const std::string &name, uint32_t id) {
-	SATAN_ERROR("::pattern_added(%s, %d)\n", name.c_str(), id);
+	SATAN_DEBUG("::pattern_added(%s, %d)\n", name.c_str(), id);
 	active_pattern_id = id;
 
 	patterns[id] = name;
+
 }
 
 void Sequencer::Sequence::pattern_deleted(uint32_t id) {
-	SATAN_ERROR("::pattern_deleted()\n");
+	SATAN_DEBUG("::pattern_deleted()\n");
 
 	auto pattern_to_erase = patterns.find(id);
 	if(pattern_to_erase != patterns.end())
@@ -196,7 +197,7 @@ void Sequencer::Sequence::pattern_deleted(uint32_t id) {
 
 
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance) {
-	SATAN_ERROR("::instance_added()\n");
+	SATAN_DEBUG("::instance_added() callback...\n");
 
 	auto seqContainer = find_child_by_class("seqContainer");
 
@@ -209,7 +210,7 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance) {
 }
 
 void Sequencer::Sequence::instance_deleted(const RIPatternInstance& instance) {
-	SATAN_ERROR("::instance_deleted()\n");
+	SATAN_DEBUG("::instance_deleted()\n");
 
 	auto instance_to_erase = instances.find(instance.start_at);
 	if(instance_to_erase != instances.end()) {
