@@ -219,7 +219,7 @@ void Sequencer::Sequence::pattern_deleted(uint32_t id) {
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance) {
 	SATAN_DEBUG("::instance_added() callback...\n");
 
-	auto instanceContainer = ElementReference(this, "instanceContainer");
+	auto instanceContainer = find_child_by_class("instanceContainer");
 
 	auto i = PatternInstance::create_new_pattern_instance(
 		instance,
