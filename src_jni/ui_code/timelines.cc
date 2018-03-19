@@ -307,10 +307,12 @@ void TimeLines::add_scroll_callback(std::function<void(double, int, int)> _cb) {
 }
 
 int TimeLines::get_sequence_minor_position_at(int horizontal_pixel_value) {
+	/*
 	SATAN_DEBUG("pixel value: %d - spacing: %f - offset: %f\n",
 		    horizontal_pixel_value,
 		    minor_spacing,
 		    line_offset_d);
+	*/
 	double rval = (double)horizontal_pixel_value;
 	rval /= minor_spacing;
 	rval -= (line_offset_d * minors_per_major);

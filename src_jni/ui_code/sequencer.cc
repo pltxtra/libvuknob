@@ -67,7 +67,7 @@ std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_n
 	ss << "<rect "
 	   << "style=\"fill:#ff0000;fill-opacity:1\" "
 	   << "id=\"" << ss_new_id.str() << "\" "
-	   << "width=\"400\" "
+	   << "width=\"4000\" "
 	   << "height=\"200\" "
 	   << "x=\"0.0\" "
 	   << "y=\"0.0\" />"
@@ -120,11 +120,9 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 		[this](double line_offset, int left_side_minor_offset, int right_side_minor_offset) {
 			KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 			transform_t.init_identity();
-			transform_t.translate(-(line_offset), 0.0);
+			transform_t.translate(line_offset * inverse_scaling_factor, 0.0);
 
-			SATAN_DEBUG("Will try to find instanceContainer - by class...");
 			auto instanceContainer = find_child_by_class("instanceContainer");
-			SATAN_DEBUG("instanceContaainer found!");
 			instanceContainer.set_transform(transform_t);
 
 			for(auto p : instances) {
@@ -134,7 +132,6 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 					left_side_minor_offset, right_side_minor_offset
 					);
 			}
-			SATAN_DEBUG("Scroll callback complete.");
 		}
 		);
 }
@@ -255,7 +252,7 @@ void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
 
 	instance_window.set_attribute("x", 0);
 	instance_window.set_attribute("y", 0);
-	instance_window.set_attribute("width", 1832);//canvas_w);
+	instance_window.set_attribute("width", canvas_w);
 	instance_window.set_attribute("height", height);
 
 	// initiate transform_t
