@@ -158,7 +158,9 @@ void TimeLines::create_time_index() {
 			[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
 			       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
 			       const KammoGUI::MotionEvent &event) {
+				SATAN_DEBUG("Begin timeline event...\n");
 				on_time_index_event(event);
+				SATAN_DEBUG("End timeline event...\n");
 			}
 			);
 	}
@@ -174,11 +176,7 @@ void TimeLines::regenerate_graphics() {
 void TimeLines::scrolled_horizontal(float pixels_changed) {
 	line_offset += pixels_changed;
 
-	auto min_visible_offset = get_sequence_minor_position_at(0);
-	auto max_visible_offset = get_sequence_minor_position_at(canvas_w);
-
-	for(auto cbc : scroll_callbacks)
-		cbc->cb(line_offset, min_visible_offset, max_visible_offset);
+	call_scroll_callbacks();
 }
 
 bool TimeLines::on_scale(KammoGUI::ScaleGestureDetector *detector) {
@@ -189,19 +187,23 @@ bool TimeLines::on_scale(KammoGUI::ScaleGestureDetector *detector) {
 
 	SATAN_DEBUG("  new zoom factor: %f\n", horizontal_zoom_factor);
 
+	call_scroll_callbacks();
+
 	return true;
 }
 
 bool TimeLines::on_scale_begin(KammoGUI::ScaleGestureDetector *detector) { return true; }
-void TimeLines::on_scale_end(KammoGUI::ScaleGestureDetector *detector) { }
+
+void TimeLines::on_scale_end(KammoGUI::ScaleGestureDetector *detector) {}
 
 void TimeLines::on_time_index_event(const KammoGUI::MotionEvent &event) {
 	double scroll_x, scroll_y;
 
 	bool scroll_event = sgd->on_touch_event(event);
 
-	if((!(scroll_event)) && (!ignore_scroll)) {
+	if(scroll_event && (!ignore_scroll)) {
 		if(fling_detector.on_touch_event(event)) {
+			SATAN_DEBUG("fling detected.\n");
 			float speed_x, speed_y;
 			float abs_speed_x, abs_speed_y;
 
@@ -301,7 +303,7 @@ void TimeLines::on_resize() {
 	regenerate_graphics();
 }
 
-void TimeLines::add_scroll_callback(std::function<void(double, int, int)> _cb) {
+void TimeLines::add_scroll_callback(std::function<void(int, double, int, int)> _cb) {
 	auto cbc = std::make_shared<CallbackContainer>(_cb);
 	scroll_callbacks.insert(cbc);
 }

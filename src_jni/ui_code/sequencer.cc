@@ -51,25 +51,42 @@ Sequencer::PatternInstance::PatternInstance(
 {
 }
 
-void Sequencer::PatternInstance::calculate_visibility(int minimum_minor_offset,
+void Sequencer::PatternInstance::calculate_visibility(int minor_width,
+						      int minimum_minor_offset,
 						      int maximum_minor_offset) {
+	SATAN_DEBUG("::calculate_visibility(%d, %d, %d) - set_attribute('width', %d)\n",
+		    minor_width,
+		    minimum_minor_offset,
+		    maximum_minor_offset,
+		    minor_width * (instance_data.stop_at - instance_data.start_at)
+		);
+	float w = (minor_width * (instance_data.stop_at - instance_data.start_at));
+	set_attribute("width", w);
 }
 
 std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_new_pattern_instance(
-	const RIPatternInstance &_instance_data,
-	KammoGUI::GnuVGCanvas::ElementReference &parent
+	const RIPatternInstance &r_instance_data,
+	KammoGUI::GnuVGCanvas::ElementReference &parent,
+	int minor_width
 	)
 {
+	RIPatternInstance _instance_data = r_instance_data;
+	_instance_data.start_at = 0;
+	_instance_data.stop_at = 4;
+
 	std::stringstream ss_new_id;
 	ss_new_id << "pattern_instance_" << _instance_data.pattern_id;
 
 	std::stringstream ss;
+
+	float w = (minor_width * (_instance_data.stop_at - _instance_data.start_at));
+
 	ss << "<rect "
 	   << "style=\"fill:#ff0000;fill-opacity:1\" "
 	   << "id=\"" << ss_new_id.str() << "\" "
-	   << "width=\"4000\" "
+	   << "width=\"" << w << "\" "
 	   << "height=\"200\" "
-	   << "x=\"0.0\" "
+	   << "x=\"" << (minor_width * _instance_data.start_at) << "\" "
 	   << "y=\"0.0\" />"
 
 		;
@@ -117,10 +134,15 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 		);
 
 	_timelines->add_scroll_callback(
-		[this](double line_offset, int left_side_minor_offset, int right_side_minor_offset) {
+		[this](int minor_width,
+		       double line_offset,
+		       int left_side_minor_offset,
+		       int right_side_minor_offset) {
+			auto offset_width = right_side_minor_offset - left_side_minor_offset;
+
 			KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 			transform_t.init_identity();
-			transform_t.translate(line_offset * inverse_scaling_factor, 0.0);
+			transform_t.translate(line_offset, 0.0);
 
 			auto instanceContainer = find_child_by_class("instanceContainer");
 			instanceContainer.set_transform(transform_t);
@@ -129,7 +151,7 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 				auto inst = p.second;
 
 				inst->calculate_visibility(
-					left_side_minor_offset, right_side_minor_offset
+					minor_width, left_side_minor_offset, right_side_minor_offset
 					);
 			}
 		}
@@ -220,7 +242,8 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance) {
 
 	auto i = PatternInstance::create_new_pattern_instance(
 		instance,
-		instanceContainer
+		instanceContainer,
+		timelines->get_minor_spacing()
 		);
 
 	instances[instance.start_at] = i;
@@ -260,11 +283,14 @@ void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
 
 	transform_t.init_identity();
 	transform_t.translate(0.0, (double)(1 + offset) * height);
-	transform_t.scale(graphic_scaling_factor, graphic_scaling_factor);
-
-	SATAN_DEBUG("offset: %d\n", offset);
-
 	set_transform(transform_t);
+
+	SATAN_DEBUG("scaling: %f, offset: %d\n", graphic_scaling_factor, offset);
+
+	transform_t.init_identity();
+	transform_t.scale(graphic_scaling_factor, graphic_scaling_factor);
+	auto button_container = find_child_by_class("buttonContainer");
+	button_container.set_transform(transform_t);
 }
 
 auto Sequencer::Sequence::create_sequence(

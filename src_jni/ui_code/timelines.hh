@@ -74,19 +74,30 @@ private:
 	// END scale detector
 
 	struct CallbackContainer {
-		std::function<void(double, int, int)> cb;
-		CallbackContainer(std::function<void(double, int, int)>_cb) : cb(_cb) {}
+		std::function<void(int, double, int, int)> cb;
+		CallbackContainer(std::function<void(int, double, int, int)>_cb) : cb(_cb) {}
 	};
 
 	std::set<std::shared_ptr<CallbackContainer> > scroll_callbacks;
+
+	void call_scroll_callbacks() {
+		auto min_visible_offset = get_sequence_minor_position_at(0);
+		auto max_visible_offset = get_sequence_minor_position_at(canvas_w);
+
+		for(auto cbc : scroll_callbacks)
+			cbc->cb(minor_spacing, line_offset, min_visible_offset, max_visible_offset);
+	}
 
 public:
 	TimeLines(KammoGUI::GnuVGCanvas* cnvs);
 	~TimeLines();
 
-	void add_scroll_callback(std::function<void(double, int, int)>);
+	void add_scroll_callback(std::function<void(int, double, int, int)>);
 
 	int get_sequence_minor_position_at(int horizontal_pixel_value);
+	int get_minor_spacing() {
+		return minor_spacing;
+	}
 
 	void set_minor_steps(int minor_steps_per_major);
 	void set_prefix_string(const std::string &prefix);
