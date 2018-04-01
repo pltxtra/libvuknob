@@ -67,7 +67,7 @@ void Sequencer::PatternInstance::calculate_visibility(int minor_width,
 std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_new_pattern_instance(
 	const RIPatternInstance &r_instance_data,
 	KammoGUI::GnuVGCanvas::ElementReference &parent,
-	int minor_width
+	int minor_width, double height
 	)
 {
 	RIPatternInstance _instance_data = r_instance_data;
@@ -85,7 +85,7 @@ std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_n
 	   << "style=\"fill:#ff0000;fill-opacity:1\" "
 	   << "id=\"" << ss_new_id.str() << "\" "
 	   << "width=\"" << w << "\" "
-	   << "height=\"200\" "
+	   << "height=\"" << height << "\" "
 	   << "x=\"" << (minor_width * _instance_data.start_at) << "\" "
 	   << "y=\"0.0\" />"
 
@@ -243,7 +243,8 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance) {
 	auto i = PatternInstance::create_new_pattern_instance(
 		instance,
 		instanceContainer,
-		timelines->get_minor_spacing()
+		timelines->get_minor_spacing(),
+		height
 		);
 
 	instances[instance.start_at] = i;
@@ -262,14 +263,13 @@ void Sequencer::Sequence::instance_deleted(const RIPatternInstance& instance) {
 void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
 						 double _width, double _height,
 						 double canvas_w, double canvas_h) {
-	width = _width; height = _height;
+	width = _width; height = _height * graphic_scaling_factor;
 
 	inverse_scaling_factor = 1.0 / graphic_scaling_factor;
 
 	find_child_by_class("seqBackground").set_rect_coords(
 		width, 0, canvas_w, height);
 
-	SATAN_DEBUG("Trying to find instanceWindow - by class...");
 	auto instance_window = find_child_by_class("instanceWindow");
 	SATAN_DEBUG("instanceWindow found! setting w/h to %f/%f", canvas_w, height);
 
