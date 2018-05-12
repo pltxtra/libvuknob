@@ -114,6 +114,22 @@ namespace RemoteInterface {
 					virtual void pattern_deleted(uint32_t id) = 0;
 					virtual void instance_added(const PatternInstance& instance) = 0;
 					virtual void instance_deleted(const PatternInstance& instance) = 0;
+					virtual void note_added(
+						uint32_t pattern_id,
+						int channel,
+						int program,
+						int velocity,
+						int note,
+						int on_at,
+						int length) = 0;
+					virtual void note_deleted(
+						uint32_t pattern_id,
+						int channel,
+						int program,
+						int velocity,
+						int note,
+						int on_at,
+						int length) = 0;
 				};
 
 				void add_pattern(const std::string& name);

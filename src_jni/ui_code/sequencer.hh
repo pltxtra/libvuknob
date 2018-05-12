@@ -91,6 +91,22 @@ private:
 		virtual void pattern_deleted(uint32_t id);
 		virtual void instance_added(const RIPatternInstance& instance);
 		virtual void instance_deleted(const RIPatternInstance& instance);
+		virtual void note_added(
+			uint32_t pattern_id,
+			int channel,
+			int program,
+			int velocity,
+			int note,
+			int on_at,
+			int length);
+		virtual void note_deleted(
+			uint32_t pattern_id,
+			int channel,
+			int program,
+			int velocity,
+			int note,
+			int on_at,
+			int length);
 
 		void set_graphic_parameters(double graphic_scaling_factor,
 					    double width, double height,

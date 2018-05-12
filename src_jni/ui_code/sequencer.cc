@@ -270,6 +270,26 @@ void Sequencer::Sequence::instance_deleted(const RIPatternInstance& instance) {
 	}
 }
 
+void Sequencer::Sequence::note_added(
+	uint32_t pattern_id,
+	int channel,
+	int program,
+	int velocity,
+	int note,
+	int on_at,
+	int length) {
+}
+
+void Sequencer::Sequence::note_deleted(
+	uint32_t pattern_id,
+	int channel,
+	int program,
+	int velocity,
+	int note,
+	int on_at,
+	int length) {
+}
+
 void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
 						 double _width, double _height,
 						 double canvas_w, double canvas_h) {

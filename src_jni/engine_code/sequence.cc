@@ -431,14 +431,25 @@ CLIENT_CODE(
 					   RemoteInterface::MessageHandler *src,
 					   const RemoteInterface::Message& msg) {
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+		auto pattern_id = std::stoul(msg.get_value("pattern_id"));
+		auto channel = std::stoi(msg.get_value("channel"));
+		auto program = std::stoi(msg.get_value("program"));
+		auto velocity = std::stoi(msg.get_value("velocity"));
+		auto note = std::stoi(msg.get_value("note"));
+		auto on_at = std::stoi(msg.get_value("on_at"));
+		auto length = std::stoi(msg.get_value("length"));
+
 		process_add_note(
-			std::stoul(msg.get_value("pattern_id")),
-			std::stoi(msg.get_value("channel")),
-			std::stoi(msg.get_value("program")),
-			std::stoi(msg.get_value("velocity")),
-			std::stoi(msg.get_value("note")),
-			std::stoi(msg.get_value("on_at")),
-			std::stoi(msg.get_value("length"))
+			pattern_id,
+			channel, program, velocity,
+			note, on_at, length
+			);
+
+		for(auto sl : sequence_listeners)
+			sl->note_added(
+				pattern_id,
+				channel, program, velocity,
+				note, on_at, length
 			);
 	}
 
@@ -455,10 +466,19 @@ CLIENT_CODE(
 			.on_at = std::stoi(msg.get_value("on_at")),
 			.length = std::stoi(msg.get_value("length"))
 		};
-
+		auto pattern_id = std::stoul(msg.get_value("pattern_id"));
 		process_delete_note(
-			std::stoul(msg.get_value("pattern_id")),
+			pattern_id,
 			note_to_delete);
+
+		for(auto sl : sequence_listeners)
+			sl->note_deleted(
+				pattern_id,
+				note_to_delete.channel,
+				note_to_delete.program, note_to_delete.velocity,
+				note_to_delete.note, note_to_delete.on_at,
+				note_to_delete.length
+			);
 	}
 
 	void Sequence::add_pattern(const std::string& name) {
