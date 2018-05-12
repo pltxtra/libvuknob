@@ -147,6 +147,7 @@ ui_code/numeric_keyboard.cc ui_code/numeric_keyboard.hh \
 ui_code/top_menu.cc ui_code/top_menu.hh \
 ui_code/pncsequencer.cc ui_code/pncsequencer.hh \
 ui_code/timelines.cc ui_code/timelines.hh \
+ui_code/pattern_editor.cc ui_code/pattern_editor.hh \
 ui_code/midi_export_gui.cc \
 ui_code/file_request_ui.cc \
 ui_code/advanced_file_request_ui.cc \

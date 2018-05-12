@@ -70,7 +70,7 @@ private:
 		double inverse_scaling_factor;
 		double event_start_x, event_start_y;
 		double event_current_x, event_current_y;
-		double start_at_sequence_position, stop_at_sequence_position;
+		int start_at_sequence_position, stop_at_sequence_position;
 		double width, height;
 		bool display_action = false;
 

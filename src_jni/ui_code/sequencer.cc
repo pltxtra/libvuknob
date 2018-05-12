@@ -27,6 +27,7 @@
 
 #include "sequencer.hh"
 #include "timelines.hh"
+#include "pattern_editor.hh"
 #include "svg_loader.hh"
 #include "common.hh"
 
@@ -65,15 +66,11 @@ void Sequencer::PatternInstance::calculate_visibility(int minor_width,
 }
 
 std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_new_pattern_instance(
-	const RIPatternInstance &r_instance_data,
+	const RIPatternInstance &_instance_data,
 	KammoGUI::GnuVGCanvas::ElementReference &parent,
 	int minor_width, double height
 	)
 {
-	RIPatternInstance _instance_data = r_instance_data;
-	_instance_data.start_at = 0;
-	_instance_data.stop_at = 4;
-
 	std::stringstream ss_new_id;
 	ss_new_id << "pattern_instance_" << _instance_data.pattern_id;
 
@@ -159,8 +156,8 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 }
 
 void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) {
-	auto evt_x = inverse_scaling_factor * event.get_x();
-	auto evt_y = inverse_scaling_factor * event.get_y();
+	auto evt_x = event.get_x();
+	auto evt_y = event.get_y();
 	switch(event.get_action()) {
 	case KammoGUI::MotionEvent::ACTION_CANCEL:
 	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
@@ -188,12 +185,25 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 			if(active_pattern_id == NO_ACTIVE_PATTERN) {
 				ri_seq->add_pattern("New pattern");
 			} else {
-				SATAN_DEBUG("Start: %f - Stop: %f\n",
+				SATAN_DEBUG("Start: %d - Stop: %d\n",
 					    start_at_sequence_position,
 					    stop_at_sequence_position);
-				ri_seq->insert_pattern_in_sequence(active_pattern_id,
-								   start_at_sequence_position, -1,
-								   stop_at_sequence_position);
+				if(start_at_sequence_position < 0)
+					start_at_sequence_position = 0;
+				if(stop_at_sequence_position < 0)
+					start_at_sequence_position = 0;
+
+
+				start_at_sequence_position = (start_at_sequence_position >> 4) << 4;
+				stop_at_sequence_position = (stop_at_sequence_position >> 4) << 4;
+				SATAN_DEBUG("Forced - Start: %d - Stop: %d\n",
+					    start_at_sequence_position,
+					    stop_at_sequence_position);
+
+				if(start_at_sequence_position != stop_at_sequence_position)
+					ri_seq->insert_pattern_in_sequence(active_pattern_id,
+									   start_at_sequence_position, -1,
+									   stop_at_sequence_position);
 			}
 		}
 		display_action = false;
@@ -448,6 +458,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 
 		static auto current_timelines = std::make_shared<TimeLines>(cnvs);
 		static auto current_sequencer = std::make_shared<Sequencer>(cnvs, current_timelines);
+		static auto current_pattern_editor = std::make_shared<PatternEditor>(cnvs);
 
 		auto ptr =
 			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RISequence> >(current_sequencer);

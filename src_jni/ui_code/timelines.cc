@@ -199,6 +199,8 @@ void TimeLines::on_scale_end(KammoGUI::ScaleGestureDetector *detector) {}
 void TimeLines::on_time_index_event(const KammoGUI::MotionEvent &event) {
 	double scroll_x, scroll_y;
 
+	SATAN_DEBUG("TimeLines::on_time_index_event()\n");
+
 	bool scroll_event = sgd->on_touch_event(event);
 
 	if(scroll_event && (!ignore_scroll)) {
