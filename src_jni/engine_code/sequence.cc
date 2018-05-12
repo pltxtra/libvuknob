@@ -159,7 +159,7 @@ SERVER_CODE(
 		int on_at = std::stoi(msg.get_value("on_at"));
 		int length = std::stoi(msg.get_value("length"));
 
-				Machine::machine_operation_enqueue(
+		Machine::machine_operation_enqueue(
 			[this, pattern_id, channel, program,  velocity,
 			 note, on_at, length] {
 				process_add_note(
