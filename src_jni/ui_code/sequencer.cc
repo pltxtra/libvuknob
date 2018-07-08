@@ -245,45 +245,60 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 }
 
 void Sequencer::Sequence::pattern_added(const std::string &name, uint32_t id) {
-	SATAN_DEBUG("::pattern_added(%s, %d)\n", name.c_str(), id);
-	active_pattern_id = id;
+	KammoGUI::run_on_GUI_thread(
+		[this, name, id]() {
+			SATAN_DEBUG("::pattern_added(%s, %d)\n", name.c_str(), id);
+			active_pattern_id = id;
 
-	patterns[id] = name;
-
+			patterns[id] = name;
+		}
+		);
 }
 
 void Sequencer::Sequence::pattern_deleted(uint32_t id) {
-	SATAN_DEBUG("::pattern_deleted()\n");
+	KammoGUI::run_on_GUI_thread(
+		[this, id]() {
+			SATAN_DEBUG("::pattern_deleted()\n");
 
-	auto pattern_to_erase = patterns.find(id);
-	if(pattern_to_erase != patterns.end())
-		patterns.erase(pattern_to_erase);
+			auto pattern_to_erase = patterns.find(id);
+			if(pattern_to_erase != patterns.end())
+				patterns.erase(pattern_to_erase);
+		}
+		);
 }
 
 
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance) {
-	SATAN_DEBUG("::instance_added() callback...\n");
+	KammoGUI::run_on_GUI_thread(
+		[this, instance]() {
+			SATAN_DEBUG("::instance_added() callback...\n");
 
-	auto instanceContainer = find_child_by_class("instanceContainer");
+			auto instanceContainer = find_child_by_class("instanceContainer");
 
-	auto i = PatternInstance::create_new_pattern_instance(
-		instance,
-		instanceContainer,
-		timelines->get_minor_spacing(),
-		height
+			auto i = PatternInstance::create_new_pattern_instance(
+				instance,
+				instanceContainer,
+				timelines->get_minor_spacing(),
+				height
+				);
+
+			instances[instance.start_at] = i;
+		}
 		);
-
-	instances[instance.start_at] = i;
 }
 
 void Sequencer::Sequence::instance_deleted(const RIPatternInstance& instance) {
-	SATAN_DEBUG("::instance_deleted()\n");
+	KammoGUI::run_on_GUI_thread(
+		[this, instance]() {
+			SATAN_DEBUG("::instance_deleted()\n");
 
-	auto instance_to_erase = instances.find(instance.start_at);
-	if(instance_to_erase != instances.end()) {
-		instance_to_erase->second->drop_element();
-		instances.erase(instance_to_erase);
-	}
+			auto instance_to_erase = instances.find(instance.start_at);
+			if(instance_to_erase != instances.end()) {
+				instance_to_erase->second->drop_element();
+				instances.erase(instance_to_erase);
+			}
+		}
+		);
 }
 
 void Sequencer::Sequence::note_added(
@@ -294,6 +309,10 @@ void Sequencer::Sequence::note_added(
 	int note,
 	int on_at,
 	int length) {
+	KammoGUI::run_on_GUI_thread(
+		[this]() {
+		}
+		);
 }
 
 void Sequencer::Sequence::note_deleted(
@@ -304,6 +323,10 @@ void Sequencer::Sequence::note_deleted(
 	int note,
 	int on_at,
 	int length) {
+	KammoGUI::run_on_GUI_thread(
+		[this]() {
+		}
+		);
 }
 
 void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
