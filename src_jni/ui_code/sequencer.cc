@@ -50,27 +50,43 @@ Sequencer::PatternInstance::PatternInstance(
 	: KammoGUI::GnuVGCanvas::ElementReference(elref)
 	, instance_data(_instance_data)
 {
+	set_event_handler(
+		[this](SVGDocument *source,
+		       ElementReference *e,
+		       const KammoGUI::MotionEvent &event) {
+			SATAN_DEBUG("Clicked on pattern instance for pattern %d\n",
+				    instance_data.pattern_id);
+		}
+		);
 }
 
-void Sequencer::PatternInstance::calculate_visibility(int minor_width,
+void Sequencer::PatternInstance::calculate_visibility(double minor_width,
 						      int minimum_minor_offset,
 						      int maximum_minor_offset) {
-	SATAN_DEBUG("::calculate_visibility(%d, %d, %d) - set_attribute('width', %d)\n",
+	SATAN_DEBUG("instance(%d, %d) ==> calculate_visibility(%f, %d, %d) - set_attribute('width', %d)\n",
+		    instance_data.start_at,
+		    instance_data.stop_at,
 		    minor_width,
 		    minimum_minor_offset,
 		    maximum_minor_offset,
-		    minor_width * (instance_data.stop_at - instance_data.start_at)
+		    minor_width * (double)(instance_data.stop_at - instance_data.start_at)
 		);
-	float w = (minor_width * (instance_data.stop_at - instance_data.start_at));
+	float x = minor_width * (double)instance_data.start_at;
+	set_attribute("x", x);
+	float w = (minor_width * (double)(instance_data.stop_at - instance_data.start_at));
 	set_attribute("width", w);
 }
 
 std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_new_pattern_instance(
-	const RIPatternInstance &_instance_data,
+	const RIPatternInstance &__instance_data,
 	KammoGUI::GnuVGCanvas::ElementReference &parent,
 	int minor_width, double height
 	)
 {
+	auto _instance_data = __instance_data;
+	_instance_data.start_at = 32;
+	_instance_data.stop_at = 64;
+
 	std::stringstream ss_new_id;
 	ss_new_id << "pattern_instance_" << _instance_data.pattern_id;
 
@@ -131,7 +147,7 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 		);
 
 	_timelines->add_scroll_callback(
-		[this](int minor_width,
+		[this](double minor_width,
 		       double line_offset,
 		       int left_side_minor_offset,
 		       int right_side_minor_offset) {

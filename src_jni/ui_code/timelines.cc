@@ -305,7 +305,7 @@ void TimeLines::on_resize() {
 	regenerate_graphics();
 }
 
-void TimeLines::add_scroll_callback(std::function<void(int, double, int, int)> _cb) {
+void TimeLines::add_scroll_callback(std::function<void(double, double, int, int)> _cb) {
 	auto cbc = std::make_shared<CallbackContainer>(_cb);
 	scroll_callbacks.insert(cbc);
 }

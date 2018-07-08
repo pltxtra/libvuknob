@@ -55,7 +55,7 @@ private:
 			int minor_width, double height
 			);
 
-		void calculate_visibility(int minor_width,
+		void calculate_visibility(double minor_width,
 					  int minimum_minor_offset,
 					  int maximum_minor_offset);
 	};
