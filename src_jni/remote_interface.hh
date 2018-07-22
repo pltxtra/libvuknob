@@ -51,6 +51,7 @@
 #define RI_LOOP_NOT_SET -1
 
 #ifdef __RI__SERVER_SIDE
+#define CLIENTORSERVER_STRING "server"
 #define __RI__CURRENT_NAMESPACE ServerSpace
 #define SERVER_SIDE_HANDLER(_name,_key)					\
 	static constexpr const char* _name = _key;			\
@@ -91,6 +92,7 @@
 #endif
 
 #ifdef __RI__CLIENT_SIDE
+#define CLIENTORSERVER_STRING "client"
 #define __RI__CURRENT_NAMESPACE ClientSpace
 #define SERVER_SIDE_HANDLER(_name,_key)					\
 	static constexpr const char* _name = _key;
