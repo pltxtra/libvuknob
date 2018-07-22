@@ -88,7 +88,6 @@ public:
 template <class T>
 class ObjectAllocator {
 private:
-	std::vector<T> allocated_objects;
 	std::stack<T*> free_objects;
 
 public:
@@ -98,10 +97,7 @@ public:
 			retval = free_objects.top();
 			free_objects.pop();
 		} else {
-			T new_obj;
-			auto last_index = allocated_objects.size();
-			allocated_objects.push_back(new_obj);
-			retval = &(allocated_objects.data()[last_index]);
+			retval = new T();
 		}
 
 		return retval;
