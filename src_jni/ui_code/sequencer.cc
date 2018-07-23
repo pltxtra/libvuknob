@@ -63,7 +63,7 @@ Sequencer::PatternInstance::PatternInstance(
 void Sequencer::PatternInstance::calculate_visibility(double minor_width,
 						      int minimum_minor_offset,
 						      int maximum_minor_offset) {
-	SATAN_DEBUG("instance(%d, %d) ==> calculate_visibility(%f, %d, %d) - set_attribute('width', %d)\n",
+	SATAN_DEBUG("instance(%d, %d) ==> calculate_visibility(%f, %d, %d) - set_attribute('width', %f)\n",
 		    instance_data.start_at,
 		    instance_data.stop_at,
 		    minor_width,
@@ -78,15 +78,11 @@ void Sequencer::PatternInstance::calculate_visibility(double minor_width,
 }
 
 std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_new_pattern_instance(
-	const RIPatternInstance &__instance_data,
+	const RIPatternInstance &_instance_data,
 	KammoGUI::GnuVGCanvas::ElementReference &parent,
 	int minor_width, double height
 	)
 {
-	auto _instance_data = __instance_data;
-	_instance_data.start_at = 32;
-	_instance_data.stop_at = 64;
-
 	std::stringstream ss_new_id;
 	ss_new_id << "pattern_instance_" << _instance_data.pattern_id;
 
@@ -151,8 +147,6 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 		       double line_offset,
 		       int left_side_minor_offset,
 		       int right_side_minor_offset) {
-			auto offset_width = right_side_minor_offset - left_side_minor_offset;
-
 			KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 			transform_t.init_identity();
 			transform_t.translate(line_offset, 0.0);
@@ -198,28 +192,40 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 	case KammoGUI::MotionEvent::ACTION_UP:
 		stop_at_sequence_position = timelines->get_sequence_minor_position_at(event.get_x());
 		if(evt_x > event_start_x) {
+			SATAN_DEBUG("Start: %d - Stop: %d\n",
+				    start_at_sequence_position,
+				    stop_at_sequence_position);
+			if(start_at_sequence_position < 0)
+				start_at_sequence_position = 0;
+			if(stop_at_sequence_position < 0)
+				start_at_sequence_position = 0;
+
+			start_at_sequence_position = (start_at_sequence_position >> 4) << 4;
+			stop_at_sequence_position = (stop_at_sequence_position >> 4) << 4;
+			if(start_at_sequence_position > stop_at_sequence_position) {
+				auto t = start_at_sequence_position;
+				start_at_sequence_position = stop_at_sequence_position;
+				stop_at_sequence_position = t;
+			}
+			SATAN_DEBUG("Forced - Start: %d - Stop: %d\n",
+				    start_at_sequence_position,
+				    stop_at_sequence_position);
+
+			if(start_at_sequence_position != stop_at_sequence_position) {
+				pending_add = std::make_shared<PendingAdd>(
+					start_at_sequence_position,
+					stop_at_sequence_position
+					);
+			}
+
 			if(active_pattern_id == NO_ACTIVE_PATTERN) {
 				ri_seq->add_pattern("New pattern");
-			} else {
-				SATAN_DEBUG("Start: %d - Stop: %d\n",
-					    start_at_sequence_position,
-					    stop_at_sequence_position);
-				if(start_at_sequence_position < 0)
-					start_at_sequence_position = 0;
-				if(stop_at_sequence_position < 0)
-					start_at_sequence_position = 0;
-
-
-				start_at_sequence_position = (start_at_sequence_position >> 4) << 4;
-				stop_at_sequence_position = (stop_at_sequence_position >> 4) << 4;
-				SATAN_DEBUG("Forced - Start: %d - Stop: %d\n",
-					    start_at_sequence_position,
-					    stop_at_sequence_position);
-
-				if(start_at_sequence_position != stop_at_sequence_position)
-					ri_seq->insert_pattern_in_sequence(active_pattern_id,
-									   start_at_sequence_position, -1,
-									   stop_at_sequence_position);
+			} else if(pending_add != nullptr) {
+				ri_seq->insert_pattern_in_sequence(
+					active_pattern_id,
+					pending_add->start_at, -1,
+					pending_add->stop_at);
+				pending_add.reset();
 			}
 		}
 		display_action = false;
@@ -251,6 +257,16 @@ void Sequencer::Sequence::pattern_added(const std::string &name, uint32_t id) {
 			active_pattern_id = id;
 
 			patterns[id] = name;
+
+			if(pending_add) {
+				SATAN_DEBUG("::pattern_added(%s, %d) --> insert\n", name.c_str(), id);
+				ri_seq->insert_pattern_in_sequence(
+					id,
+					pending_add->start_at, -1,
+					pending_add->stop_at);
+				pending_add.reset();
+				SATAN_DEBUG("::pattern_added(%s, %d) insert <--\n", name.c_str(), id);
+			}
 		}
 		);
 }
@@ -267,12 +283,9 @@ void Sequencer::Sequence::pattern_deleted(uint32_t id) {
 		);
 }
 
-
-void Sequencer::Sequence::instance_added(const RIPatternInstance& instance) {
+void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 	KammoGUI::run_on_GUI_thread(
 		[this, instance]() {
-			SATAN_DEBUG("::instance_added() callback...\n");
-
 			auto instanceContainer = find_child_by_class("instanceContainer");
 
 			auto i = PatternInstance::create_new_pattern_instance(
@@ -287,7 +300,8 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance) {
 		);
 }
 
-void Sequencer::Sequence::instance_deleted(const RIPatternInstance& instance) {
+void Sequencer::Sequence::instance_deleted(const RIPatternInstance& original_i) {
+	RIPatternInstance instance = original_i;
 	KammoGUI::run_on_GUI_thread(
 		[this, instance]() {
 			SATAN_DEBUG("::instance_deleted()\n");

@@ -30,7 +30,7 @@
 #include "common.hh"
 #include "fling_animation.hh"
 
-#define __DO_SATAN_DEBUG
+//#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 void TimeLines::create_timelines() {

@@ -670,11 +670,11 @@ SERVER_N_CLIENT_CODE(
 					(
 						_pin->start_at >= start_at
 						&&
-						_pin->start_at <= stop_at
+						_pin->start_at < stop_at
 						)
 					||
 					(
-						_pin->stop_at >= start_at
+						_pin->stop_at > start_at
 						&&
 						_pin->stop_at <= stop_at
 						)

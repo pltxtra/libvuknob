@@ -66,6 +66,14 @@ private:
 		, public std::enable_shared_from_this<Sequence>
 	{
 	private:
+		struct PendingAdd {
+			int start_at, stop_at;
+
+			PendingAdd(int strt, int stop) : start_at(strt), stop_at(stop) {}
+		};
+
+		std::shared_ptr<PendingAdd> pending_add;
+
 		KammoGUI::GnuVGCanvas::ElementReference sequence_background;
 		double inverse_scaling_factor;
 		double event_start_x, event_start_y;
