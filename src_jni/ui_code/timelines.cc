@@ -297,6 +297,8 @@ void TimeLines::on_resize() {
 	tmp = canvas_h / ((double)canvas_height_fingers);
 	finger_height = tmp;
 
+	SATAN_ERROR("Timelines finger_height: %d\n", (int)finger_height);
+
 	// font_size = finger_height / 3 - but in integer math
 	font_size = 10 * finger_height;
 	font_size /= 30;

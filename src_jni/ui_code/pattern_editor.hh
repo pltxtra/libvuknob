@@ -24,12 +24,24 @@
 #include <kamogui_scale_detector.hh>
 #include <kamogui_fling_detector.hh>
 
-#include "machine_sequencer.hh"
+#include "engine_code/sequence.hh"
+
+#include "timelines.hh"
+
+typedef RemoteInterface::ClientSpace::Sequence RISequence;
+typedef RemoteInterface::ClientSpace::Sequence::Note RINote;
 
 class PatternEditor
 	: public KammoGUI::GnuVGCanvas::SVGDocument
+	, public RISequence::PatternListener
+	, public std::enable_shared_from_this<PatternEditor>
 {
 private:
+	static PatternEditor *singleton;
+
+	std::shared_ptr<RISequence> ri_seq;
+	std::shared_ptr<TimeLines> timelines;
+	std::function<void()> on_exit_pattern_editor;
 
 	// sizes in pixels
 	double finger_width = 10.0, finger_height = 10.0;
@@ -39,13 +51,24 @@ private:
 	float canvas_w_inches, canvas_h_inches;
 	int canvas_w, canvas_h;
 
+	void new_note_graphic(const RINote &note);
+	void delete_note_graphic(const RINote &note);
+
 public:
-	PatternEditor(KammoGUI::GnuVGCanvas* cnvs);
+	PatternEditor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
 	~PatternEditor();
 
 	virtual void on_resize() override;
 	virtual void on_render() override;
 
+	static void hide();
+	static void show(std::function<void()> on_exit_pattern_editor,
+			 std::shared_ptr<RISequence> ri_seq,
+			 uint32_t pattern_id);
+
+	virtual void note_added(uint32_t pattern_id, const RINote &note);
+	virtual void note_deleted(uint32_t pattern_id, const RINote &note);
+	virtual void pattern_deleted(uint32_t pattern_id);
 };
 
 #endif

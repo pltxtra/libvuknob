@@ -32,6 +32,8 @@
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
+PatternEditor* PatternEditor::singleton = nullptr;
+
 void PatternEditor::on_resize() {
 	get_canvas_size(canvas_w, canvas_h);
 	get_canvas_size_inches(canvas_w_inches, canvas_h_inches);
@@ -50,6 +52,8 @@ void PatternEditor::on_resize() {
 	// calculate the "height" of a finger tip in pixels
 	tmp = canvas_h / ((double)canvas_height_fingers);
 	finger_height = tmp;
+
+	SATAN_ERROR("PatternEditor finger_height: %d\n", (int)finger_height);
 
 	// get document parameters
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
@@ -76,9 +80,70 @@ void PatternEditor::on_resize() {
 void PatternEditor::on_render() {
 }
 
-PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs)
-	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/VerticalKeyboard.svg"), cnvs) {
+PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
+			     std::shared_ptr<TimeLines> _timelines)
+	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/VerticalKeyboard.svg"), cnvs)
+	, timelines(_timelines)
+{
+	singleton = this;
 }
 
 PatternEditor::~PatternEditor() {
+	singleton = nullptr;
+}
+
+void PatternEditor::hide() {
+	if(singleton) {
+		singleton->ri_seq->drop_pattern_listener(singleton->shared_from_this());
+		singleton->ri_seq.reset();
+
+		auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(singleton, "layer1");
+		layer1.set_display("none");
+
+		singleton->on_exit_pattern_editor();
+	}
+}
+
+void PatternEditor::show(std::function<void()> _on_exit_pattern_editor,
+			 std::shared_ptr<RISequence> ri_seq,
+			 uint32_t pattern_id) {
+	if(singleton) {
+		singleton->on_exit_pattern_editor = _on_exit_pattern_editor;
+		auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(singleton, "layer1");
+		layer1.set_display("inline");
+
+		singleton->ri_seq = ri_seq;
+		ri_seq->add_pattern_listener(pattern_id, singleton->shared_from_this());
+	}
+}
+
+void PatternEditor::new_note_graphic(const RINote &note) {
+}
+
+void PatternEditor::delete_note_graphic(const RINote &note) {
+}
+
+void PatternEditor::note_added(uint32_t pattern_id, const RINote &note) {
+	KammoGUI::run_on_GUI_thread(
+		[this, note]() {
+			delete_note_graphic(note);
+			new_note_graphic(note);
+		}
+		);
+}
+
+void PatternEditor::note_deleted(uint32_t pattern_id, const RINote &note) {
+	KammoGUI::run_on_GUI_thread(
+		[this, note]() {
+			delete_note_graphic(note);
+		}
+		);
+}
+
+void PatternEditor::pattern_deleted(uint32_t pattern_id) {
+	KammoGUI::run_on_GUI_thread(
+		[this]() {
+			PatternEditor::hide();
+		}
+		);
 }

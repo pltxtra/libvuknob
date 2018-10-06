@@ -46,13 +46,15 @@ private:
 	public:
 		PatternInstance(
 			KammoGUI::GnuVGCanvas::ElementReference &elref,
-			const RIPatternInstance &instance_data
+			const RIPatternInstance &instance_data,
+			std::shared_ptr<RISequence> ri_seq
 			);
 
 		static std::shared_ptr<PatternInstance> create_new_pattern_instance(
 			const RIPatternInstance &instance_data,
 			KammoGUI::GnuVGCanvas::ElementReference &parent,
-			int minor_width, double height
+			int minor_width, double height,
+			std::shared_ptr<RISequence> ri_seq
 			);
 
 		void calculate_visibility(double minor_width,
@@ -99,22 +101,6 @@ private:
 		virtual void pattern_deleted(uint32_t id);
 		virtual void instance_added(const RIPatternInstance& instance);
 		virtual void instance_deleted(const RIPatternInstance& instance);
-		virtual void note_added(
-			uint32_t pattern_id,
-			int channel,
-			int program,
-			int velocity,
-			int note,
-			int on_at,
-			int length);
-		virtual void note_deleted(
-			uint32_t pattern_id,
-			int channel,
-			int program,
-			int velocity,
-			int note,
-			int on_at,
-			int length);
 
 		void set_graphic_parameters(double graphic_scaling_factor,
 					    double width, double height,

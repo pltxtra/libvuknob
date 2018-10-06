@@ -20,6 +20,12 @@
 #ifndef SEQUENCE_HH
 #define SEQUENCE_HH
 
+#ifndef __RI__SERVER_SIDE
+#ifndef __RI__CLIENT_SIDE
+#error __RI__SERVER_SIDE or __RI__CLIENT_SIDE must be defined.
+#endif
+#endif
+
 #include <list>
 
 #include "../common.hh"
@@ -114,22 +120,13 @@ namespace RemoteInterface {
 					virtual void pattern_deleted(uint32_t id) = 0;
 					virtual void instance_added(const PatternInstance& instance) = 0;
 					virtual void instance_deleted(const PatternInstance& instance) = 0;
-					virtual void note_added(
-						uint32_t pattern_id,
-						int channel,
-						int program,
-						int velocity,
-						int note,
-						int on_at,
-						int length) = 0;
-					virtual void note_deleted(
-						uint32_t pattern_id,
-						int channel,
-						int program,
-						int velocity,
-						int note,
-						int on_at,
-						int length) = 0;
+				};
+
+				class PatternListener {
+				public:
+					virtual void note_added(uint32_t pattern_id, const Note &note) = 0;
+					virtual void note_deleted(uint32_t pattern_id, const Note &note) = 0;
+					virtual void pattern_deleted(uint32_t pattern_id) = 0;
 				};
 
 				void add_pattern(const std::string& name);
@@ -148,12 +145,13 @@ namespace RemoteInterface {
 					int channel, int program, int velocity,
 					int note, int on_at, int length
 					);
-				void get_notes(uint32_t pattern_id, std::list<Note> &storage);
 				void delete_note(uint32_t pattern_id, const Note& note);
 
 				std::string get_name();
 
 				void add_sequence_listener(std::shared_ptr<SequenceListener> sel);
+				void add_pattern_listener(uint32_t pattern_id, std::shared_ptr<PatternListener> pal);
+				void drop_pattern_listener(std::shared_ptr<PatternListener> pal);
 				);
 
 			Sequence(const Factory *factory, const RemoteInterface::Message &serialized);
@@ -208,6 +206,9 @@ namespace RemoteInterface {
 				);
 
 			struct Pattern {
+				ON_CLIENT(
+					std::set<std::shared_ptr<PatternListener> > pattern_listeners;
+					);
 				uint32_t id;
 				std::string name;
 				LinkedList<Note> note_list;
@@ -225,6 +226,11 @@ namespace RemoteInterface {
 			std::map<uint32_t, Pattern*> patterns;
 			LinkedList<PatternInstance> instance_list;
 			std::string sequence_name;
+
+			/* internal functions */
+			ON_CLIENT(
+				void get_notes(uint32_t pattern_id, std::list<Note> &storage);
+				);
 
 			/* internal processing of commands - on both the server & client */
 			void process_add_pattern(const std::string& new_name, uint32_t new_id);

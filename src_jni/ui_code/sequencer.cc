@@ -45,17 +45,27 @@
 
 Sequencer::PatternInstance::PatternInstance(
 	KammoGUI::GnuVGCanvas::ElementReference &elref,
-	const RIPatternInstance &_instance_data
+	const RIPatternInstance &_instance_data,
+	std::shared_ptr<RISequence> ri_seq
 	)
 	: KammoGUI::GnuVGCanvas::ElementReference(elref)
 	, instance_data(_instance_data)
 {
+	auto restore_sequencer = [this]() {
+		auto main_container = get_root();
+		main_container.set_display("inline");
+	};
+
 	set_event_handler(
-		[this](SVGDocument *source,
-		       ElementReference *e,
-		       const KammoGUI::MotionEvent &event) {
+		[this, ri_seq, restore_sequencer](SVGDocument *source,
+					  ElementReference *e,
+					  const KammoGUI::MotionEvent &event) {
 			SATAN_DEBUG("Clicked on pattern instance for pattern %d\n",
 				    instance_data.pattern_id);
+
+			PatternEditor::show(restore_sequencer, ri_seq, instance_data.pattern_id);
+			auto main_container = get_root();
+			main_container.set_display("none");
 		}
 		);
 }
@@ -80,7 +90,8 @@ void Sequencer::PatternInstance::calculate_visibility(double minor_width,
 std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_new_pattern_instance(
 	const RIPatternInstance &_instance_data,
 	KammoGUI::GnuVGCanvas::ElementReference &parent,
-	int minor_width, double height
+	int minor_width, double height,
+	std::shared_ptr<RISequence> ri_seq
 	)
 {
 	std::stringstream ss_new_id;
@@ -104,7 +115,7 @@ std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_n
 
 	KammoGUI::GnuVGCanvas::ElementReference elref(&parent, ss_new_id.str());
 
-	auto rval = std::make_shared<PatternInstance>(elref, _instance_data);
+	auto rval = std::make_shared<PatternInstance>(elref, _instance_data, ri_seq);
 
 	return rval;
 }
@@ -292,9 +303,9 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 				instance,
 				instanceContainer,
 				timelines->get_minor_spacing(),
-				height
+				height,
+				ri_seq
 				);
-
 			instances[instance.start_at] = i;
 		}
 		);
@@ -311,34 +322,6 @@ void Sequencer::Sequence::instance_deleted(const RIPatternInstance& original_i) 
 				instance_to_erase->second->drop_element();
 				instances.erase(instance_to_erase);
 			}
-		}
-		);
-}
-
-void Sequencer::Sequence::note_added(
-	uint32_t pattern_id,
-	int channel,
-	int program,
-	int velocity,
-	int note,
-	int on_at,
-	int length) {
-	KammoGUI::run_on_GUI_thread(
-		[this]() {
-		}
-		);
-}
-
-void Sequencer::Sequence::note_deleted(
-	uint32_t pattern_id,
-	int channel,
-	int program,
-	int velocity,
-	int note,
-	int on_at,
-	int length) {
-	KammoGUI::run_on_GUI_thread(
-		[this]() {
 		}
 		);
 }
@@ -379,20 +362,20 @@ void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
 auto Sequencer::Sequence::create_sequence(
 	KammoGUI::GnuVGCanvas::ElementReference &root,
 	KammoGUI::GnuVGCanvas::ElementReference &sequence_graphic_template,
-	std::shared_ptr<RISequence> ri_machine,
+	std::shared_ptr<RISequence> ri_sequence,
 	std::shared_ptr<TimeLines> _timelines,
 	int offset) -> std::shared_ptr<Sequence> {
 
 	char bfr[32];
-	snprintf(bfr, 32, "seq_%p", ri_machine.get());
+	snprintf(bfr, 32, "seq_%p", ri_sequence.get());
 
 	KammoGUI::GnuVGCanvas::ElementReference new_graphic =
 		root.add_element_clone(bfr, sequence_graphic_template);
 
 	SATAN_DEBUG("Sequencer::Sequence::create_sequence() -- bfr: %s\n", bfr);
 
-	auto new_sequence = std::make_shared<Sequence>(new_graphic, ri_machine, _timelines, offset);
-	ri_machine->add_sequence_listener(new_sequence);
+	auto new_sequence = std::make_shared<Sequence>(new_graphic, ri_sequence, _timelines, offset);
+	ri_sequence->add_sequence_listener(new_sequence);
 	return new_sequence;
 }
 
@@ -531,7 +514,8 @@ virtual void on_init(KammoGUI::Widget *wid) {
 
 		static auto current_timelines = std::make_shared<TimeLines>(cnvs);
 		static auto current_sequencer = std::make_shared<Sequencer>(cnvs, current_timelines);
-		static auto current_pattern_editor = std::make_shared<PatternEditor>(cnvs);
+		static auto current_pattern_editor = std::make_shared<PatternEditor>(cnvs, current_timelines);
+		PatternEditor::hide();
 
 		auto ptr =
 			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RISequence> >(current_sequencer);

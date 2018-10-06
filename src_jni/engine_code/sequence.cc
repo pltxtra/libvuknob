@@ -384,6 +384,11 @@ CLIENT_CODE(
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		auto pattern_id = std::stoul(msg.get_value("pattern_id"));
 
+		if(patterns.find(pattern_id) != patterns.end()) {
+			for(auto pl : patterns[pattern_id]->pattern_listeners)
+				pl->pattern_deleted(pattern_id);
+		}
+
 		(void) process_del_pattern(pattern_id);
 		for(auto sl : sequence_listeners)
 			sl->pattern_deleted(pattern_id);
@@ -439,18 +444,25 @@ CLIENT_CODE(
 		auto on_at = std::stoi(msg.get_value("on_at"));
 		auto length = std::stoi(msg.get_value("length"));
 
+		if(patterns.find(pattern_id) == patterns.end())
+			return;
+
 		process_add_note(
 			pattern_id,
 			channel, program, velocity,
 			note, on_at, length
 			);
 
-		for(auto sl : sequence_listeners)
-			sl->note_added(
-				pattern_id,
-				channel, program, velocity,
-				note, on_at, length
-			);
+		Note added_note;
+		added_note.channel = channel;
+		added_note.program = program;
+		added_note.velocity = velocity;
+		added_note.note = note;
+		added_note.on_at = on_at;
+		added_note.length = length;
+
+		for(auto pl : patterns[pattern_id]->pattern_listeners)
+			pl->note_added(pattern_id, added_note);
 	}
 
 	void Sequence::handle_cmd_del_note(RemoteInterface::Context *context,
@@ -467,18 +479,16 @@ CLIENT_CODE(
 			.length = std::stoi(msg.get_value("length"))
 		};
 		auto pattern_id = std::stoul(msg.get_value("pattern_id"));
+
+		if(patterns.find(pattern_id) == patterns.end())
+			return;
+
 		process_delete_note(
 			pattern_id,
 			note_to_delete);
 
-		for(auto sl : sequence_listeners)
-			sl->note_deleted(
-				pattern_id,
-				note_to_delete.channel,
-				note_to_delete.program, note_to_delete.velocity,
-				note_to_delete.note, note_to_delete.on_at,
-				note_to_delete.length
-			);
+		for(auto pl : patterns[pattern_id]->pattern_listeners)
+			pl->note_deleted(pattern_id, note_to_delete);
 	}
 
 	void Sequence::add_pattern(const std::string& name) {
@@ -575,8 +585,6 @@ CLIENT_CODE(
 	}
 
 	void Sequence::get_notes(uint32_t pattern_id, std::list<Note> &storage)  {
-		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
-
 		storage.clear();
 
 		auto ptrn_i = patterns.find(pattern_id);
@@ -623,6 +631,34 @@ CLIENT_CODE(
 	void Sequence::add_sequence_listener(std::shared_ptr<Sequence::SequenceListener> sel) {
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		sequence_listeners.insert(sel);
+	}
+
+	void Sequence::add_pattern_listener(uint32_t pattern_id, std::shared_ptr<Sequence::PatternListener> pal) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+
+		// only attach it to one pattern at a time
+		for(auto ptrn : patterns) {
+			ptrn.second->pattern_listeners.erase(pal);
+		}
+
+		// if the requested pattern does not exist, quietly return
+		if(patterns.find(pattern_id) == patterns.end()) return;
+
+		patterns[pattern_id]->pattern_listeners.insert(pal);
+
+		std::list<Note> note_storage;
+		get_notes(pattern_id, note_storage);
+		for(auto note : note_storage) {
+			pal->note_added(pattern_id, note);
+		}
+	}
+
+	void Sequence::drop_pattern_listener(std::shared_ptr<Sequence::PatternListener> pal) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+
+		for(auto ptrn : patterns) {
+			ptrn.second->pattern_listeners.erase(pal);
+		}
 	}
 
 	);
