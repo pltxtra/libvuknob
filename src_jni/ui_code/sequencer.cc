@@ -63,7 +63,7 @@ Sequencer::PatternInstance::PatternInstance(
 			SATAN_DEBUG("Clicked on pattern instance for pattern %d\n",
 				    instance_data.pattern_id);
 
-			PatternEditor::show(restore_sequencer, ri_seq, instance_data.pattern_id);
+			PatternEditor::show(restore_sequencer, ri_seq, instance_data.start_at, instance_data.pattern_id);
 			auto main_container = get_root();
 			main_container.set_display("none");
 		}

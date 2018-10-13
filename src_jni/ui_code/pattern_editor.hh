@@ -39,9 +39,18 @@ class PatternEditor
 private:
 	static PatternEditor *singleton;
 
+	KammoGUI::GnuVGCanvas::ElementReference *backdrop_reference = 0;
+	uint32_t pattern_id;
 	std::shared_ptr<RISequence> ri_seq;
 	std::shared_ptr<TimeLines> timelines;
 	std::function<void()> on_exit_pattern_editor;
+
+	int new_tone_relative, tone_at_top = 0, pattern_start_position;
+	double event_left_x, event_right_x;
+	double event_start_x, event_start_y;
+	double event_current_x, event_current_y;
+	int start_at_sequence_position, stop_at_sequence_position;
+	bool display_action = false;
 
 	// sizes in pixels
 	double finger_width = 10.0, finger_height = 10.0;
@@ -54,6 +63,8 @@ private:
 	void new_note_graphic(const RINote &note);
 	void delete_note_graphic(const RINote &note);
 
+	void on_backdrop_event(const KammoGUI::MotionEvent &event);
+
 public:
 	PatternEditor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
 	~PatternEditor();
@@ -64,6 +75,7 @@ public:
 	static void hide();
 	static void show(std::function<void()> on_exit_pattern_editor,
 			 std::shared_ptr<RISequence> ri_seq,
+			 int pattern_start_position,
 			 uint32_t pattern_id);
 
 	virtual void note_added(uint32_t pattern_id, const RINote &note);
