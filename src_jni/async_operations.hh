@@ -1,5 +1,5 @@
 /*
- * VuKNOB
+ * vu|KNOB
  * Copyright (C) 2014 by Anton Persson
  *
  * http://www.vuknob.com/

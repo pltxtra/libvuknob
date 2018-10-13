@@ -1,6 +1,6 @@
 /*
  * vu|KNOB
- * (C) 2015 by Anton Persson
+ * (C) 2018 by Anton Persson
  *
  * http://www.vuknob.com/
  *

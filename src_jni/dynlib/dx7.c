@@ -1,5 +1,5 @@
 /* hexter DSSI software synthesizer plugin
- * VuKNOB/SATAN port
+ * vu|KNOB/SATAN port
  *
  * Copyright (C) 2004, 2009, 2011, 2012 Sean Bolton and others.
  * Copyright (C) 2014 by Anton Persson
