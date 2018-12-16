@@ -25,11 +25,22 @@
 #include <kamogui_fling_detector.hh>
 
 #include "engine_code/sequence.hh"
+#include "../common.hh"
 
 #include "timelines.hh"
 
 typedef RemoteInterface::ClientSpace::Sequence RISequence;
 typedef RemoteInterface::ClientSpace::Sequence::Note RINote;
+
+struct NoteGraphic {
+	uint32_t id;
+	RINote note;
+	KammoGUI::GnuVGCanvas::ElementReference graphic_reference;
+
+	inline bool operator<(const NoteGraphic& rhs) const {
+		return note < rhs.note;
+	}
+};
 
 class PatternEditor
 	: public KammoGUI::GnuVGCanvas::SVGDocument
@@ -40,11 +51,14 @@ private:
 	static PatternEditor *singleton;
 
 	KammoGUI::GnuVGCanvas::ElementReference *backdrop_reference = 0;
+	KammoGUI::GnuVGCanvas::ElementReference *pianorollscroll_reference = 0;
+	KammoGUI::GnuVGCanvas::ElementReference *pianoroll_reference = 0;
 	uint32_t pattern_id;
 	std::shared_ptr<RISequence> ri_seq;
 	std::shared_ptr<TimeLines> timelines;
 	std::function<void()> on_exit_pattern_editor;
 
+	double pianoroll_offset = 0.0;
 	int new_tone_relative, tone_at_top = 0, pattern_start_position;
 	double event_left_x, event_right_x;
 	double event_start_x, event_start_y;
@@ -53,6 +67,7 @@ private:
 	bool display_action = false;
 
 	// sizes in pixels
+	KammoGUI::GnuVGCanvas::SVGRect document_size;
 	double finger_width = 10.0, finger_height = 10.0;
 
 	// canvas size in "fingers"
@@ -60,10 +75,14 @@ private:
 	float canvas_w_inches, canvas_h_inches;
 	int canvas_w, canvas_h;
 
-	void new_note_graphic(const RINote &note);
+	IDAllocator note_graphics_id_allocator;
+	std::set<NoteGraphic> note_graphics;
+
+	void create_note_graphic(const RINote &note);
 	void delete_note_graphic(const RINote &note);
 
 	void on_backdrop_event(const KammoGUI::MotionEvent &event);
+	void on_pianorollscroll_event(const KammoGUI::MotionEvent &event);
 
 public:
 	PatternEditor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);

@@ -105,7 +105,13 @@ namespace RemoteInterface {
 				}
 
 				inline bool operator<(const Note& rhs) const {
-					return on_at < rhs.on_at;
+					if(on_at != rhs.on_at)
+						return on_at < rhs.on_at;
+
+					if(note != rhs.note)
+						return note < rhs.note;
+
+					return length < rhs.length;
 				}
 
 				inline bool operator>(const Note& rhs) const {

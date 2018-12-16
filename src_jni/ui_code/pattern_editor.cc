@@ -62,7 +62,7 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		if(start_at_sequence_position < 0)
 			start_at_sequence_position = 0;
 		if(stop_at_sequence_position < 0)
-			start_at_sequence_position = 0;
+			stop_at_sequence_position = 0;
 
 		start_at_sequence_position = (start_at_sequence_position >> 4) << 4;
 		stop_at_sequence_position = (stop_at_sequence_position >> 4) << 4;
@@ -76,8 +76,8 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 				pattern_id,
 				0, 0, 0xff,
 				new_tone_relative + tone_at_top,
-				start_at_seququence_position - pattern_start_position,
-				stop_at_seququence_position - start_at_sequence_position
+				start_at_sequence_position - pattern_start_position,
+				stop_at_sequence_position - start_at_sequence_position
 				);
 		}
 
@@ -93,22 +93,99 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		event_right_x = event_current_x - event_start_x;
 	}
 
-	auto newPieceIndicator = find_child_by_class("newPieceIndicator");
+	auto root_element = backdrop_reference->get_root();
+	auto new_piece_indicator = root_element.find_child_by_class("newPieceIndicator");
 
-	newPieceIndicator.set_display(display_action ? "inline" : "none");
+	new_piece_indicator.set_display(display_action ? "inline" : "none");
 	if(display_action) {
-		SATAN_DEBUG("b_x: %f, e_x: %f\n", b_x, e_x);
+		SATAN_DEBUG("b_x: %f, e_x: %f\n", event_left_x, event_right_x);
 		double top = new_tone_relative * finger_height;
 		double bottom = top + finger_height;
-		newPieceIndicator.set_rect_coords(event_left_x, top, event_right_x, bottom);
+		new_piece_indicator.set_rect_coords(event_left_x, top, event_right_x, finger_height);
 	}
 
 }
 
-void PatternEditor::new_note_graphic(const RINote &note) {
+void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event) {
+	event_current_x = event.get_x();
+	event_current_y = event.get_y();
+
+	switch(event.get_action()) {
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		break;
+	case KammoGUI::MotionEvent::ACTION_DOWN:
+		event_start_x = event_current_x;
+		event_start_y = event_current_y;
+
+		SATAN_DEBUG("event_start_x: %f\n", event_start_x);
+		break;
+	case KammoGUI::MotionEvent::ACTION_MOVE:
+		SATAN_DEBUG("event_current_x: %f\n", event_current_x);
+		{
+			auto diff = event_current_y - event_start_y;
+			pianoroll_offset += diff / finger_height;
+			SATAN_DEBUG("pianoroll offset: %f\n", pianoroll_offset);
+			if(pianoroll_offset < 0.0) pianoroll_offset = 0.0;
+			if(pianoroll_offset > 127.0) pianoroll_offset = 127.0;
+		}
+		event_start_x = event_current_x;
+		event_start_y = event_current_y;
+		break;
+	case KammoGUI::MotionEvent::ACTION_UP:
+		break;
+	}
+}
+
+void PatternEditor::create_note_graphic(const RINote &new_note) {
+	SATAN_DEBUG("create_note_graphic()\n");
+
+	auto new_id = note_graphics_id_allocator.get_id();
+
+	std::stringstream ss_new_id;
+	ss_new_id << "note_instance_" << new_id;
+
+	std::stringstream ss;
+
+	ss << "<rect "
+	   << "style=\"fill:#ff00ff;fill-opacity:1\" "
+	   << "id=\"" << ss_new_id.str() << "\" "
+	   << "width=\"500\" "
+	   << "height=\"500\" "
+	   << "x=\"0.0\" "
+	   << "y=\"0.0\" />"
+/*
+			   << "width=\"" << 5000 << "\" "
+	   << "height=\"" << 5000 << "\" "
+	   << "x=\"" << (0) << "\" "
+	   << "y=\"0.0\" />"
+*/
+		;
+	SATAN_DEBUG("Inserting graphic: %s", ss.str().c_str());
+	auto note_container = KammoGUI::GnuVGCanvas::ElementReference(this, "noteContainer");
+	note_container.add_svg_child(ss.str());
+	SATAN_DEBUG("Graphic inserted: %s", ss.str().c_str());
+	KammoGUI::GnuVGCanvas::ElementReference elref(&note_container, ss_new_id.str());
+
+	auto ng = NoteGraphic {
+		.id = new_id,
+		.note = new_note,
+		.graphic_reference = elref
+	};
+
+	auto status = note_graphics.insert(ng);
+	if(status.second == false) {
+		SATAN_DEBUG("Cannot insert graphic, element already exists, dropping: %s", ss.str().c_str());
+		elref.drop_element();
+	}
 }
 
 void PatternEditor::delete_note_graphic(const RINote &note) {
+	SATAN_DEBUG("delete_note_graphic()\n");
+
+
 }
 
 PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
@@ -118,7 +195,7 @@ PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
 {
 	singleton = this;
 
-	backdrop_reference = new KammoGUI::GnuVGCanvas::ElementReference(this, "background");
+	backdrop_reference = new KammoGUI::GnuVGCanvas::ElementReference(this, "backdrop");
 	backdrop_reference->set_event_handler(
 		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
 		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
@@ -127,6 +204,17 @@ PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
 			SATAN_DEBUG("End backdrop event...\n");
 		}
 		);
+
+	pianorollscroll_reference = new KammoGUI::GnuVGCanvas::ElementReference(this, "pianorollscroll");
+	pianorollscroll_reference->set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			on_pianorollscroll_event(event);
+			SATAN_DEBUG("End backdrop event...\n");
+		}
+		);
+	pianoroll_reference = new KammoGUI::GnuVGCanvas::ElementReference(this, "pianoroll");
 }
 
 PatternEditor::~PatternEditor() {
@@ -155,7 +243,6 @@ void PatternEditor::on_resize() {
 	SATAN_ERROR("PatternEditor finger_height: %d\n", (int)finger_height);
 
 	// get document parameters
-	KammoGUI::GnuVGCanvas::SVGRect document_size;
 	auto root = KammoGUI::GnuVGCanvas::ElementReference(this);
 	root.get_viewport(document_size);
 
@@ -165,9 +252,14 @@ void PatternEditor::on_resize() {
 		);
 
 	// resize the backdrop
-	newPieceIndicator.set_rect_coords(0, 0, canvas_w, canvas_h);
+	backdrop_reference->set_rect_coords(0, finger_height, canvas_w, canvas_h - finger_height);
 
-	// transform the keyboard
+	// resize the pianoroll scroll
+	pianorollscroll_reference->set_rect_coords(0, 0, finger_width, canvas_h);
+}
+
+void PatternEditor::on_render() {
+	// transform the pianoroll
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	transform_t.init_identity();
 	transform_t.scale(
@@ -176,23 +268,21 @@ void PatternEditor::on_resize() {
 		// we assume that there are 108 keys in the keyboard graphic....
 		108.0 * finger_height / document_size.height
 		);
-
-	auto keyboard = KammoGUI::GnuVGCanvas::ElementReference(this, "keyboard");
-	keyboard.set_transform(transform_t);
-}
-
-void PatternEditor::on_render() {
+	transform_t.translate(0.0, -pianoroll_offset * finger_height);
+	pianoroll_reference->set_transform(transform_t);
 }
 
 void PatternEditor::hide() {
 	if(singleton) {
-		singleton->ri_seq->drop_pattern_listener(singleton->shared_from_this());
-		singleton->ri_seq.reset();
-
+		if(singleton->ri_seq) {
+			singleton->ri_seq->drop_pattern_listener(singleton->shared_from_this());
+			singleton->ri_seq.reset();
+		}
 		auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(singleton, "layer1");
 		layer1.set_display("none");
 
-		singleton->on_exit_pattern_editor();
+		if(singleton->on_exit_pattern_editor)
+			singleton->on_exit_pattern_editor();
 	}
 }
 
@@ -200,7 +290,7 @@ void PatternEditor::show(std::function<void()> _on_exit_pattern_editor,
 			 std::shared_ptr<RISequence> ri_seq,
 			 int pattern_start_position,
 			 uint32_t pattern_id) {
-	if(singleton) {
+	if(singleton && ri_seq) {
 		singleton->on_exit_pattern_editor = _on_exit_pattern_editor;
 		auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(singleton, "layer1");
 		layer1.set_display("inline");
@@ -216,7 +306,7 @@ void PatternEditor::note_added(uint32_t pattern_id, const RINote &note) {
 	KammoGUI::run_on_GUI_thread(
 		[this, note]() {
 			delete_note_graphic(note);
-			new_note_graphic(note);
+			create_note_graphic(note);
 		}
 		);
 }
