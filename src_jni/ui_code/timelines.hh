@@ -47,7 +47,7 @@ private:
 	bool ignore_scroll = false;
 	unsigned int skip_interval;
 	float canvas_w_inches, canvas_h_inches;
-	double horizontal_zoom_factor = 1.0, line_offset = 0.0;
+	double horizontal_zoom_factor = 1.0, line_offset = 0.0, graphics_offset;
 	int minor_width, canvas_w, canvas_h;
 	int minors_per_major = 16;
 	std::vector<KammoGUI::GnuVGCanvas::ElementReference *> major_n_minors;
@@ -94,6 +94,8 @@ public:
 
 	void add_scroll_callback(std::function<void(double, double, int, int)>);
 
+	double get_graphics_horizontal_offset();
+	double get_horizontal_pixels_per_minor();
 	int get_sequence_minor_position_at(int horizontal_pixel_value);
 	int get_minor_spacing() {
 		return minor_spacing;

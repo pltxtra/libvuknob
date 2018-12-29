@@ -312,6 +312,14 @@ void TimeLines::add_scroll_callback(std::function<void(double, double, int, int)
 	scroll_callbacks.insert(cbc);
 }
 
+double TimeLines::get_graphics_horizontal_offset() {
+	return line_offset;
+}
+
+double TimeLines::get_horizontal_pixels_per_minor() {
+	return minor_spacing;
+}
+
 int TimeLines::get_sequence_minor_position_at(int horizontal_pixel_value) {
 	/*
 	SATAN_DEBUG("pixel value: %d - spacing: %f - offset: %f\n",
@@ -343,7 +351,7 @@ void TimeLines::on_render() {
 	int line_offset_i = line_offset_d; // we need the pure integer version too
 
 	// calculate the pixel offset for the first line
-	double graphics_offset = 0.0;
+	graphics_offset = 0.0;
 
 	{ // select visible minors, and translate time line graphics
 		graphics_offset = (line_offset_d - (double)line_offset_i) * minor_spacing * ((double)minors_per_major);

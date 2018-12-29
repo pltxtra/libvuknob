@@ -58,29 +58,14 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		SATAN_DEBUG("finger_position: %f\n", event_current_x);
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
-		SATAN_DEBUG("new_tone: %d\n", new_tone);
-
-		start_at_sequence_position = timelines->get_sequence_minor_position_at(event_left_x);
-		stop_at_sequence_position = timelines->get_sequence_minor_position_at(event_right_x);
-
-		if(start_at_sequence_position < 0)
-			start_at_sequence_position = 0;
-		if(stop_at_sequence_position < 0)
-			stop_at_sequence_position = 0;
-
-		start_at_sequence_position = (start_at_sequence_position >> 4) << 4;
-		stop_at_sequence_position = (stop_at_sequence_position >> 4) << 4;
-
-		SATAN_DEBUG("Forced - Start: %d - Stop: %d\n",
-			    start_at_sequence_position,
-			    stop_at_sequence_position);
+		SATAN_DEBUG("new_tone: %d (%f -> %f)\n", new_tone, event_left_x, event_right_x);
 
 		if(start_at_sequence_position != stop_at_sequence_position) {
 			ri_seq->add_note(
 				pattern_id,
 				0, 0, 0xff,
 				new_tone,
-				start_at_sequence_position - pattern_start_position,
+				start_at_sequence_position,
 				stop_at_sequence_position - start_at_sequence_position
 				);
 		}
@@ -91,20 +76,43 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 
 	if(event_current_x < event_start_x) {
 		event_left_x = event_current_x;
-		event_right_x = event_start_x - event_current_x;
+		event_right_x = event_start_x;
 	} else {
 		event_left_x = event_start_x;
-		event_right_x = event_current_x - event_start_x;
+		event_right_x = event_current_x;
 	}
+
+	start_at_sequence_position = timelines->get_sequence_minor_position_at(event_left_x);
+	stop_at_sequence_position = timelines->get_sequence_minor_position_at(event_right_x);
+
+	if(start_at_sequence_position < 0)
+		start_at_sequence_position = 0;
+	if(stop_at_sequence_position < 0)
+		stop_at_sequence_position = 0;
+
+	start_at_sequence_position = (start_at_sequence_position >> 4) << 4;
+	stop_at_sequence_position = 16 + ((stop_at_sequence_position >> 4) << 4);
+
+	SATAN_DEBUG("Forced - Start: %d - Stop: %d\n",
+		    start_at_sequence_position,
+		    stop_at_sequence_position);
 
 	auto root_element = backdrop_reference->get_root();
 	auto new_piece_indicator = root_element.find_child_by_class("newPieceIndicator");
 
 	new_piece_indicator.set_display(display_action ? "inline" : "none");
 	if(display_action) {
-		SATAN_DEBUG("b_x: %f, e_x: %f\n", event_left_x, event_right_x);
+		auto stt = start_at_sequence_position;
+		auto stp = stop_at_sequence_position;
+		auto timelines_offset = timelines->get_graphics_horizontal_offset();
+		auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_minor();
+		double lft = timelines_minor_spacing * stt + timelines_offset;
+		double rgt = timelines_minor_spacing * stp + timelines_offset;
+
+		SATAN_DEBUG("timeline_offset: %f\n", timelines_offset);
+		SATAN_DEBUG("b_x: %f, e_x: %f\n", lft, rgt);
 		double top = finger_position * finger_height;
-		new_piece_indicator.set_rect_coords(event_left_x, top, event_right_x, finger_height);
+		new_piece_indicator.set_rect_coords(lft, top, rgt - lft, finger_height);
 	}
 
 }
@@ -161,9 +169,9 @@ void PatternEditor::create_note_graphic(const RINote &new_note) {
 	   << "style=\"fill:#ff00ff;fill-opacity:1\" "
 	   << "id=\"" << ss_new_id.str() << "\" "
 	   << "width=\"500\" "
-	   << "height=\"500\" "
+	   << "height=\"100\" "
 	   << "x=\"0.0\" "
-	   << "y=\"0.0\" />"
+	   << "y=\"400.0\" />"
 /*
 			   << "width=\"" << 5000 << "\" "
 	   << "height=\"" << 5000 << "\" "
@@ -300,7 +308,6 @@ void PatternEditor::hide() {
 
 void PatternEditor::show(std::function<void()> _on_exit_pattern_editor,
 			 std::shared_ptr<RISequence> ri_seq,
-			 int pattern_start_position,
 			 uint32_t pattern_id) {
 	if(singleton && ri_seq) {
 		singleton->on_exit_pattern_editor = _on_exit_pattern_editor;
@@ -309,7 +316,6 @@ void PatternEditor::show(std::function<void()> _on_exit_pattern_editor,
 
 		singleton->ri_seq = ri_seq;
 		singleton->pattern_id = pattern_id;
-		singleton->pattern_start_position = pattern_start_position;
 		ri_seq->add_pattern_listener(pattern_id, singleton->shared_from_this());
 	}
 }

@@ -55,7 +55,7 @@ private:
 	std::function<void()> on_exit_pattern_editor;
 
 	double pianoroll_offset = 0.0;
-	int finger_position, new_tone, pattern_start_position;
+	int finger_position, new_tone;
 	double event_left_x, event_right_x;
 	double event_start_x, event_start_y;
 	double event_current_x, event_current_y;
@@ -90,7 +90,6 @@ public:
 	static void hide();
 	static void show(std::function<void()> on_exit_pattern_editor,
 			 std::shared_ptr<RISequence> ri_seq,
-			 int pattern_start_position,
 			 uint32_t pattern_id);
 
 	virtual void note_added(uint32_t pattern_id, const RINote &note);
