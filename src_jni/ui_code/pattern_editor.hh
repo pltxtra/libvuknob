@@ -36,10 +36,6 @@ struct NoteGraphic {
 	uint32_t id;
 	RINote note;
 	KammoGUI::GnuVGCanvas::ElementReference graphic_reference;
-
-	inline bool operator<(const NoteGraphic& rhs) const {
-		return note < rhs.note;
-	}
 };
 
 class PatternEditor
@@ -59,7 +55,7 @@ private:
 	std::function<void()> on_exit_pattern_editor;
 
 	double pianoroll_offset = 0.0;
-	int new_tone_relative, tone_at_top = 0, pattern_start_position;
+	int finger_position, new_tone, pattern_start_position;
 	double event_left_x, event_right_x;
 	double event_start_x, event_start_y;
 	double event_current_x, event_current_y;
@@ -76,7 +72,7 @@ private:
 	int canvas_w, canvas_h;
 
 	IDAllocator note_graphics_id_allocator;
-	std::set<NoteGraphic> note_graphics;
+	std::map<RINote, NoteGraphic> note_graphics;
 
 	void create_note_graphic(const RINote &note);
 	void delete_note_graphic(const RINote &note);

@@ -48,14 +48,18 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		display_action = true;
 		event_start_x = event_current_x;
 		event_start_y = event_current_y;
-		new_tone_relative = (int)floor(event_current_y / finger_height);
 
-		SATAN_DEBUG("event_start_x: %f\n", event_start_x);
+		finger_position = (int)floor(event_current_y / finger_height);
+		new_tone = ((int)floor(pianoroll_offset)) + canvas_height_fingers - finger_position - 1;
+
 		break;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
 		SATAN_DEBUG("event_current_x: %f\n", event_current_x);
+		SATAN_DEBUG("finger_position: %f\n", event_current_x);
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
+		SATAN_DEBUG("new_tone: %d\n", new_tone);
+
 		start_at_sequence_position = timelines->get_sequence_minor_position_at(event_left_x);
 		stop_at_sequence_position = timelines->get_sequence_minor_position_at(event_right_x);
 
@@ -75,7 +79,7 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 			ri_seq->add_note(
 				pattern_id,
 				0, 0, 0xff,
-				new_tone_relative + tone_at_top,
+				new_tone,
 				start_at_sequence_position - pattern_start_position,
 				stop_at_sequence_position - start_at_sequence_position
 				);
@@ -99,8 +103,7 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 	new_piece_indicator.set_display(display_action ? "inline" : "none");
 	if(display_action) {
 		SATAN_DEBUG("b_x: %f, e_x: %f\n", event_left_x, event_right_x);
-		double top = new_tone_relative * finger_height;
-		double bottom = top + finger_height;
+		double top = finger_position * finger_height;
 		new_piece_indicator.set_rect_coords(event_left_x, top, event_right_x, finger_height);
 	}
 
@@ -127,9 +130,9 @@ void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event)
 		{
 			auto diff = event_current_y - event_start_y;
 			pianoroll_offset += diff / finger_height;
-			SATAN_DEBUG("pianoroll offset: %f\n", pianoroll_offset);
 			if(pianoroll_offset < 0.0) pianoroll_offset = 0.0;
 			if(pianoroll_offset > 127.0) pianoroll_offset = 127.0;
+			SATAN_DEBUG("pianoroll offset: %f\n", pianoroll_offset);
 		}
 		event_start_x = event_current_x;
 		event_start_y = event_current_y;
@@ -141,6 +144,11 @@ void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event)
 
 void PatternEditor::create_note_graphic(const RINote &new_note) {
 	SATAN_DEBUG("create_note_graphic()\n");
+
+	if(note_graphics.find(new_note) != note_graphics.end()) {
+		SATAN_DEBUG("Cannot insert graphic, element already exists.");
+		return;
+	}
 
 	auto new_id = note_graphics_id_allocator.get_id();
 
@@ -163,29 +171,33 @@ void PatternEditor::create_note_graphic(const RINote &new_note) {
 	   << "y=\"0.0\" />"
 */
 		;
+	SATAN_DEBUG("New note: %d (%d -> %d)\n", new_note.note, new_note.on_at, new_note.length);
 	SATAN_DEBUG("Inserting graphic: %s", ss.str().c_str());
 	auto note_container = KammoGUI::GnuVGCanvas::ElementReference(this, "noteContainer");
 	note_container.add_svg_child(ss.str());
 	SATAN_DEBUG("Graphic inserted: %s", ss.str().c_str());
 	KammoGUI::GnuVGCanvas::ElementReference elref(&note_container, ss_new_id.str());
 
-	auto ng = NoteGraphic {
+	note_graphics[new_note] = NoteGraphic {
 		.id = new_id,
 		.note = new_note,
 		.graphic_reference = elref
 	};
-
-	auto status = note_graphics.insert(ng);
-	if(status.second == false) {
-		SATAN_DEBUG("Cannot insert graphic, element already exists, dropping: %s", ss.str().c_str());
-		elref.drop_element();
-	}
 }
 
 void PatternEditor::delete_note_graphic(const RINote &note) {
 	SATAN_DEBUG("delete_note_graphic()\n");
 
-
+	auto found_element = note_graphics.find(note);
+	if(found_element != note_graphics.end()) {
+		auto v = found_element->second;
+		SATAN_DEBUG("Will delete note graphic for: %d (%d -> %d)\n",
+			    v.note.note,
+			    v.note.on_at,
+			    v.note.length);
+		v.graphic_reference.drop_element();
+		note_graphics.erase(found_element);
+	}
 }
 
 PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
