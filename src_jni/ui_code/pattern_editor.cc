@@ -28,6 +28,7 @@
 #include "pattern_editor.hh"
 #include "svg_loader.hh"
 #include "common.hh"
+#include "fling_animation.hh"
 
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
@@ -117,7 +118,44 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 
 }
 
+void PatternEditor::pianoroll_scrolled_vertical(float pixels_changed) {
+	pianoroll_offset += ((double)pixels_changed) / finger_height;
+	if(pianoroll_offset < 0.0) pianoroll_offset = 0.0;
+	if(pianoroll_offset > 127.0) pianoroll_offset = 127.0;
+	SATAN_DEBUG("pianoroll offset: %f\n", pianoroll_offset);
+	refresh_note_graphics();
+}
+
 void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event) {
+	if(fling_detector.on_touch_event(event)) {
+		SATAN_DEBUG("fling detected.\n");
+		float speed_x, speed_y;
+		float abs_speed_x, abs_speed_y;
+
+		fling_detector.get_speed(speed_x, speed_y);
+		fling_detector.get_absolute_speed(abs_speed_x, abs_speed_y);
+
+		bool do_horizontal_fling = abs_speed_x > abs_speed_y ? true : false;
+
+		float speed = 0.0f, abs_speed;
+		std::function<void(float pixels_changed)> scrolled;
+
+		if(!do_horizontal_fling) {
+			abs_speed = abs_speed_y;
+			speed = speed_y;
+			scrolled = [this](float pixels_changed){
+				pianoroll_scrolled_vertical(pixels_changed);
+				SATAN_DEBUG("Scrolled vertical: %f\n", pixels_changed);
+			};
+
+			float fling_duration = abs_speed / FLING_DEACCELERATION;
+
+			FlingAnimation *flinganim =
+				new FlingAnimation(speed, fling_duration, scrolled);
+			start_animation(flinganim);
+		}
+	}
+
 	event_current_x = event.get_x();
 	event_current_y = event.get_y();
 
@@ -137,10 +175,7 @@ void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event)
 		SATAN_DEBUG("event_current_x: %f\n", event_current_x);
 		{
 			auto diff = event_current_y - event_start_y;
-			pianoroll_offset += diff / finger_height;
-			if(pianoroll_offset < 0.0) pianoroll_offset = 0.0;
-			if(pianoroll_offset > 127.0) pianoroll_offset = 127.0;
-			SATAN_DEBUG("pianoroll offset: %f\n", pianoroll_offset);
+			pianoroll_scrolled_vertical(diff);
 		}
 		event_start_x = event_current_x;
 		event_start_y = event_current_y;
@@ -148,8 +183,6 @@ void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event)
 	case KammoGUI::MotionEvent::ACTION_UP:
 		break;
 	}
-
-	refresh_note_graphics();
 }
 
 void PatternEditor::on_timelines_scroll(double minor_spacing, double horizontal_offset,

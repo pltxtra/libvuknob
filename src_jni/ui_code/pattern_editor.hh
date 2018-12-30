@@ -21,7 +21,6 @@
 #define VUKNOB_PATTERN_EDITOR
 
 #include <gnuVGcanvas.hh>
-#include <kamogui_scale_detector.hh>
 #include <kamogui_fling_detector.hh>
 
 #include "engine_code/sequence.hh"
@@ -45,6 +44,8 @@ class PatternEditor
 {
 private:
 	static PatternEditor *singleton;
+
+	KammoGUI::FlingGestureDetector fling_detector;
 
 	KammoGUI::GnuVGCanvas::ElementReference *backdrop_reference = 0;
 	KammoGUI::GnuVGCanvas::ElementReference *pianorollscroll_reference = 0;
@@ -74,6 +75,7 @@ private:
 	IDAllocator note_graphics_id_allocator;
 	std::map<RINote, NoteGraphic> note_graphics;
 
+	void pianoroll_scrolled_vertical(float pixels_changed);
 	void refresh_note_graphics();
 	void create_note_graphic(const RINote &note);
 	void delete_note_graphic(const RINote &note);
