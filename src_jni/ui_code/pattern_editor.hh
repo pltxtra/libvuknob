@@ -74,12 +74,15 @@ private:
 	IDAllocator note_graphics_id_allocator;
 	std::map<RINote, NoteGraphic> note_graphics;
 
+	void refresh_note_graphics();
 	void create_note_graphic(const RINote &note);
 	void delete_note_graphic(const RINote &note);
 
 	void on_backdrop_event(const KammoGUI::MotionEvent &event);
 	void on_pianorollscroll_event(const KammoGUI::MotionEvent &event);
-
+	void on_timelines_scroll(double minor_spacing, double horizontal_offset,
+				 int min_visible_offset,
+				 int max_visible_offset);
 public:
 	PatternEditor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
 	~PatternEditor();

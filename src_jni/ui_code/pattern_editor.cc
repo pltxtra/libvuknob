@@ -148,6 +148,14 @@ void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event)
 	case KammoGUI::MotionEvent::ACTION_UP:
 		break;
 	}
+
+	refresh_note_graphics();
+}
+
+void PatternEditor::on_timelines_scroll(double minor_spacing, double horizontal_offset,
+					int min_visible_offset,
+					int max_visible_offset) {
+	refresh_note_graphics();
 }
 
 void PatternEditor::create_note_graphic(const RINote &new_note) {
@@ -191,6 +199,8 @@ void PatternEditor::create_note_graphic(const RINote &new_note) {
 		.note = new_note,
 		.graphic_reference = elref
 	};
+
+	refresh_note_graphics();
 }
 
 void PatternEditor::delete_note_graphic(const RINote &note) {
@@ -213,6 +223,14 @@ PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/VerticalKeyboard.svg"), cnvs)
 	, timelines(_timelines)
 {
+	timelines->add_scroll_callback([this](double minor_spacing, double horizontal_offset,
+					      int min_visible_offset,
+					      int max_visible_offset) {
+					       on_timelines_scroll(minor_spacing,
+								   horizontal_offset,
+								   min_visible_offset,
+								   max_visible_offset);
+				       });
 	singleton = this;
 
 	backdrop_reference = new KammoGUI::GnuVGCanvas::ElementReference(this, "backdrop");
@@ -239,6 +257,36 @@ PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
 
 PatternEditor::~PatternEditor() {
 	singleton = nullptr;
+}
+
+void PatternEditor::refresh_note_graphics() {
+	int lowest_note = (int)pianoroll_offset;
+	int highest_note = lowest_note + canvas_height_fingers + 1;
+	auto timelines_offset = timelines->get_graphics_horizontal_offset();
+	auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_minor();
+	double temp = -timelines_offset / timelines_minor_spacing;
+	int earliest_visible_note = (int)temp;
+	int last_visible_note = earliest_visible_note + canvas_width_fingers * 16;
+	double offset = pianoroll_offset - floor(pianoroll_offset);
+
+	for(auto n_grph : note_graphics) {
+		auto n = n_grph.first;
+		auto g = n_grph.second.graphic_reference;
+		if(lowest_note <= n.note && n.note < highest_note &&
+		   earliest_visible_note < (n.on_at + n.length) && n.on_at < last_visible_note) {
+			g.set_display("inline");
+
+			auto stt = n.on_at;
+			auto stp = n.on_at + n.length;
+			double lft = timelines_minor_spacing * stt + timelines_offset;
+			double rgt = timelines_minor_spacing * stp + timelines_offset;
+
+			double top = (canvas_height_fingers - (1 + n.note - lowest_note) + offset) * finger_height;
+			g.set_rect_coords(lft, top, rgt - lft, finger_height);
+		} else {
+			g.set_display("none");
+		}
+	}
 }
 
 void PatternEditor::on_resize() {
