@@ -233,6 +233,8 @@ MachineSequencer::NoteEntry *MachineSequencer::Loop::internal_delete_note(const 
 	NoteEntry *crnt = note;
 	while(crnt != NULL) {
 		if(crnt == net) {
+			if(next_note_to_play == crnt)
+				next_note_to_play = crnt->next;
 			if(crnt->prev != NULL) {
 				crnt->prev->next = crnt->next;
 			}
