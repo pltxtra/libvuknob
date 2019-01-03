@@ -321,6 +321,23 @@ SERVER_CODE(
 		return "";
 	}
 
+	uint32_t Sequence::internal_get_loop_id_at(int sequence_position) {
+		uint32_t id_at_requested_position IDAllocater::NO_ID_AVAILABLE;
+		instance_list.for_each(
+			[this](PatternInstance *pin) {
+				if(pin->start_at <= sequence_position && sequence_position < pin->stop_at)
+					id_at_requested_position = pin->pattern_id;
+			}
+			);
+		return id_at_requested_position;
+	}
+
+	void Sequence::start_to_play(Pattern *pattern_to_play) {
+		current_pattern = pattern_to_play;
+		playing_position_in_current_pattern = 0;
+		next_note_to_play = current_pattern->note_list.head;
+	}
+
 	void Sequence::fill_buffers() {
 		// get output signal buffer and clear it.
 		Signal *out_sig = output[MACHINE_SEQUENCER_MIDI_OUTPUT_NAME];
@@ -332,6 +349,58 @@ SERVER_CODE(
 		       0,
 		       sizeof(void *) * output_limit
 			);
+
+		// synch to click track
+		int sequence_position = get_next_sequence_position();
+		int current_tick = get_next_tick();
+		int samples_per_tick = get_samples_per_tick(_MIDI);
+		bool do_loop = get_loop_state();
+		int loop_start = get_loop_start();
+		int loop_stop = get_loop_length() + loop_start;
+		int samples_per_tick_shuffle = get_samples_per_tick_shuffle(_MIDI);
+		int skip_length = get_next_tick_at(_MIDI);
+
+		_meb.use_buffer(output_buffer, output_limit);
+
+		bool no_sound = get_is_playing() ? mute : true;
+
+		while(_meb.skip(skip_length)) {
+
+//			pad.process(no_sound, PAD_TIME(sequence_position, current_tick), &_meb);
+
+			if(current_tick == 0) {
+				int pattern_id = internal_get_loop_id_at(sequence_position);
+
+				if(pattern_id != IDAllocator::NO_ID_AVAILABLE) {
+					start_to_play(patterns[pattern_id]);
+				}
+			}
+
+			if(current_loop) {
+				current_loop->process(no_sound, &_meb);
+			}
+
+			process_controller_envelopes(PAD_TIME(sequence_position, current_tick), &_meb);
+
+			current_tick = (current_tick + 1) % MACHINE_TICKS_PER_LINE;
+
+			if(current_tick == 0) {
+				sequence_position++;
+
+				if(do_loop && sequence_position >= loop_stop) {
+					sequence_position = loop_start;
+				}
+			}
+
+			if(sequence_position % 2 == 0) {
+				skip_length = samples_per_tick - samples_per_tick_shuffle;
+			} else {
+				skip_length = samples_per_tick + samples_per_tick_shuffle;
+			}
+
+		}
+
+		_meb.finish_current_buffer();
 	}
 
 	void Sequence::reset() {

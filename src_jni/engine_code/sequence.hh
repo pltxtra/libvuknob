@@ -34,6 +34,7 @@
 #include "../serialize.hh"
 
 #ifdef __RI__SERVER_SIDE
+#include "../midi_generation.hh"
 #include "../machine_sequencer.hh"
 #endif
 
@@ -202,15 +203,6 @@ namespace RemoteInterface {
 			}
 
 		private:
-			ON_SERVER(
-				static std::map<std::shared_ptr<Machine>,
-				std::shared_ptr<Sequence> > machine2sequence;
-				);
-
-			ON_CLIENT(
-				std::set<std::shared_ptr<SequenceListener> > sequence_listeners;
-				);
-
 			struct Pattern {
 				ON_CLIENT(
 					std::set<std::shared_ptr<PatternListener> > pattern_listeners;
@@ -224,6 +216,21 @@ namespace RemoteInterface {
 				static Pattern* allocate();
 			};
 
+			ON_SERVER(
+				MidiEventBuilder _meb;
+				static std::map<std::shared_ptr<Machine>,
+				std::shared_ptr<Sequence> > machine2sequence;
+				Pattern *current_pattern = NULL;
+				int playing_position_in_current_pattern = 0;
+				Note *next_note_to_play = NULL;
+				static constexpr const int MAX_ACTIVE_NOTES = 16;
+				Note *active_note[MAX_ACTIVE_NOTES};
+				);
+
+			ON_CLIENT(
+				std::set<std::shared_ptr<SequenceListener> > sequence_listeners;
+				);
+
 			static ObjectAllocator<Pattern> pattern_allocator;
 			static ObjectAllocator<PatternInstance> pattern_instance_allocator;
 			static ObjectAllocator<Note> note_allocator;
@@ -232,11 +239,13 @@ namespace RemoteInterface {
 			std::map<uint32_t, Pattern*> patterns;
 			LinkedList<PatternInstance> instance_list;
 			std::string sequence_name;
+			bool mute = false;
 
 			/* internal functions */
 			ON_CLIENT(
 				void get_notes(uint32_t pattern_id, std::list<Note> &storage);
 				);
+			uint32_t internal_get_loop_id_at(int sequence_position);
 
 			/* internal processing of commands - on both the server & client */
 			void process_add_pattern(const std::string& new_name, uint32_t new_id);

@@ -679,6 +679,7 @@ protected:
 	// setup_machine should be called as soon as you have filled the input/output_descriptor pairs.
 	void setup_machine();
 
+	inline bool get_is_playing() { return is_playing; }
 	virtual void fill_buffers() = 0;
 
 	// reset a machine to a defined state
