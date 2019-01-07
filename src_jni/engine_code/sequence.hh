@@ -36,6 +36,7 @@
 #ifdef __RI__SERVER_SIDE
 #include "../midi_generation.hh"
 #include "../machine_sequencer.hh"
+#include "controller_envelope.hh"
 #endif
 
 namespace RemoteInterface {
@@ -82,6 +83,10 @@ namespace RemoteInterface {
 				    velocity,// only values that are within (velocity & 0x7f)
 				    note;    // only values that are within (note & 0x7f)
 				int on_at, length;
+
+				ON_SERVER(
+					int ticks2off; // playback counter
+					)
 
 				Note *next; // to support class LinkedList<T>
 
@@ -192,11 +197,11 @@ namespace RemoteInterface {
 				virtual Controller *internal_get_controller(const std::string &name);
 				/// get a hint about what this machine is (for example, "effect" or "generator")
 				virtual std::string internal_get_hint();
-				);
+				)
 			ON_SERVER(
 				static void create_sequence_for_machine(std::shared_ptr<Machine> m_ptr);
 				virtual void serialize(std::shared_ptr<Message> &target) override;
-				);
+				)
 
 			virtual void on_delete(RemoteInterface::Context* context) override {
 				context->unregister_this_object(this);
@@ -207,6 +212,11 @@ namespace RemoteInterface {
 				ON_CLIENT(
 					std::set<std::shared_ptr<PatternListener> > pattern_listeners;
 					);
+				ON_SERVER(
+					int current_playing_position = 0;
+					Note *next_note_to_play = NULL;
+					Note *active_note[MAX_ACTIVE_NOTES];
+					)
 				uint32_t id;
 				std::string name;
 				LinkedList<Note> note_list;
@@ -221,10 +231,6 @@ namespace RemoteInterface {
 				static std::map<std::shared_ptr<Machine>,
 				std::shared_ptr<Sequence> > machine2sequence;
 				Pattern *current_pattern = NULL;
-				int playing_position_in_current_pattern = 0;
-				Note *next_note_to_play = NULL;
-				static constexpr const int MAX_ACTIVE_NOTES = 16;
-				Note *active_note[MAX_ACTIVE_NOTES};
 				);
 
 			ON_CLIENT(
@@ -245,7 +251,25 @@ namespace RemoteInterface {
 			ON_CLIENT(
 				void get_notes(uint32_t pattern_id, std::list<Note> &storage);
 				);
-			uint32_t internal_get_loop_id_at(int sequence_position);
+			ON_SERVER(
+				uint32_t internal_get_loop_id_at(int sequence_position);
+				void start_to_play_pattern(Pattern *pattern_to_play);
+				bool activate_note(Pattern *p, Note *note);
+				void deactivate_note(Pattern *p, Note *note);
+				void process_note_on(Pattern *p, bool mute, MidiEventBuilder *_meb);
+				void process_note_off(Pattern *p, MidiEventBuilder *_meb);
+				void process_current_pattern(bool mute, MidiEventBuilder *_meb);
+				/*************
+				 *
+				 * controller envelopes - the envelopes start at global line 0 and continue as long as they have control
+				 *                        points. It's one envelope for each controller that supports MIDI. The envelopes
+				 *                        are not stored in the loops, so you have one for the whole sequence
+				 *
+				 *****/
+//				void create_controller_envelopes();
+//				void process_controller_envelopes(int current_tick, MidiEventBuilder *_meb);
+//				std::map<std::string, ControllerEnvelope *> controller_envelope; // a map of controller names to their envelopes
+				);
 
 			/* internal processing of commands - on both the server & client */
 			void process_add_pattern(const std::string& new_name, uint32_t new_id);

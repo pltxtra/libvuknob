@@ -321,87 +321,147 @@ SERVER_CODE(
 		return "";
 	}
 
-	uint32_t Sequence::internal_get_loop_id_at(int sequence_position) {
-		uint32_t id_at_requested_position IDAllocater::NO_ID_AVAILABLE;
-		instance_list.for_each(
-			[this](PatternInstance *pin) {
-				if(pin->start_at <= sequence_position && sequence_position < pin->stop_at)
-					id_at_requested_position = pin->pattern_id;
+	ON_SERVER(
+		uint32_t Sequence::internal_get_loop_id_at(int sequence_position) {
+			uint32_t id_at_requested_position = IDAllocator::NO_ID_AVAILABLE;
+			instance_list.for_each(
+				[this, sequence_position, &id_at_requested_position](PatternInstance *pin) {
+					if(pin->start_at <= sequence_position && sequence_position < pin->stop_at)
+						id_at_requested_position = pin->pattern_id;
+				}
+				);
+			return id_at_requested_position;
+		}
+
+		void Sequence::start_to_play_pattern(Pattern *pattern_to_play) {
+			current_pattern = pattern_to_play;
+			current_pattern->current_playing_position = 0;
+			current_pattern->next_note_to_play = current_pattern->note_list.head;
+		}
+
+		bool Sequence::activate_note(Pattern *p, Note *note) {
+			for(int x = 0; x < MAX_ACTIVE_NOTES; x++) {
+				if(p->active_note[x] == NULL) {
+					p->active_note[x] = note;
+					return true;
+				}
 			}
-			);
-		return id_at_requested_position;
-	}
+			return false;
+		}
 
-	void Sequence::start_to_play(Pattern *pattern_to_play) {
-		current_pattern = pattern_to_play;
-		playing_position_in_current_pattern = 0;
-		next_note_to_play = current_pattern->note_list.head;
-	}
+		void Sequence::deactivate_note(Pattern *p, Note *note) {
+			for(int x = 0; x < MAX_ACTIVE_NOTES; x++) {
+				if(p->active_note[x] == note) {
+					p->active_note[x] = NULL;
+					return;
+				}
+			}
+		}
 
-	void Sequence::fill_buffers() {
-		// get output signal buffer and clear it.
-		Signal *out_sig = output[MACHINE_SEQUENCER_MIDI_OUTPUT_NAME];
+		void Sequence::process_note_on(Pattern *p, bool mute, MidiEventBuilder *_meb) {
+			auto playing = get_is_playing();
+			while(p->next_note_to_play != NULL &&
+			      (p->next_note_to_play->on_at == p->current_playing_position)) {
+				Note *n = p->next_note_to_play;
 
-		int output_limit = out_sig->get_samples();
-		void **output_buffer = (void **)out_sig->get_buffer();
+				if(playing && (!mute) && activate_note(p, n)) {
+					_meb->queue_note_on(n->note, n->velocity, n->channel);
+					n->ticks2off = n->length + 1;
+				}
+				// then move on to the next in queue
+				p->next_note_to_play = n->next;
+			}
+		}
 
-		memset(output_buffer,
-		       0,
-		       sizeof(void *) * output_limit
-			);
+		void Sequence::process_note_off(Pattern *p, MidiEventBuilder *_meb) {
+			for(int k = 0; k < MAX_ACTIVE_NOTES; k++) {
+				if(p->active_note[k] != NULL) {
+					Note *n = p->active_note[k];
+					if(n->ticks2off > 0) {
+						n->ticks2off--;
+					} else {
+						deactivate_note(p, n);
+						_meb->queue_note_off(n->note, 0x80, n->channel);
+					}
+				}
+			}
+		}
 
-		// synch to click track
-		int sequence_position = get_next_sequence_position();
-		int current_tick = get_next_tick();
-		int samples_per_tick = get_samples_per_tick(_MIDI);
-		bool do_loop = get_loop_state();
-		int loop_start = get_loop_start();
-		int loop_stop = get_loop_length() + loop_start;
-		int samples_per_tick_shuffle = get_samples_per_tick_shuffle(_MIDI);
-		int skip_length = get_next_tick_at(_MIDI);
+		void Sequence::process_current_pattern(bool mute, MidiEventBuilder *_meb)  {
+			if(current_pattern) {
+				process_note_on(current_pattern, mute, _meb);
+				process_note_off(current_pattern, _meb);
+				current_pattern->current_playing_position++;
+			}
+		}
 
-		_meb.use_buffer(output_buffer, output_limit);
+		void Sequence::fill_buffers() {
+			// get output signal buffer and clear it.
+			Signal *out_sig = output[MACHINE_SEQUENCER_MIDI_OUTPUT_NAME];
 
-		bool no_sound = get_is_playing() ? mute : true;
+			int output_limit = out_sig->get_samples();
+			void **output_buffer = (void **)out_sig->get_buffer();
 
-		while(_meb.skip(skip_length)) {
+			memset(output_buffer,
+			       0,
+			       sizeof(void *) * output_limit
+				);
+
+			// synch to click track
+			int sequence_position = get_next_sequence_position();
+			int current_tick = get_next_tick();
+			int samples_per_tick = get_samples_per_tick(_MIDI);
+			bool do_loop = get_loop_state();
+			int loop_start = get_loop_start();
+			int loop_stop = get_loop_length() + loop_start;
+			int samples_per_tick_shuffle = get_samples_per_tick_shuffle(_MIDI);
+			int skip_length = get_next_tick_at(_MIDI);
+
+			_meb.use_buffer(output_buffer, output_limit);
+
+			bool no_sound = get_is_playing() ? mute : true;
+
+			while(_meb.skip(skip_length)) {
 
 //			pad.process(no_sound, PAD_TIME(sequence_position, current_tick), &_meb);
 
-			if(current_tick == 0) {
-				int pattern_id = internal_get_loop_id_at(sequence_position);
+				if(current_tick == 0) {
+					auto pattern_id = internal_get_loop_id_at(sequence_position);
 
-				if(pattern_id != IDAllocator::NO_ID_AVAILABLE) {
-					start_to_play(patterns[pattern_id]);
+					if(pattern_id != IDAllocator::NO_ID_AVAILABLE) {
+						start_to_play_pattern(patterns[pattern_id]);
+					}
 				}
-			}
 
-			if(current_loop) {
-				current_loop->process(no_sound, &_meb);
-			}
+				process_current_pattern(no_sound, &_meb);
 
-			process_controller_envelopes(PAD_TIME(sequence_position, current_tick), &_meb);
+//				process_controller_envelopes(PAD_TIME(sequence_position, current_tick), &_meb);
 
-			current_tick = (current_tick + 1) % MACHINE_TICKS_PER_LINE;
+				current_tick = (current_tick + 1) % MACHINE_TICKS_PER_LINE;
 
-			if(current_tick == 0) {
-				sequence_position++;
+				if(current_tick == 0) {
+					sequence_position++;
 
-				if(do_loop && sequence_position >= loop_stop) {
-					sequence_position = loop_start;
+					if(do_loop && sequence_position >= loop_stop) {
+						sequence_position = loop_start;
+					}
 				}
+
+				if(sequence_position % 2 == 0) {
+					skip_length = samples_per_tick - samples_per_tick_shuffle;
+				} else {
+					skip_length = samples_per_tick + samples_per_tick_shuffle;
+				}
+
 			}
 
-			if(sequence_position % 2 == 0) {
-				skip_length = samples_per_tick - samples_per_tick_shuffle;
-			} else {
-				skip_length = samples_per_tick + samples_per_tick_shuffle;
-			}
-
+			_meb.finish_current_buffer();
 		}
+		);
 
-		_meb.finish_current_buffer();
-	}
+	ON_CLIENT(
+		void Sequence::fill_buffers() {}
+		);
 
 	void Sequence::reset() {
 	}
@@ -745,6 +805,11 @@ SERVER_N_CLIENT_CODE(
 		auto ptrn_itr = patterns.find(pattern_id);
 
 		if(ptrn_itr != patterns.end()) {
+			ON_SERVER(
+				if(current_pattern == ptrn_itr->second) {
+					current_pattern = nullptr;
+				}
+				)
 			ptrn_itr->second->note_list.clear(
 				[](Note* to_drop) {
 					note_allocator.recycle(to_drop);
@@ -840,6 +905,12 @@ SERVER_N_CLIENT_CODE(
 		auto ptrn_itr = patterns.find(pattern_id);
 		if(ptrn_itr == patterns.end()) return;
 		auto ptrn = ptrn_itr->second;
+
+		ON_SERVER(
+			if(note == *(ptrn->next_note_to_play)) {
+				ptrn->next_note_to_play = ptrn->next_note_to_play->next;
+			}
+			);
 
 		ptrn->note_list.drop_element(
 			&note,
