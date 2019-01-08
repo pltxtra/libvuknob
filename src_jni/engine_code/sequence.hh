@@ -252,7 +252,7 @@ namespace RemoteInterface {
 				void get_notes(uint32_t pattern_id, std::list<Note> &storage);
 				);
 			ON_SERVER(
-				uint32_t internal_get_loop_id_at(int sequence_position);
+				uint32_t get_pattern_starting_at(int sequence_position);
 				void start_to_play_pattern(Pattern *pattern_to_play);
 				bool activate_note(Pattern *p, Note *note);
 				void deactivate_note(Pattern *p, Note *note);

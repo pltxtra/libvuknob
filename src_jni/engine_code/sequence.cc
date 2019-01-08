@@ -322,11 +322,11 @@ SERVER_CODE(
 	}
 
 	ON_SERVER(
-		uint32_t Sequence::internal_get_loop_id_at(int sequence_position) {
+		uint32_t Sequence::get_pattern_starting_at(int sequence_position) {
 			uint32_t id_at_requested_position = IDAllocator::NO_ID_AVAILABLE;
 			instance_list.for_each(
 				[this, sequence_position, &id_at_requested_position](PatternInstance *pin) {
-					if(pin->start_at <= sequence_position && sequence_position < pin->stop_at)
+					if(pin->start_at == sequence_position)
 						id_at_requested_position = pin->pattern_id;
 				}
 				);
@@ -426,7 +426,7 @@ SERVER_CODE(
 //			pad.process(no_sound, PAD_TIME(sequence_position, current_tick), &_meb);
 
 				if(current_tick == 0) {
-					auto pattern_id = internal_get_loop_id_at(sequence_position);
+					auto pattern_id = get_pattern_starting_at(sequence_position);
 
 					if(pattern_id != IDAllocator::NO_ID_AVAILABLE) {
 						start_to_play_pattern(patterns[pattern_id]);
