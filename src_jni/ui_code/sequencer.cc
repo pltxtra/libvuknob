@@ -512,13 +512,13 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		KammoGUI::GnuVGCanvas *cnvs = (KammoGUI::GnuVGCanvas *)wid;
 		cnvs->set_bg_color(1.0, 1.0, 1.0);
 
-		static auto current_timelines = std::make_shared<TimeLines>(cnvs);
-		static auto current_sequencer = std::make_shared<Sequencer>(cnvs, current_timelines);
-		static auto current_pattern_editor = std::make_shared<PatternEditor>(cnvs, current_timelines);
+		static auto timelines = std::make_shared<TimeLines>(cnvs);
+		static auto sequencer = std::make_shared<Sequencer>(cnvs, timelines);
+		static auto pattern_editor = std::make_shared<PatternEditor>(cnvs, timelines);
 		PatternEditor::hide();
 
 		auto ptr =
-			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RISequence> >(current_sequencer);
+			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RISequence> >(sequencer);
 		std::weak_ptr<RemoteInterface::Context::ObjectSetListener<RISequence> > w_ptr = ptr;
 		RemoteInterface::ClientSpace::Client::register_object_set_listener(w_ptr);
 	}
