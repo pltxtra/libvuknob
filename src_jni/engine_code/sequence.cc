@@ -248,6 +248,23 @@ SERVER_CODE(
 
 	}
 
+	void Sequence::handle_req_enqueue_midi_data(RemoteInterface::Context *context,
+						    RemoteInterface::MessageHandler *src,
+						    const RemoteInterface::Message& msg) {
+		size_t len = 0;
+		char *data = NULL;
+		decode_byte_array(msg.get_value("data"), len, &data);
+		if(data == NULL) {
+			SATAN_ERROR("Could not decode enqueued midi data.");
+			return;
+		}
+		Machine::machine_operation_enqueue(
+			[this, data, len] {
+				_meb.queue_midi_data(len, data);
+				free(data);
+			});
+	}
+
 	std::map<std::shared_ptr<Machine>, std::shared_ptr<Sequence> > Sequence::machine2sequence;
 
 	void Sequence::create_sequence_for_machine(std::shared_ptr<Machine> sibling) {
@@ -750,6 +767,18 @@ CLIENT_CODE(
 				msg2send->set_value("length", std::to_string(length));
 			}
 		);
+	}
+
+	void Sequence::enqueue_midi_data(size_t len, const char* data) {
+		std::string encoded = encode_byte_array(len, data);
+		send_message_to_server(
+			req_enqueue_midi_data,
+			[encoded](std::shared_ptr<Message> &msg2send) {
+				msg2send->set_value("command", "midi");
+				msg2send->set_value("data", encoded);
+				SATAN_DEBUG("Sequence::enqueue_midi_data() - data: %s\n", encoded.c_str());
+			}
+			);
 	}
 
 	std::string Sequence::get_name() {

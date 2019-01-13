@@ -164,6 +164,8 @@ namespace RemoteInterface {
 				void add_sequence_listener(std::shared_ptr<SequenceListener> sel);
 				void add_pattern_listener(uint32_t pattern_id, std::shared_ptr<PatternListener> pal);
 				void drop_pattern_listener(std::shared_ptr<PatternListener> pal);
+
+				void enqueue_midi_data(size_t len, const char* data);
 				);
 
 			Sequence(const Factory *factory, const RemoteInterface::Message &serialized);
@@ -293,6 +295,7 @@ namespace RemoteInterface {
 			SERVER_SIDE_HANDLER(req_del_pattern_instance, "req_del_ptrn_inst");
 			SERVER_SIDE_HANDLER(req_add_note, "req_add_note");
 			SERVER_SIDE_HANDLER(req_del_note, "req_del_note");
+			SERVER_SIDE_HANDLER(req_enqueue_midi_data, "req_enqueue_midi_data");
 
 			CLIENT_SIDE_HANDLER(cmd_add_pattern, "cmd_add_ptrn");
 			CLIENT_SIDE_HANDLER(cmd_del_pattern, "cmd_del_ptrn");
@@ -308,6 +311,7 @@ namespace RemoteInterface {
 				SERVER_REG_HANDLER(Sequence,req_del_pattern_instance);
 				SERVER_REG_HANDLER(Sequence,req_add_note);
 				SERVER_REG_HANDLER(Sequence,req_del_note);
+				SERVER_REG_HANDLER(Sequence,req_enqueue_midi_data);
 
 				CLIENT_REG_HANDLER(Sequence,cmd_add_pattern);
 				CLIENT_REG_HANDLER(Sequence,cmd_del_pattern);

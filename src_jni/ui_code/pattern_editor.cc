@@ -127,6 +127,19 @@ void PatternEditor::pianoroll_scrolled_vertical(float pixels_changed) {
 }
 
 void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event) {
+	auto note_on = [this](int index) {
+		char midi_data[] = {
+			0x90, (char)(index), 0x7f
+		};
+		if(ri_seq) ri_seq->enqueue_midi_data(3, midi_data);
+	};
+	auto note_off = [this](int index) {
+		char midi_data[] = {
+			0x80, (char)(index), 0x7f
+		};
+		if(ri_seq) ri_seq->enqueue_midi_data(3, midi_data);
+	};
+
 	if(fling_detector.on_touch_event(event)) {
 		SATAN_DEBUG("fling detected.\n");
 		float speed_x, speed_y;
@@ -159,6 +172,11 @@ void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event)
 	event_current_x = event.get_x();
 	event_current_y = event.get_y();
 
+	auto finger_coord = (int)floor(event_current_y / finger_height);
+	auto new_tone_index = ((int)floor(pianoroll_offset)) + canvas_height_fingers - finger_coord - 1;
+
+	auto current_note_index = event_current_y / finger_height;
+
 	switch(event.get_action()) {
 	case KammoGUI::MotionEvent::ACTION_CANCEL:
 	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
@@ -168,6 +186,9 @@ void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event)
 	case KammoGUI::MotionEvent::ACTION_DOWN:
 		event_start_x = event_current_x;
 		event_start_y = event_current_y;
+
+		pianoroll_tone = new_tone_index;
+		note_on(pianoroll_tone);
 
 		SATAN_DEBUG("event_start_x: %f\n", event_start_x);
 		break;
@@ -180,7 +201,9 @@ void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event)
 		event_start_x = event_current_x;
 		event_start_y = event_current_y;
 		break;
+		note_off(pianoroll_tone);
 	case KammoGUI::MotionEvent::ACTION_UP:
+		note_off(pianoroll_tone);
 		break;
 	}
 }
