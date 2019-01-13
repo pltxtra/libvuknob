@@ -41,6 +41,7 @@
 static std::shared_ptr<TimeLines> timelines;
 static std::shared_ptr<Sequencer> sequencer;
 static std::shared_ptr<GnuVGCornerButton> plus_button;
+static std::shared_ptr<GnuVGCornerButton> return_button;
 static std::shared_ptr<PatternEditor> pattern_editor;
 
 /***************************
@@ -74,6 +75,7 @@ Sequencer::PatternInstance::PatternInstance(
 			auto main_container = get_root();
 			main_container.set_display("none");
 			plus_button->hide();
+			return_button->show();
 		}
 		);
 }
@@ -529,7 +531,12 @@ virtual void on_init(KammoGUI::Widget *wid) {
 			std::string(SVGLoader::get_svg_directory() + "/plusButton.svg"),
 			GnuVGCornerButton::bottom_right);
 		pattern_editor = std::make_shared<PatternEditor>(cnvs, timelines);
+		return_button = std::make_shared<GnuVGCornerButton>(
+			cnvs,
+			std::string(SVGLoader::get_svg_directory() + "/leftArrow.svg"),
+			GnuVGCornerButton::top_left);
 		PatternEditor::hide();
+		return_button->hide();
 
 		plus_button->set_select_callback(
 			[]() {
@@ -543,6 +550,12 @@ virtual void on_init(KammoGUI::Widget *wid) {
 					args["callback_event"] = callback_ue;
 					KammoGUI::EventHandler::trigger_user_event(ue, args);
 				}
+			});
+
+		return_button->set_select_callback(
+			[]() {
+				pattern_editor->hide();
+				return_button->hide();
 			});
 
 		auto ptr =
