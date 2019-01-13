@@ -1,0 +1,76 @@
+/*
+ * VuKNOB
+ * (C) 2014 by Anton Persson
+ *
+ * http://www.vuknob.com/
+ *
+ * This program is free software; you can redistribute it and/or modify it under the terms of
+ * the GNU General Public License version 2; see COPYING for the complete License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this program;
+ * if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ *
+ */
+
+#ifndef GNUVG_CORNER_CLASS
+#define GNUVG_CORNER_CLASS
+
+#include <gnuVGcanvas.hh>
+#include <functional>
+
+class GnuVGCornerButton : public KammoGUI::GnuVGCanvas::SVGDocument{
+public:
+	enum WhatCorner {top_left, top_right, bottom_left, bottom_right};
+
+private:
+	KammoGUI::GnuVGCanvas::SVGMatrix base_transform_t;
+	KammoGUI::GnuVGCanvas::ElementReference button;
+	WhatCorner my_corner;
+
+	class Transition : public KammoGUI::Animation {
+	private:
+		GnuVGCornerButton *ctx;
+		std::function<void(GnuVGCornerButton *context, float progress)> callback;
+
+	public:
+		Transition(GnuVGCornerButton *context, std::function<void(GnuVGCornerButton *context, float progress)> callback);
+		virtual void new_frame(float progress);
+		virtual void on_touch_event();
+	};
+
+	KammoGUI::GnuVGCanvas::ElementReference elref;
+
+	double first_selection_x, first_selection_y;
+	bool is_a_tap;
+
+	bool hidden;
+	double offset_factor, offset_target_x, offset_target_y;
+
+	static void transition_progressed(GnuVGCornerButton *ctx, float progress);
+	void run_transition();
+
+	std::function<void()> callback_function;
+
+	static void on_event(KammoGUI::GnuVGCanvas::SVGDocument *source,
+			     KammoGUI::GnuVGCanvas::ElementReference *e_ref,
+			     const KammoGUI::MotionEvent &event);
+public:
+
+	GnuVGCornerButton(KammoGUI::GnuVGCanvas *cnv, const std::string &svg_file, WhatCorner corner);
+	~GnuVGCornerButton();
+
+	virtual void on_render();
+	virtual void on_resize();
+
+	void show();
+	void hide();
+
+	void set_select_callback(std::function<void()> callback_function);
+};
+
+#endif
