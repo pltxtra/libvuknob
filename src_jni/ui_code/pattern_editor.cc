@@ -322,6 +322,13 @@ void PatternEditor::refresh_note_graphics() {
 	}
 }
 
+void PatternEditor::clear_note_graphics() {
+	for(auto n_grph : note_graphics) {
+		n_grph.second.graphic_reference.drop_element();
+	}
+	note_graphics.clear();
+}
+
 void PatternEditor::on_resize() {
 	get_canvas_size(canvas_w, canvas_h);
 	get_canvas_size_inches(canvas_w_inches, canvas_h_inches);
@@ -397,6 +404,8 @@ void PatternEditor::show(std::function<void()> _on_exit_pattern_editor,
 
 		singleton->ri_seq = ri_seq;
 		singleton->pattern_id = pattern_id;
+		singleton->clear_note_graphics();
+
 		ri_seq->add_pattern_listener(pattern_id, singleton->shared_from_this());
 	}
 }

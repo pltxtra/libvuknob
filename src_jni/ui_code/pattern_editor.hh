@@ -77,6 +77,7 @@ private:
 
 	void pianoroll_scrolled_vertical(float pixels_changed);
 	void refresh_note_graphics();
+	void clear_note_graphics();
 	void create_note_graphic(const RINote &note);
 	void delete_note_graphic(const RINote &note);
 

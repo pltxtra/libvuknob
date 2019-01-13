@@ -68,8 +68,8 @@ Sequencer::PatternInstance::PatternInstance(
 		[this, ri_seq, restore_sequencer](SVGDocument *source,
 					  ElementReference *e,
 					  const KammoGUI::MotionEvent &event) {
-			SATAN_DEBUG("Clicked on pattern instance for pattern %d\n",
-				    instance_data.pattern_id);
+			SATAN_DEBUG("Clicked on pattern instance for pattern %d, %p (%s)\n",
+				    instance_data.pattern_id, ri_seq.get(), ri_seq->get_name().c_str());
 
 			PatternEditor::show(restore_sequencer, ri_seq, instance_data.pattern_id);
 			auto main_container = get_root();
