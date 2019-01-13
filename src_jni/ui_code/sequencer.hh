@@ -122,10 +122,12 @@ private:
 
 	KammoGUI::GnuVGCanvas::ElementReference root;
 	KammoGUI::GnuVGCanvas::ElementReference sequence_graphic_template;
+	KammoGUI::GnuVGCanvas::SVGRect document_size;
 
 	std::map<std::shared_ptr<RISequence>, std::shared_ptr<Sequence> >machine2sequence;
 	std::shared_ptr<TimeLines> timelines;
 
+	double scaling; // graphical scaling factor
 	double finger_width = 10.0, finger_height = 10.0; // sizes in pixels
 	int canvas_width_fingers = 8, canvas_height_fingers = 8; // sizes in "fingers"
 	float canvas_w_inches, canvas_h_inches; // sizes in inches

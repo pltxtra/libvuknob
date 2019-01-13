@@ -152,6 +152,7 @@ ui_code/file_request_ui.cc \
 ui_code/advanced_file_request_ui.cc \
 ui_code/fling_animation.cc ui_code/fling_animation.hh \
 ui_code/corner_button.cc ui_code/corner_button.hh \
+ui_code/gnuvg_corner_button.cc ui_code/gnuvg_corner_button.hh \
 ui_code/connection_list.cc ui_code/connection_list.hh \
 ui_code/scale_editor.cc ui_code/scale_editor.hh
 

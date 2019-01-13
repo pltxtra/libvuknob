@@ -28,6 +28,7 @@
 #include "sequencer.hh"
 #include "timelines.hh"
 #include "pattern_editor.hh"
+#include "gnuvg_corner_button.hh"
 #include "svg_loader.hh"
 #include "common.hh"
 
@@ -36,6 +37,11 @@
 
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
+
+static std::shared_ptr<TimeLines> timelines;
+static std::shared_ptr<Sequencer> sequencer;
+static std::shared_ptr<GnuVGCornerButton> plus_button;
+static std::shared_ptr<PatternEditor> pattern_editor;
 
 /***************************
  *
@@ -54,6 +60,7 @@ Sequencer::PatternInstance::PatternInstance(
 	auto restore_sequencer = [this]() {
 		auto main_container = get_root();
 		main_container.set_display("inline");
+		plus_button->show();
 	};
 
 	set_event_handler(
@@ -66,6 +73,7 @@ Sequencer::PatternInstance::PatternInstance(
 			PatternEditor::show(restore_sequencer, ri_seq, instance_data.pattern_id);
 			auto main_container = get_root();
 			main_container.set_display("none");
+			plus_button->hide();
 		}
 		);
 }
@@ -411,13 +419,11 @@ void Sequencer::on_resize() {
 	tmp = canvas_h / ((double)canvas_height_fingers);
 	finger_height = tmp;
 
-	KammoGUI::GnuVGCanvas::SVGRect document_size;
-
 	// get data
 	root.get_viewport(document_size);
+	scaling = finger_height / document_size.height;
 
-	double scaling = finger_height / document_size.height;
-
+	// resize all machines
 	for(auto m2s : machine2sequence) {
 		m2s.second->set_graphic_parameters(
 			scaling,
@@ -478,11 +484,15 @@ void Sequencer::object_registered(std::shared_ptr<RemoteInterface::ClientSpace::
 			SATAN_DEBUG("new_offset is %d\n", new_offset);
 
 			KammoGUI::GnuVGCanvas::ElementReference layer(this, "layer1");
-			machine2sequence[ri_seq] =
-				Sequence::create_sequence(
-					layer, sequence_graphic_template,
-					ri_seq, timelines,
-					new_offset);
+			auto new_sequence = Sequence::create_sequence(
+				layer, sequence_graphic_template,
+				ri_seq, timelines,
+				new_offset);
+			machine2sequence[ri_seq] = new_sequence;
+			new_sequence->set_graphic_parameters(
+				scaling,
+				document_size.width, document_size.height,
+				canvas_w, canvas_h);
 		}
 		);
 }
@@ -512,10 +522,28 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		KammoGUI::GnuVGCanvas *cnvs = (KammoGUI::GnuVGCanvas *)wid;
 		cnvs->set_bg_color(1.0, 1.0, 1.0);
 
-		static auto timelines = std::make_shared<TimeLines>(cnvs);
-		static auto sequencer = std::make_shared<Sequencer>(cnvs, timelines);
-		static auto pattern_editor = std::make_shared<PatternEditor>(cnvs, timelines);
+		timelines = std::make_shared<TimeLines>(cnvs);
+		sequencer = std::make_shared<Sequencer>(cnvs, timelines);
+		plus_button = std::make_shared<GnuVGCornerButton>(
+			cnvs,
+			std::string(SVGLoader::get_svg_directory() + "/plusButton.svg"),
+			GnuVGCornerButton::bottom_right);
+		pattern_editor = std::make_shared<PatternEditor>(cnvs, timelines);
 		PatternEditor::hide();
+
+		plus_button->set_select_callback(
+			[]() {
+				static KammoGUI::UserEvent *ue = NULL;
+				static KammoGUI::UserEvent *callback_ue = NULL;
+				KammoGUI::get_widget((KammoGUI::Widget **)&ue, "showMachineTypeListScroller");
+				KammoGUI::get_widget((KammoGUI::Widget **)&callback_ue, "showComposeContainer");
+				if(ue != NULL && callback_ue != NULL) {
+					std::map<std::string, void *> args;
+					args["hint_match"] = strdup("generator");
+					args["callback_event"] = callback_ue;
+					KammoGUI::EventHandler::trigger_user_event(ue, args);
+				}
+			});
 
 		auto ptr =
 			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RISequence> >(sequencer);
