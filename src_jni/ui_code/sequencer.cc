@@ -94,7 +94,7 @@ void Sequencer::PatternInstance::calculate_visibility(double minor_width,
 	float x = minor_width * (double)instance_data.start_at;
 	set_attribute("x", x);
 	float w = (minor_width * (double)(instance_data.stop_at - instance_data.start_at));
-	set_attribute("width", w);
+	set_attribute("width", w - 2);
 }
 
 std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_new_pattern_instance(
