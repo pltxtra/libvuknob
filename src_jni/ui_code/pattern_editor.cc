@@ -35,9 +35,26 @@
 
 PatternEditor* PatternEditor::singleton = nullptr;
 
+void PatternEditor::note_on(int index) {
+	char midi_data[] = {
+		0x90, (char)(index), 0x7f
+	};
+	if(ri_seq) ri_seq->enqueue_midi_data(3, midi_data);
+};
+
+void PatternEditor::note_off(int index) {
+	char midi_data[] = {
+		0x80, (char)(index), 0x7f
+	};
+	if(ri_seq) ri_seq->enqueue_midi_data(3, midi_data);
+};
+
 void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 	event_current_x = event.get_x();
 	event_current_y = event.get_y();
+
+	finger_position = (int)floor(event_current_y / finger_height);
+	auto current_tone = ((int)floor(pianoroll_offset)) + canvas_height_fingers - finger_position - 1;
 
 	switch(event.get_action()) {
 	case KammoGUI::MotionEvent::ACTION_CANCEL:
@@ -49,22 +66,26 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		display_action = true;
 		event_start_x = event_current_x;
 		event_start_y = event_current_y;
-
-		finger_position = (int)floor(event_current_y / finger_height);
-		new_tone = ((int)floor(pianoroll_offset)) + canvas_height_fingers - finger_position - 1;
-
+		new_tone = current_tone;
+		note_on(new_tone);
 		break;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
 		SATAN_DEBUG("event_current_x: %f\n", event_current_x);
 		SATAN_DEBUG("finger_position: %f\n", event_current_x);
+		if(new_tone != current_tone) {
+			note_off(new_tone);
+			new_tone = current_tone;
+			note_on(new_tone);
+		}
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
+		note_off(new_tone);
 		SATAN_DEBUG("new_tone: %d (%f -> %f)\n", new_tone, event_left_x, event_right_x);
 
 		if(start_at_sequence_position != stop_at_sequence_position) {
 			ri_seq->add_note(
 				pattern_id,
-				0, 0, 0xff,
+				0, 0, 0x7f,
 				new_tone,
 				start_at_sequence_position,
 				stop_at_sequence_position - start_at_sequence_position
@@ -127,19 +148,6 @@ void PatternEditor::pianoroll_scrolled_vertical(float pixels_changed) {
 }
 
 void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event) {
-	auto note_on = [this](int index) {
-		char midi_data[] = {
-			0x90, (char)(index), 0x7f
-		};
-		if(ri_seq) ri_seq->enqueue_midi_data(3, midi_data);
-	};
-	auto note_off = [this](int index) {
-		char midi_data[] = {
-			0x80, (char)(index), 0x7f
-		};
-		if(ri_seq) ri_seq->enqueue_midi_data(3, midi_data);
-	};
-
 	if(fling_detector.on_touch_event(event)) {
 		SATAN_DEBUG("fling detected.\n");
 		float speed_x, speed_y;
@@ -338,7 +346,7 @@ void PatternEditor::refresh_note_graphics() {
 			double rgt = timelines_minor_spacing * stp + timelines_offset;
 
 			double top = (canvas_height_fingers - (1 + n.note - lowest_note) + offset) * finger_height;
-			g.set_rect_coords(lft, top, rgt - lft, finger_height);
+			g.set_rect_coords(lft, top, rgt - lft - 2, finger_height);
 		} else {
 			g.set_display("none");
 		}

@@ -75,6 +75,9 @@ private:
 	IDAllocator note_graphics_id_allocator;
 	std::map<RINote, NoteGraphic> note_graphics;
 
+	void note_on(int index);
+	void note_off(int index);
+
 	void pianoroll_scrolled_vertical(float pixels_changed);
 	void refresh_note_graphics();
 	void clear_note_graphics();
