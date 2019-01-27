@@ -51,7 +51,7 @@ void PatternEditor::note_off(int index) {
 
 void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 	event_current_x = event.get_x();
-	event_current_y = event.get_y();
+	event_current_y = event.get_y() - finger_height / 2.0;
 
 	finger_position = (int)floor(event_current_y / finger_height);
 	auto current_tone = ((int)floor(pianoroll_offset)) + canvas_height_fingers - finger_position - 1;
@@ -124,6 +124,7 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 
 	new_piece_indicator.set_display(display_action ? "inline" : "none");
 	if(display_action) {
+		double offset = pianoroll_offset - floor(pianoroll_offset);
 		auto stt = start_at_sequence_position;
 		auto stp = stop_at_sequence_position;
 		auto timelines_offset = timelines->get_graphics_horizontal_offset();
@@ -133,7 +134,7 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 
 		SATAN_DEBUG("timeline_offset: %f\n", timelines_offset);
 		SATAN_DEBUG("b_x: %f, e_x: %f\n", lft, rgt);
-		double top = finger_position * finger_height;
+		double top = (finger_position + offset) * finger_height;
 		new_piece_indicator.set_rect_coords(lft, top, rgt - lft, finger_height);
 	}
 
