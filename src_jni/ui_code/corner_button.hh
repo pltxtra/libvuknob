@@ -28,8 +28,8 @@ public:
 	enum WhatCorner {top_left, top_right, bottom_left, bottom_right};
 
 private:
+	KammoGUI::SVGCanvas::SVGRect document_size;
 	KammoGUI::SVGCanvas::SVGMatrix base_transform_t;
-	KammoGUI::SVGCanvas::ElementReference button;
 	WhatCorner my_corner;
 
 	class Transition : public KammoGUI::Animation {
