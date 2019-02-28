@@ -362,8 +362,9 @@ void PatternEditor::clear_note_graphics() {
 }
 
 void PatternEditor::on_resize() {
-	get_canvas_size(canvas_w, canvas_h);
-	get_canvas_size_inches(canvas_w_inches, canvas_h_inches);
+	auto canvas = get_canvas();
+	canvas->get_size_pixels(canvas_w, canvas_h);
+	canvas->get_size_inches(canvas_w_inches, canvas_h_inches);
 
 	double tmp;
 

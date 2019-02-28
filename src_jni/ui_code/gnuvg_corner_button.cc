@@ -140,8 +140,9 @@ void GnuVGCornerButton::on_resize() {
 	// get data
 	KammoGUI::GnuVGCanvas::ElementReference root(this);
 	root.get_viewport(document_size);
-	get_canvas_size(canvas_w, canvas_h);
-	get_canvas_size_inches(canvas_w_inches, canvas_h_inches);
+	auto canvas = get_canvas();
+	canvas->get_size_pixels(canvas_w, canvas_h);
+	canvas->get_size_inches(canvas_w_inches, canvas_h_inches);
 
 	{ // calculate transform for the main part of the document
 		double tmp;

@@ -197,7 +197,7 @@ bool TimeLines::on_scale_begin(KammoGUI::ScaleGestureDetector *detector) { retur
 void TimeLines::on_scale_end(KammoGUI::ScaleGestureDetector *detector) {}
 
 void TimeLines::on_time_index_event(const KammoGUI::MotionEvent &event) {
-	double scroll_x, scroll_y;
+	double scroll_x;
 
 	SATAN_DEBUG("TimeLines::on_time_index_event()\n");
 
@@ -248,18 +248,12 @@ void TimeLines::on_time_index_event(const KammoGUI::MotionEvent &event) {
 			break;
 		case KammoGUI::MotionEvent::ACTION_DOWN:
 			scroll_start_x = event.get_x();
-			scroll_start_y = event.get_y();
 			break;
 		case KammoGUI::MotionEvent::ACTION_MOVE:
 		case KammoGUI::MotionEvent::ACTION_UP:
 			scroll_x = event.get_x() - scroll_start_x;
-			scroll_y = event.get_y() - scroll_start_y;
-
 			scrolled_horizontal(scroll_x);
-//			scrolled_vertical(ctx, scroll_y);
-
 			scroll_start_x = event.get_x();
-			scroll_start_y = event.get_y();
 			break;
 		}
 	} else {
@@ -282,8 +276,9 @@ void TimeLines::on_time_index_event(const KammoGUI::MotionEvent &event) {
 }
 
 void TimeLines::on_resize() {
-	get_canvas_size(canvas_w, canvas_h);
-	get_canvas_size_inches(canvas_w_inches, canvas_h_inches);
+	auto canvas = get_canvas();
+	canvas->get_size_pixels(canvas_w, canvas_h);
+	canvas->get_size_inches(canvas_w_inches, canvas_h_inches);
 
 	double tmp;
 

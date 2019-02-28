@@ -98,11 +98,13 @@ void TestGnuVG::on_resize() {
 	KammoGUI::GnuVGCanvas::ElementReference root(this);
 	root.get_viewport(document_size);
 
+	auto canvas = get_canvas();
+
 	int pixel_w, pixel_h;
-	get_canvas_size(pixel_w, pixel_h);
+	canvas->get_size_pixels(pixel_w, pixel_h);
 
 	float canvas_w_inches, canvas_h_inches;
-	get_canvas_size_inches(canvas_w_inches, canvas_h_inches);
+	canvas->get_size_inches(canvas_w_inches, canvas_h_inches);
 
 	float w_fingers = canvas_w_inches / INCHES_PER_FINGER;
 	float h_fingers = canvas_h_inches / INCHES_PER_FINGER;

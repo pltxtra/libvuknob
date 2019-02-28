@@ -43,7 +43,7 @@ private:
 	// canvas size in "fingers"
 	int canvas_width_fingers = 8, canvas_height_fingers = 8;
 	int font_size = 55; // in pixels
-	double scroll_start_x = 0, scroll_start_y = 0;
+	double scroll_start_x = 0;
 	bool ignore_scroll = false;
 	unsigned int skip_interval;
 	float canvas_w_inches, canvas_h_inches;
