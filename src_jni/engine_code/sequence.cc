@@ -220,7 +220,7 @@ SERVER_CODE(
 
 		// tell all clients to delete it
 		send_message(
-			cmd_del_pattern_instance,
+			cmd_del_note,
 			[pattern_id, note](std::shared_ptr<Message> &msg_to_send) {
 				msg_to_send->set_value(
 					"pattern_id",
@@ -936,7 +936,8 @@ SERVER_N_CLIENT_CODE(
 		auto ptrn = ptrn_itr->second;
 
 		ON_SERVER(
-			if(note == *(ptrn->next_note_to_play)) {
+			if(ptrn->next_note_to_play && note == *(ptrn->next_note_to_play)) {
+				SATAN_ERROR("(%s) ::process_delete_note() - B-1\n", CLIENTORSERVER_STRING);
 				ptrn->next_note_to_play = ptrn->next_note_to_play->next;
 			}
 			);

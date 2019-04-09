@@ -89,6 +89,10 @@ private:
 	void on_timelines_scroll(double minor_spacing, double horizontal_offset,
 				 int min_visible_offset,
 				 int max_visible_offset);
+	void on_single_note_event(RINote selected_note,
+				  KammoGUI::GnuVGCanvas::ElementReference *e_ref,
+				  const KammoGUI::MotionEvent &event);
+
 public:
 	PatternEditor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
 	~PatternEditor();

@@ -223,6 +223,97 @@ void PatternEditor::on_timelines_scroll(double minor_spacing, double horizontal_
 	refresh_note_graphics();
 }
 
+void PatternEditor::on_single_note_event(RINote selected_note,
+					 KammoGUI::GnuVGCanvas::ElementReference *e_ref,
+					 const KammoGUI::MotionEvent &event) {
+	event_current_x = event.get_x();
+	event_current_y = event.get_y() - finger_height / 2.0;
+
+	SATAN_DEBUG("on_single_note_event().\n");
+
+	finger_position = (int)floor(event_current_y / finger_height);
+	auto current_tone = ((int)floor(pianoroll_offset)) + canvas_height_fingers - finger_position - 1;
+
+	switch(event.get_action()) {
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		break;
+	case KammoGUI::MotionEvent::ACTION_DOWN:
+		display_action = true;
+		event_start_x = event_current_x;
+		event_start_y = event_current_y;
+		new_tone = current_tone;
+		note_on(new_tone);
+		break;
+	case KammoGUI::MotionEvent::ACTION_MOVE:
+		SATAN_DEBUG("event_current_x: %f\n", event_current_x);
+		SATAN_DEBUG("finger_position: %f\n", event_current_x);
+		if(new_tone != current_tone) {
+			note_off(new_tone);
+			new_tone = current_tone;
+			note_on(new_tone);
+		}
+		break;
+	case KammoGUI::MotionEvent::ACTION_UP:
+		note_off(new_tone);
+		SATAN_DEBUG("new_tone: %d (%f -> %f)\n", new_tone, event_left_x, event_right_x);
+
+		if(start_at_sequence_position != stop_at_sequence_position) {
+			ri_seq->delete_note(
+				pattern_id,
+				selected_note
+				);
+			ri_seq->add_note(
+				pattern_id,
+				0, 0, 0x7f,
+				new_tone,
+				start_at_sequence_position,
+				stop_at_sequence_position - start_at_sequence_position
+				);
+		}
+
+		display_action = false;
+		break;
+	}
+
+	// Calculate the note drag horizontal offset
+	start_at_sequence_position = timelines->get_sequence_minor_position_at(event_start_x);
+	stop_at_sequence_position = timelines->get_sequence_minor_position_at(event_current_x);
+	start_at_sequence_position = (start_at_sequence_position >> 4) << 4;
+	stop_at_sequence_position = (stop_at_sequence_position >> 4) << 4;
+	auto note_on_offset = stop_at_sequence_position - start_at_sequence_position;
+
+	// set start/stop positions using selected_note, plus offset
+	start_at_sequence_position = selected_note.on_at + note_on_offset;
+	stop_at_sequence_position = selected_note.on_at + selected_note.length + note_on_offset;
+
+	SATAN_DEBUG("Forced - Start: %d - Stop: %d\n",
+		    start_at_sequence_position,
+		    stop_at_sequence_position);
+
+	auto root_element = backdrop_reference->get_root();
+	auto new_piece_indicator = root_element.find_child_by_class("newPieceIndicator");
+
+	new_piece_indicator.set_display(display_action ? "inline" : "none");
+	e_ref->set_display(display_action ? "none" : "inline");
+	if(display_action) {
+		double offset = pianoroll_offset - floor(pianoroll_offset);
+		auto stt = start_at_sequence_position;
+		auto stp = stop_at_sequence_position;
+		auto timelines_offset = timelines->get_graphics_horizontal_offset();
+		auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_minor();
+		double lft = timelines_minor_spacing * stt + timelines_offset;
+		double rgt = timelines_minor_spacing * stp + timelines_offset;
+
+		SATAN_DEBUG("timeline_offset: %f\n", timelines_offset);
+		SATAN_DEBUG("b_x: %f, e_x: %f\n", lft, rgt);
+		double top = (finger_position + offset) * finger_height;
+		new_piece_indicator.set_rect_coords(lft, top, rgt - lft, finger_height);
+	}
+}
+
 void PatternEditor::create_note_graphic(const RINote &new_note) {
 	SATAN_DEBUG("create_note_graphic()\n");
 
@@ -264,6 +355,14 @@ void PatternEditor::create_note_graphic(const RINote &new_note) {
 		.note = new_note,
 		.graphic_reference = elref
 	};
+
+	note_graphics[new_note].graphic_reference.set_event_handler(
+		[this, new_note](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *e_ref,
+		       const KammoGUI::MotionEvent &event) {
+			on_single_note_event(new_note, e_ref, event);
+		}
+		);
 
 	refresh_note_graphics();
 }
