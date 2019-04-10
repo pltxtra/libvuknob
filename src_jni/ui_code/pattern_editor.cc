@@ -287,7 +287,9 @@ void PatternEditor::on_single_note_event(RINote selected_note,
 
 	// set start/stop positions using selected_note, plus offset
 	start_at_sequence_position = selected_note.on_at + note_on_offset;
-	stop_at_sequence_position = selected_note.on_at + selected_note.length + note_on_offset;
+	if(start_at_sequence_position < 0)
+		start_at_sequence_position = 0;
+	stop_at_sequence_position = start_at_sequence_position + selected_note.length;
 
 	SATAN_DEBUG("Forced - Start: %d - Stop: %d\n",
 		    start_at_sequence_position,
