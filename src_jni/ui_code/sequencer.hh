@@ -96,6 +96,9 @@ private:
 
 		void on_sequence_event(const KammoGUI::MotionEvent &event);
 
+		double minor_width, line_offset;
+		int left_side_minor_offset, right_side_minor_offset;
+
 	public:
 		virtual void pattern_added(const std::string &name, uint32_t id);
 		virtual void pattern_deleted(uint32_t id);

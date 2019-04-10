@@ -164,10 +164,15 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 		);
 
 	_timelines->add_scroll_callback(
-		[this](double minor_width,
-		       double line_offset,
-		       int left_side_minor_offset,
-		       int right_side_minor_offset) {
+		[this](double _minor_width,
+		       double _line_offset,
+		       int _left_side_minor_offset,
+		       int _right_side_minor_offset) {
+			minor_width = _minor_width;
+			line_offset = _line_offset;
+			left_side_minor_offset = _left_side_minor_offset;
+			right_side_minor_offset = _right_side_minor_offset;
+
 			KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 			transform_t.init_identity();
 			transform_t.translate(line_offset, 0.0);
@@ -317,6 +322,9 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 				ri_seq
 				);
 			instances[instance.start_at] = i;
+			i->calculate_visibility(
+				minor_width, left_side_minor_offset, right_side_minor_offset
+				);
 		}
 		);
 }

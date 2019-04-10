@@ -305,6 +305,7 @@ void TimeLines::on_resize() {
 void TimeLines::add_scroll_callback(std::function<void(double, double, int, int)> _cb) {
 	auto cbc = std::make_shared<CallbackContainer>(_cb);
 	scroll_callbacks.insert(cbc);
+	call_scroll_callbacks();
 }
 
 double TimeLines::get_graphics_horizontal_offset() {
