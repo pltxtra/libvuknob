@@ -27,6 +27,7 @@
 
 #include "sequencer.hh"
 #include "timelines.hh"
+#include "loop_settings.hh"
 #include "pattern_editor.hh"
 #include "gnuvg_corner_button.hh"
 #include "svg_loader.hh"
@@ -43,6 +44,7 @@ static std::shared_ptr<Sequencer> sequencer;
 static std::shared_ptr<GnuVGCornerButton> plus_button;
 static std::shared_ptr<GnuVGCornerButton> return_button;
 static std::shared_ptr<PatternEditor> pattern_editor;
+static std::shared_ptr<LoopSettings> loop_settings;
 
 /***************************
  *
@@ -544,6 +546,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 			cnvs,
 			std::string(SVGLoader::get_svg_directory() + "/leftArrow.svg"),
 			GnuVGCornerButton::top_left);
+		loop_settings = std::make_shared<LoopSettings>(cnvs);
 		PatternEditor::hide();
 		return_button->hide();
 

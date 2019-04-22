@@ -155,7 +155,8 @@ ui_code/corner_button.cc ui_code/corner_button.hh \
 ui_code/gnuvg_corner_button.cc ui_code/gnuvg_corner_button.hh \
 ui_code/simple_button.cc ui_code/simple_button.hh \
 ui_code/connection_list.cc ui_code/connection_list.hh \
-ui_code/scale_editor.cc ui_code/scale_editor.hh
+ui_code/scale_editor.cc ui_code/scale_editor.hh \
+ui_code/loop_settings.cc ui_code/loop_settings.hh
 
 LOCAL_STATIC_LIBRARIES := cpufeatures libvorbis libogg libvorbisenc libkissfft
 LOCAL_LDFLAGS += -Xlinker --threads
