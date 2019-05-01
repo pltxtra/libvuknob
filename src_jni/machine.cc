@@ -1618,14 +1618,15 @@ int Machine::__samples_per_tick_shuffle[_MAX_D];
 int Machine::__bpm = 120;
 int Machine::__lpb = 4;
 bool Machine::low_latency_mode = false;
-bool Machine::is_loading = false;
-bool Machine::is_playing = false;
-bool Machine::is_recording = false;
+bool Machine::__is_loading = false;
+bool Machine::__is_playing = false;
+bool Machine::__is_recording = false;
 std::string Machine::record_fname = ""; // filename to record to
 Machine *Machine::sink = NULL;
 Machine *Machine::top_render_chain = NULL;
 std::map<Machine*, std::shared_ptr<Machine> > Machine::machine_set;
 std::set<std::weak_ptr<Machine::MachineSetListener>, std::owner_less<std::weak_ptr<Machine::MachineSetListener> > > Machine::machine_set_listeners;
+std::set<std::weak_ptr<Machine::PlaybackStateListener>, std::owner_less<std::weak_ptr<Machine::PlaybackStateListener> > > Machine::playback_state_listeners;
 
 std::vector<__MACHINE_PERIODIC_CALLBACK_F> Machine::periodic_callback_set;
 
@@ -1822,7 +1823,7 @@ void Machine::calculate_next_tick_at_and_sequence_position() {
 			// only do this synchronization during the midi dimension
 			// it is anyway equal to all other dimensions
 			if(d == _MIDI) {
-				if(is_playing && __current_tick == 0) {
+				if(__is_playing && __current_tick == 0) {
 					trigger_periodic_functions();
 
 				}
@@ -1874,7 +1875,7 @@ int Machine::internal_fill_sink(int (*fill_sink_callback)(int status, void *cbd)
 
 #endif
 	static bool was_playing = true; // was_playing defaults to true, we want to simulate it...
-	if(!is_playing) {
+	if(!__is_playing) {
 		if(was_playing) {
 			was_playing = false;
 			retval = fill_sink_callback(_sinkPaused, callback_data);
@@ -1904,7 +1905,7 @@ int Machine::internal_fill_sink(int (*fill_sink_callback)(int status, void *cbd)
 		}
 	}
 
-	retval = fill_sink_callback((is_playing && is_recording) ? _sinkRecord : _sinkJustPlay, callback_data);
+	retval = fill_sink_callback((__is_playing && __is_recording) ? _sinkRecord : _sinkJustPlay, callback_data);
 
 	return retval;
 }
@@ -1932,13 +1933,13 @@ void Machine::reset_all_machines() {
  ****************************************/
 
 bool Machine::internal_get_load_state() {
-	return is_loading;
+	return __is_loading;
 }
 
-void Machine::internal_set_load_state(bool __is_loading) {
-	is_loading = __is_loading;
+void Machine::internal_set_load_state(bool is_loading) {
+	__is_loading = is_loading;
 
-	if(!is_loading) {
+	if(!__is_loading) {
 		for(auto w_mlist : machine_set_listeners) {
 			std::shared_ptr<MachineSetListener> mlist = w_mlist.lock();
 			if(mlist) {
@@ -1997,15 +1998,47 @@ void Machine::register_machine_set_listener(std::weak_ptr<MachineSetListener> ms
 		[&mset_listener] (void *d) {
 			machine_set_listeners.insert(mset_listener);
 
-			std::shared_ptr<MachineSetListener> mlist = mset_listener.lock();
-			for(auto mch_it : machine_set) {
-				auto mch = mch_it.second;
-				Machine::run_async_function(
-					[mch, mlist]() {
-						mlist->machine_registered(mch);
-					}
-					);
+			if(auto mlist = mset_listener.lock()) {
+				for(auto mch_it : machine_set) {
+					auto mch = mch_it.second;
+					Machine::run_async_function(
+						[mch, mlist]() {
+							mlist->machine_registered(mch);
+						}
+						);
+				}
 			}
+		},
+		NULL, true);
+}
+
+void Machine::register_playback_state_listener(std::weak_ptr<PlaybackStateListener> pstate_listener) {
+	Machine::machine_operation_enqueue(
+		[&pstate_listener] (void *d) {
+			playback_state_listeners.insert(pstate_listener);
+
+			auto l_start = __loop_start;
+			auto l_stop = __loop_stop;
+			auto l_do = __do_loop;
+			auto bpm = __do_loop;
+			auto lpb = __do_loop;
+			auto is_playing = __is_playing;
+			auto is_recording = __is_recording;
+
+			Machine::run_async_function(
+				[pstate_listener,l_start, l_stop, l_do, bpm, lpb, is_playing, is_recording]() {
+					if(auto plist = pstate_listener.lock()) {
+						plist->project_loaded();
+						plist->loop_state_changed(l_do);
+						plist->loop_start_changed(l_start);
+						plist->loop_length_changed(l_stop - l_start);
+						plist->playback_state_changed(is_playing);
+						plist->record_state_changed(is_recording);
+						plist->bpm_changed(bpm);
+						plist->lpb_changed(lpb);
+					}
+				}
+				);
 		},
 		NULL, true);
 }
@@ -2079,56 +2112,118 @@ int Machine::get_loop_length() {
 	return __loop_stop - __loop_start;
 }
 
-void Machine::set_load_state(bool __is_loading) {
+void Machine::set_load_state(bool is_loading) {
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			Machine::internal_set_load_state(*((bool *)d));
+		[is_loading] () {
+			Machine::internal_set_load_state(is_loading);
 		},
-		&__is_loading, true);
+		true);
 }
 
 void Machine::set_loop_state(bool do_loop) {
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			__do_loop = *((bool *)d);
+		[do_loop] () {
+			__do_loop = do_loop;
+			for(auto w_plist : playback_state_listeners) {
+				if(auto plist = w_plist.lock()) {
+					Machine::run_async_function(
+						[plist, do_loop]() {
+							plist->loop_state_changed(do_loop);
+						}
+						);
+				}
+			}
 		},
-		&do_loop, true);
+		true);
 }
 
 void Machine::set_loop_start(int line) {
 	if(line < 0) throw ParameterOutOfSpec();
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			__loop_start = *((int *)d);
+		[line] () {
+			__loop_start = line;
+			for(auto w_plist : playback_state_listeners) {
+				if(auto plist = w_plist.lock()) {
+					Machine::run_async_function(
+						[plist, line]() {
+							plist->loop_start_changed(line);
+						}
+						);
+				}
+			}
 		},
-		&line, true);
+		true);
 }
 
 void Machine::set_loop_length(int loop_length) {
 	if(loop_length < 4) throw ParameterOutOfSpec();
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			__loop_stop = __loop_start + (*((int *)d));
+		[loop_length] () {
+			__loop_stop = __loop_start + loop_length;
+			for(auto w_plist : playback_state_listeners) {
+				if(auto plist = w_plist.lock()) {
+					Machine::run_async_function(
+						[plist, loop_length]() {
+							plist->loop_length_changed(loop_length);
+						}
+						);
+				}
+			}
 		},
-		&loop_length, true);
+		true);
 }
 
 void Machine::set_bpm(int bpm) {
 	if(bpm < 20 || bpm > 200) throw ParameterOutOfSpec();
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			__bpm = (*((int *)d));
+		[bpm] () {
+			__bpm = bpm;
+			for(auto w_plist : playback_state_listeners) {
+				if(auto plist = w_plist.lock()) {
+					Machine::run_async_function(
+						[plist, bpm]() {
+							plist->bpm_changed(bpm);
+						}
+						);
+				}
+			}
 		},
-		&bpm, true);
+		true);
 }
 
 void Machine::set_lpb(int lpb) {
 	if(lpb < 2 || lpb > 24) throw ParameterOutOfSpec();
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			__lpb = (*((int *)d));
+		[lpb] () {
+			__lpb = lpb;
+			for(auto w_plist : playback_state_listeners) {
+				if(auto plist = w_plist.lock()) {
+					Machine::run_async_function(
+						[plist, lpb]() {
+							plist->lpb_changed(lpb);
+						}
+						);
+				}
+			}
 		},
-		&lpb, true);
+		true);
+}
+
+void Machine::set_record_state(bool _dorec) {
+	Machine::machine_operation_enqueue(
+		[_dorec] () {
+			__is_recording = _dorec;
+			for(auto w_plist : playback_state_listeners) {
+				if(auto plist = w_plist.lock()) {
+					Machine::run_async_function(
+						[plist, _dorec]() {
+							plist->record_state_changed(_dorec);
+						}
+						);
+				}
+			}
+		},
+		true);
 }
 
 int Machine::get_bpm() {
@@ -2139,16 +2234,8 @@ int Machine::get_lpb() {
 	return __lpb;
 }
 
-void Machine::set_record_state(bool _dorec) {
-	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			is_recording = (*((bool *)d));
-		},
-		&_dorec, true);
-}
-
 bool Machine::get_record_state() {
-	return is_recording;
+	return __is_recording;
 }
 
 void Machine::set_record_file_name(std::string fnm) {
@@ -2195,7 +2282,7 @@ Machine *Machine::get_sink() {
 void Machine::play() {
 	Machine::machine_operation_enqueue(
 		[] (void *d) {
-			is_playing = true;
+			__is_playing = true;
 			reset_global_playback_parameters(__resume_sequence_position);
 			reset_all_machines();
 		},
@@ -2206,7 +2293,7 @@ void Machine::stop() {
 	Machine::machine_operation_enqueue(
 		[] (void *d) {
 			__resume_sequence_position = __next_sequence_position;
-			is_playing = false;
+			__is_playing = false;
 			reset_all_machines();
 
 		},
@@ -2217,7 +2304,7 @@ void Machine::stop() {
 
 bool Machine::is_it_playing() {
 	// we are only reading this single integer, no need for synchronization in this trivial case
-	return is_playing;
+	return __is_playing;
 }
 
 void Machine::disconnect_and_destroy(Machine *m) {

@@ -134,6 +134,21 @@ public:
 						    const std::string &input_name) = 0;
 	};
 
+	class PlaybackStateListener {
+	public:
+		virtual void project_loaded() = 0;
+
+		virtual void loop_state_changed(bool loop_state) = 0;
+		virtual void loop_start_changed(int loop_start) = 0;
+		virtual void loop_length_changed(int loop_length) = 0;
+
+		virtual void playback_state_changed(bool playing) = 0;
+		virtual void record_state_changed(bool recording) = 0;
+
+		virtual void bpm_changed(int bpm) = 0;
+		virtual void lpb_changed(int bpm) = 0;
+	};
+
 	class Controller {
 	public:
 		enum Type {
@@ -679,7 +694,7 @@ protected:
 	// setup_machine should be called as soon as you have filled the input/output_descriptor pairs.
 	void setup_machine();
 
-	inline bool get_is_playing() { return is_playing; }
+	inline bool get_is_playing() { return __is_playing; }
 	virtual void fill_buffers() = 0;
 
 	// reset a machine to a defined state
@@ -743,9 +758,9 @@ private:
 
 	static bool low_latency_mode; // if this is true we can do low latency...
 
-	static bool is_loading; // if the system is currently loading a project or not
-	static bool is_playing; // if the user has pressed "play" or not.
-	static bool is_recording; // should the sink record to file or not?
+	static bool __is_loading; // if the system is currently loading a project or not
+	static bool __is_playing; // if the user has pressed "play" or not.
+	static bool __is_recording; // should the sink record to file or not?
 	static std::string record_fname; // filename to record to
 
 	static Machine *top_render_chain; // whenever a machine is connected to another the chain is recalculated
@@ -753,6 +768,7 @@ private:
 	static std::map<Machine *, std::shared_ptr<Machine> >machine_set; // global array of all machines
 
 	static std::set<std::weak_ptr<MachineSetListener>, std::owner_less<std::weak_ptr<MachineSetListener> > > machine_set_listeners;
+	static std::set<std::weak_ptr<PlaybackStateListener>, std::owner_less<std::weak_ptr<PlaybackStateListener> > > playback_state_listeners;
 	static std::vector<__MACHINE_PERIODIC_CALLBACK_F> periodic_callback_set;
 
 	// async operations object
@@ -821,6 +837,9 @@ public:
 
 	/// Register a machine set listener (will be called on machine registered/unregistered events)
 	static void register_machine_set_listener(std::weak_ptr<MachineSetListener> mset_listener);
+
+	/// Register a playback state listener (will be called on playback state changed events)
+	static void register_playback_state_listener(std::weak_ptr<PlaybackStateListener> pstate_listener);
 
 	/// returns the set of registered machines (deprecated)
 	static std::vector<Machine *> get_machine_set();

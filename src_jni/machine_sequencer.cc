@@ -195,7 +195,7 @@ void MachineSequencer::Loop::process_note_on(bool mute, MidiEventBuilder *_meb) 
 	while(next_note_to_play != NULL && (next_note_to_play->on_at == loop_position)) {
 		NoteEntry *n = next_note_to_play;
 
-		if(is_playing && (!mute) && activate_note(n)) {
+		if(__is_playing && (!mute) && activate_note(n)) {
 			_meb->queue_note_on(n->note, n->velocity, n->channel);
 			n->ticks2off = n->length + 1;
 		}
@@ -729,7 +729,7 @@ void MachineSequencer::fill_buffers() {
 
 	_meb.use_buffer(output_buffer, output_limit);
 
-	bool no_sound = is_playing ? mute : true;
+	bool no_sound = __is_playing ? mute : true;
 
 	while(_meb.skip(skip_length)) {
 
