@@ -922,10 +922,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		cnvs->set_bg_color(1.0, 1.0, 1.0);
 
 		static auto lpad = std::make_shared<LivePad2>(cnvs, SVGLoader::get_svg_path("/livePad2.svg"));
-		auto ptr =
-			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> >(lpad);
-		std::weak_ptr<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> > w_ptr = ptr;
-		RemoteInterface::ClientSpace::Client::register_object_set_listener(w_ptr);
+		RemoteInterface::ClientSpace::Client::register_object_set_listener<RemoteInterface::RIMachine>(lpad);
 		RemoteInterface::GlobalControlObject::register_playback_state_listener(lpad);
 		KammoGUI::SensorEvent::register_listener(lpad);
 	}

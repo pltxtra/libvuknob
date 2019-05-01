@@ -1135,10 +1135,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 	cnvs->set_bg_color(1.0, 1.0, 1.0);
 
 	static std::shared_ptr<Connector> connector_ui = std::make_shared<Connector>(cnvs);
-	auto ptr =
-		std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> >(connector_ui);
-	std::weak_ptr<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> > w_ptr = ptr;
-	RemoteInterface::ClientSpace::Client::register_object_set_listener(w_ptr);
+	RemoteInterface::ClientSpace::Client::register_object_set_listener<RemoteInterface::RIMachine>(connector_ui);
 }
 
 KammoEventHandler_Instance(ConnectorHandler);

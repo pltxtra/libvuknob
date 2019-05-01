@@ -22,9 +22,20 @@
 
 #include <gnuVGcanvas.hh>
 #include <functional>
+#include "engine_code/global_control_object.hh"
 
-class LoopSettings : public KammoGUI::GnuVGCanvas::SVGDocument{
+typedef RemoteInterface::ClientSpace::GlobalControlObject GCO;
+
+class LoopSettings
+	: public KammoGUI::GnuVGCanvas::SVGDocument
+	, public RemoteInterface::Context::ObjectSetListener<GCO>
+	, public GCO::GlobalControlListener
+	, public std::enable_shared_from_this<LoopSettings>
+{
 private:
+	std::weak_ptr<GCO> gco_w;
+	bool loop_state;
+
 	KammoGUI::GnuVGCanvas::ElementReference loopSettingsButton;
 	KammoGUI::GnuVGCanvas::ElementReference loopParameterSettingButton;
 
@@ -51,6 +62,11 @@ public:
 
 	void show();
 	void hide();
+
+	virtual void loop_state_changed(bool new_state);
+
+	virtual void object_registered(std::shared_ptr<GCO> gco) override;
+	virtual void object_unregistered(std::shared_ptr<GCO> gco) override;
 };
 
 #endif

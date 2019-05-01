@@ -31,7 +31,7 @@
 #include "svg_loader.hh"
 #include "common.hh"
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 /***************************
@@ -90,9 +90,11 @@ LoopSettings::LoopSettings(KammoGUI::GnuVGCanvas *cnvs)
 		       const KammoGUI::MotionEvent &event)
 		{
 			if(on_button_event(source, e, event)) {
-				auto loopState = Machine::get_loop_state();
-				Machine::set_loop_state(!loopState);
-				SATAN_ERROR("Toggle looping\n");
+				SATAN_DEBUG("Toggle looping\n");
+				if(auto gco = gco_w.lock()) {
+					SATAN_DEBUG("LoopSettings locked gco object to set state...\n");
+					gco->set_loop_state(!loop_state);
+				}
 				refresh_loop_state_icons();
 			}
 		}
@@ -104,7 +106,7 @@ LoopSettings::LoopSettings(KammoGUI::GnuVGCanvas *cnvs)
 		       const KammoGUI::MotionEvent &event)
 		{
 			if(on_button_event(source, e, event)) {
-				SATAN_ERROR("Toggle loop editing\n");
+				SATAN_DEBUG("Toggle loop editing\n");
 			}
 		}
 		);
@@ -119,9 +121,8 @@ LoopSettings::LoopSettings(KammoGUI::GnuVGCanvas *cnvs)
 LoopSettings::~LoopSettings() {}
 
 void LoopSettings::refresh_loop_state_icons() {
-	auto loopState = Machine::get_loop_state();
-	playAsLoopIcon.set_display(loopState ? "inline" : "none");
-	playAsEndlessIcon.set_display(loopState ? "none" : "inline");
+	playAsLoopIcon.set_display(loop_state ? "inline" : "none");
+	playAsEndlessIcon.set_display(loop_state ? "none" : "inline");
 }
 
 void LoopSettings::on_render() {
@@ -160,4 +161,28 @@ void LoopSettings::on_resize() {
 	// initiate transform_m
 	base_transform_t.init_identity();
 	base_transform_t.scale(scaling, scaling);
+}
+
+void LoopSettings::loop_state_changed(bool new_state) {
+	loop_state = new_state;
+}
+
+void LoopSettings::object_registered(std::shared_ptr<GCO> _gco) {
+	KammoGUI::run_on_GUI_thread(
+		[this, _gco]() {
+			SATAN_DEBUG("LoopSettings got gco object...\n");
+			gco_w = _gco;
+			if(auto gco = gco_w.lock()) {
+				SATAN_DEBUG("LoopSettings locked gco object...\n");
+				gco->add_global_control_listener(shared_from_this());
+			}
+		}
+		);
+}
+
+void LoopSettings::object_unregistered(std::shared_ptr<GCO> _gco) {
+	KammoGUI::run_on_GUI_thread(
+		[this, _gco]() {
+		}
+		);
 }

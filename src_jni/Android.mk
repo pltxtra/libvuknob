@@ -146,17 +146,14 @@ ui_code/canvas_widget.cc ui_code/canvas_widget.hh \
 ui_code/numeric_keyboard.cc ui_code/numeric_keyboard.hh \
 ui_code/top_menu.cc ui_code/top_menu.hh \
 ui_code/pncsequencer.cc ui_code/pncsequencer.hh \
-ui_code/timelines.cc ui_code/timelines.hh \
 ui_code/midi_export_gui.cc \
 ui_code/file_request_ui.cc \
 ui_code/advanced_file_request_ui.cc \
 ui_code/fling_animation.cc ui_code/fling_animation.hh \
 ui_code/corner_button.cc ui_code/corner_button.hh \
-ui_code/gnuvg_corner_button.cc ui_code/gnuvg_corner_button.hh \
 ui_code/simple_button.cc ui_code/simple_button.hh \
 ui_code/connection_list.cc ui_code/connection_list.hh \
-ui_code/scale_editor.cc ui_code/scale_editor.hh \
-ui_code/loop_settings.cc ui_code/loop_settings.hh
+ui_code/scale_editor.cc ui_code/scale_editor.hh
 
 LOCAL_STATIC_LIBRARIES := cpufeatures libvorbis libogg libvorbisenc libkissfft
 LOCAL_LDFLAGS += -Xlinker --threads
@@ -184,6 +181,7 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 
 LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 LOCAL_SRC_FILES := \
+engine_code/global_control_object.cc engine_code/global_control_object.hh \
 engine_code/sequence.cc engine_code/sequence.hh \
 engine_code/server.cc engine_code/server.hh
 
@@ -212,8 +210,9 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 
 LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 LOCAL_SRC_FILES := \
-engine_code/client.cc engine_code/client.hh \
-engine_code/sequence.cc engine_code/sequence.hh
+engine_code/global_control_object.cc engine_code/global_control_object.hh \
+engine_code/sequence.cc engine_code/sequence.hh \
+engine_code/client.cc engine_code/client.hh
 
 LOCAL_LDFLAGS += -Xlinker --threads
 LOCAL_LDLIBS += -ldl -llog
@@ -242,6 +241,7 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 LOCAL_SRC_FILES := \
 satan.cc \
+ui_code/gnuvg_corner_button.cc ui_code/gnuvg_corner_button.hh \
 ui_code/logo_screen.cc ui_code/logo_screen.hh \
 ui_code/test_gnuvg.cc ui_code/test_gnuvg.hh \
 ui_code/controller_handler.cc \
@@ -249,7 +249,9 @@ ui_code/livepad2.cc ui_code/livepad2.hh \
 ui_code/machine_selector_ui.cc \
 ui_code/connector.cc ui_code/connector.hh \
 ui_code/pattern_editor.cc ui_code/pattern_editor.hh \
-ui_code/sequencer.cc ui_code/sequencer.hh
+ui_code/timelines.cc ui_code/timelines.hh \
+ui_code/sequencer.cc ui_code/sequencer.hh \
+ui_code/loop_settings.cc ui_code/loop_settings.hh
 
 LOCAL_LDFLAGS += -Xlinker --threads
 LOCAL_LDLIBS += -ldl -llog

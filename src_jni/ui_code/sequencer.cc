@@ -570,10 +570,8 @@ virtual void on_init(KammoGUI::Widget *wid) {
 				return_button->hide();
 			});
 
-		auto ptr =
-			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RISequence> >(sequencer);
-		std::weak_ptr<RemoteInterface::Context::ObjectSetListener<RISequence> > w_ptr = ptr;
-		RemoteInterface::ClientSpace::Client::register_object_set_listener(w_ptr);
+		RemoteInterface::ClientSpace::Client::register_object_set_listener<RISequence>(sequencer);
+		RemoteInterface::ClientSpace::Client::register_object_set_listener<GCO>(loop_settings);
 	}
 }
 

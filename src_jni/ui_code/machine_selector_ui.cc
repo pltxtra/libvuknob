@@ -173,11 +173,7 @@ public:
 
 		SATAN_DEBUG("MachineWaiter::wait_for() will wait for %s...\n", wait_for_name.c_str());
 		std::unique_lock<std::mutex> lk(mutex);
-		auto ptr =
-			std::dynamic_pointer_cast<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> >(shared_from_this());
-		std::weak_ptr<RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine> > w_ptr = ptr;
-
-		RemoteInterface::ClientSpace::Client::register_object_set_listener(w_ptr);
+		RemoteInterface::ClientSpace::Client::register_object_set_listener<RemoteInterface::RIMachine>(shared_from_this());
 		cv.wait(lk);
 		SATAN_DEBUG("MachineWaiter::wait_for() was notified!\n");
 
