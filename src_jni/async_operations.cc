@@ -32,7 +32,7 @@
  *
  ************************/
 
-class AsyncOperationsThread : public jThread {	
+class AsyncOperationsThread : public jThread {
 private:
 	struct AsyncEventData {
 		AsyncOp *operation_pointer;
@@ -42,12 +42,12 @@ private:
 	enum AsyncEventType {
 		aop_pointer, aop_function
 	};
-	
+
 	class AsyncEvent : public jThread::Event {
 	public:
 		AsyncEventType type;
 		AsyncEventData data;
-		
+
 		AsyncEvent() {}
 		virtual ~AsyncEvent() {} // we must have a virtual destructor
 
@@ -55,7 +55,7 @@ private:
 			data.operation_pointer = op;
 			type = aop_pointer;
 		}
-		
+
 		void set_operation(std::function<void()> func) {
 			data.function = func;
 			type = aop_function;
@@ -64,7 +64,7 @@ private:
 		virtual void dummy_event_function() {}
 	};
 
-	
+
 	AsyncOperationsThread() : jThread("AsyncOperationsThread") {
 	}
 
@@ -73,7 +73,7 @@ private:
 	static moodycamel::ReaderWriterQueue<AsyncEvent *> *free_events;
 
 public:
-	
+
 	void thread_body() {
 		while(1) {
 			AsyncEvent *ae = (AsyncEvent *)eq.wait_for_event();
@@ -92,9 +92,9 @@ public:
 				ae->data.function();
 			}
 			break;
-			
+
 			}
-			
+
 			// put back into the free event pool
 			free_events->enqueue(ae);
 		}
@@ -142,10 +142,10 @@ public:
 				}
 			}
 		} while(ev != NULL);
-		
+
 		thrd->run();
 	}
-	
+
 };
 
 jThread::EventQueue AsyncOperationsThread::eq;
