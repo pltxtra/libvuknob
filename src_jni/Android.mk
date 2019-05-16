@@ -181,6 +181,7 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 
 LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 LOCAL_SRC_FILES := \
+termination_handler.cc \
 engine_code/global_control_object.cc engine_code/global_control_object.hh \
 engine_code/sequence.cc engine_code/sequence.hh \
 engine_code/server.cc engine_code/server.hh
