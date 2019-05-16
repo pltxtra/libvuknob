@@ -338,8 +338,14 @@ namespace RemoteInterface {
 					  : FactoryTemplate<Sequence>(ClientSide, FACTORY_NAME)
 					  {}
 					);
-				virtual std::shared_ptr<BaseObject> create(const Message &serialized) override;
-				virtual std::shared_ptr<BaseObject> create(int32_t new_obj_id) override;
+				virtual std::shared_ptr<BaseObject> create(
+					const Message &serialized,
+					RegisterObjectFunction register_object
+					) override;
+				virtual std::shared_ptr<BaseObject> create(
+					int32_t new_obj_id,
+					RegisterObjectFunction register_object
+					) override;
 
 			};
 		};

@@ -1051,7 +1051,10 @@ SERVER_N_CLIENT_CODE(
 
 	}
 
-	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(const Message &serialized) {
+	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(
+		const Message &serialized,
+		RegisterObjectFunction register_object
+		) {
 		ON_SERVER(
 			auto nseq_ptr = new Sequence(this, serialized);
 			auto nseq = std::dynamic_pointer_cast<Sequence>(nseq_ptr->get_shared_pointer());
@@ -1059,10 +1062,13 @@ SERVER_N_CLIENT_CODE(
 		ON_CLIENT(
 			auto nseq = std::make_shared<Sequence>(this, serialized);
 			);
-		return nseq;
+		return register_object(nseq);
 	}
 
-	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(int32_t new_obj_id) {
+	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(
+		int32_t new_obj_id,
+		RegisterObjectFunction register_object
+		) {
 		ON_SERVER(
 			auto nseq_ptr = new Sequence(new_obj_id, this);
 			auto nseq = std::dynamic_pointer_cast<Sequence>(nseq_ptr->get_shared_pointer());
@@ -1070,7 +1076,7 @@ SERVER_N_CLIENT_CODE(
 		ON_CLIENT(
 			auto nseq = std::make_shared<Sequence>(new_obj_id, this);
 			);
-		return nseq;
+		return register_object(nseq);
 	}
 
 	static Sequence::SequenceFactory this_will_register_us_as_a_factory;

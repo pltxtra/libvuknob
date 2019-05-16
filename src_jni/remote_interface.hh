@@ -523,9 +523,6 @@ namespace RemoteInterface {
 
 			const char* get_type() const;
 
-			virtual std::shared_ptr<BaseObject> create(const Message &serialized) = 0;
-			virtual std::shared_ptr<BaseObject> create(int32_t new_obj_id) = 0;
-
 			std::shared_ptr<BaseObject> create_static_single_object(
 				Context* context,
 				int32_t new_obj_id);
@@ -536,6 +533,15 @@ namespace RemoteInterface {
 			virtual std::shared_ptr<BaseObject> create_and_register(
 				Context* _ctxt,
 				int32_t new_obj_id) = 0;
+		};
+
+		template <typename T>
+		class ObjectNotRegisteredByFactory : public std::runtime_error {
+		public:
+			ObjectNotRegisteredByFactory()
+				: runtime_error("The factory created an object without registering it with a RemoteInterface::Context.")
+				{}
+			virtual ~ObjectNotRegisteredByFactory() {}
 		};
 
 		template <typename T>
@@ -551,24 +557,52 @@ namespace RemoteInterface {
 				register_factory(this);
 			}
 
+			typedef std::shared_ptr<T> TypeSharedPointer;
+			typedef std::function<TypeSharedPointer(TypeSharedPointer o)> RegisterObjectFunction;
+
+			virtual std::shared_ptr<BaseObject> create(
+				const Message &serialized,
+				RegisterObjectFunction register_object
+				) = 0;
+			virtual std::shared_ptr<BaseObject> create(
+				int32_t new_obj_id,
+				RegisterObjectFunction register_object
+				) = 0;
+
 			virtual std::shared_ptr<BaseObject> create_and_register(
 				Context* _ctxt,
 				const Message& serialized) override
 			{
-				auto obj =
-					std::dynamic_pointer_cast<T>(create(serialized));
-				_ctxt->register_object<T>(obj);
-				return obj;
+				auto final_obj = create(
+					serialized,
+					[_ctxt](std::shared_ptr<T> _obj) -> std::shared_ptr<T> {
+						auto obj = std::dynamic_pointer_cast<T>(_obj);
+						_ctxt->register_object<T>(obj);
+						return _obj;
+					}
+					);
+				if(final_obj->context != _ctxt) {
+					throw ObjectNotRegisteredByFactory<T>();
+				}
+				return final_obj;
 			}
 
 			virtual std::shared_ptr<BaseObject> create_and_register(
 				Context* _ctxt,
 				int32_t new_obj_id) override
 			{
-				auto obj =
-					std::dynamic_pointer_cast<T>(create(new_obj_id));
-				_ctxt->register_object<T>(obj);
-				return obj;
+				auto final_obj = create(
+					new_obj_id,
+					[_ctxt](std::shared_ptr<T> _obj) -> std::shared_ptr<T> {
+						auto obj = std::dynamic_pointer_cast<T>(_obj);
+						_ctxt->register_object<T>(obj);
+						return _obj;
+					}
+					);
+				if(final_obj->context != _ctxt) {
+					throw ObjectNotRegisteredByFactory<T>();
+				}
+				return final_obj;
 			}
 		};
 
@@ -716,8 +750,14 @@ namespace RemoteInterface {
 		public:
 			HandleListFactory();
 
-			virtual std::shared_ptr<BaseObject> create(const Message &serialized) override;
-			virtual std::shared_ptr<BaseObject> create(int32_t new_obj_id) override;
+			virtual std::shared_ptr<BaseObject> create(
+				const Message &serialized,
+				RegisterObjectFunction register_object
+				) override;
+			virtual std::shared_ptr<BaseObject> create(
+				int32_t new_obj_id,
+				RegisterObjectFunction register_object
+				) override;
 		};
 
 		static HandleListFactory handlelist_factory;
@@ -753,8 +793,14 @@ namespace RemoteInterface {
 		public:
 			GlobalControlObjectFactory();
 
-			virtual std::shared_ptr<BaseObject> create(const Message &serialized) override;
-			virtual std::shared_ptr<BaseObject> create(int32_t new_obj_id) override;
+			virtual std::shared_ptr<BaseObject> create(
+				const Message &serialized,
+				RegisterObjectFunction register_object
+				) override;
+			virtual std::shared_ptr<BaseObject> create(
+				int32_t new_obj_id,
+				RegisterObjectFunction register_object
+				) override;
 		};
 
 		virtual void post_constructor_client() override; // called after the constructor has been called
@@ -821,8 +867,14 @@ namespace RemoteInterface {
 		public:
 			SampleBankFactory();
 
-			virtual std::shared_ptr<BaseObject> create(const Message &serialized) override;
-			virtual std::shared_ptr<BaseObject> create(int32_t new_obj_id) override;
+			virtual std::shared_ptr<BaseObject> create(
+				const Message &serialized,
+				RegisterObjectFunction register_object
+				) override;
+			virtual std::shared_ptr<BaseObject> create(
+				int32_t new_obj_id,
+				RegisterObjectFunction register_object
+				) override;
 		};
 		static SampleBankFactory samplebank_factory;
 
@@ -1089,8 +1141,14 @@ namespace RemoteInterface {
 		public:
 			RIMachineFactory();
 
-			virtual std::shared_ptr<BaseObject> create(const Message &serialized);
-			virtual std::shared_ptr<BaseObject> create(int32_t new_obj_id);
+			virtual std::shared_ptr<BaseObject> create(
+				const Message &serialized,
+				std::function<std::shared_ptr<RIMachine>(std::shared_ptr<RIMachine> o)> register_object
+				);
+			virtual std::shared_ptr<BaseObject> create(
+				int32_t new_obj_id,
+				std::function<std::shared_ptr<RIMachine>(std::shared_ptr<RIMachine> o)> register_object
+				);
 
 		};
 

@@ -33,12 +33,18 @@
 #include "../remote_interface.hh"
 #include "../serialize.hh"
 
+#ifdef __RI__SERVER_SIDE
+#include "../machine.hh"
+#endif
 
 namespace RemoteInterface {
 	namespace __RI__CURRENT_NAMESPACE {
 
 		class GlobalControlObject
 			: public RemoteInterface::SimpleBaseObject
+		ON_SERVER(
+			, public Machine::PlaybackStateListener
+			)
 		{
 		public:
 			static constexpr const char* FACTORY_NAME		= "GlobCon";
@@ -46,12 +52,16 @@ namespace RemoteInterface {
 			ON_CLIENT(
 				class GlobalControlListener {
 				public:
-					virtual void loop_state_changed(bool new_state) = 0;
+					virtual void loop_state_changed(bool new_state) {};
+					virtual void loop_start_changed(int new_start) {};
+					virtual void loop_length_changed(int new_length) {};
 				};
 
 				void add_global_control_listener(std::shared_ptr<GlobalControlListener> glol);
 
 				void set_loop_state(bool new_state);
+				void set_loop_start(int new_start);
+				void set_loop_length(int new_length);
 				);
 
 			GlobalControlObject(const Factory *factory, const RemoteInterface::Message &serialized);
@@ -59,6 +69,15 @@ namespace RemoteInterface {
 
 			ON_SERVER(
 				virtual void serialize(std::shared_ptr<Message> &target) override;
+
+				virtual void project_loaded() override {};
+				virtual void loop_state_changed(bool loop_state) override;
+				virtual void loop_start_changed(int loop_start) override;
+				virtual void loop_length_changed(int loop_length) override;
+				virtual void playback_state_changed(bool playing) override {};
+				virtual void record_state_changed(bool recording) override {};
+				virtual void bpm_changed(int bpm) override {};
+				virtual void lpb_changed(int bpm) override {};
 				)
 
 			virtual void on_delete(RemoteInterface::Context* context) override {
@@ -67,6 +86,7 @@ namespace RemoteInterface {
 
 		private:
 			bool loop_state;
+			int loop_start, loop_length;
 
 			ON_CLIENT(
 				std::set<std::shared_ptr<GlobalControlListener> > gco_listeners;
@@ -76,13 +96,21 @@ namespace RemoteInterface {
 			/* CMD means the server commands the client to perform an operation */
 
 			SERVER_SIDE_HANDLER(req_set_loop_state, "req_set_loop_state");
+			SERVER_SIDE_HANDLER(req_set_loop_start, "req_set_loop_start");
+			SERVER_SIDE_HANDLER(req_set_loop_length, "req_set_loop_length");
 
 			CLIENT_SIDE_HANDLER(cmd_set_loop_state, "cmd_set_loop_state");
+			CLIENT_SIDE_HANDLER(cmd_set_loop_start, "cmd_set_loop_start");
+			CLIENT_SIDE_HANDLER(cmd_set_loop_length, "cmd_set_loop_length");
 
 			void register_handlers() {
 				SERVER_REG_HANDLER(GlobalControlObject,req_set_loop_state);
+				SERVER_REG_HANDLER(GlobalControlObject,req_set_loop_start);
+				SERVER_REG_HANDLER(GlobalControlObject,req_set_loop_length);
 
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_loop_state);
+				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_loop_start);
+				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_loop_length);
 			}
 
 			// serder is an either an ItemSerializer or ItemDeserializer object.
@@ -102,8 +130,14 @@ namespace RemoteInterface {
 					  : FactoryTemplate<GlobalControlObject>(ClientSide, FACTORY_NAME)
 					  {}
 					);
-				virtual std::shared_ptr<BaseObject> create(const Message &serialized) override;
-				virtual std::shared_ptr<BaseObject> create(int32_t new_obj_id) override;
+				virtual std::shared_ptr<BaseObject> create(
+					const Message &serialized,
+					RegisterObjectFunction register_object
+					) override;
+				virtual std::shared_ptr<BaseObject> create(
+					int32_t new_obj_id,
+					RegisterObjectFunction register_object
+					) override;
 
 			};
 		};

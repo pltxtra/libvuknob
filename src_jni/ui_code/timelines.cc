@@ -34,7 +34,7 @@
 #include "satan_debug.hh"
 
 void TimeLines::create_timelines() {
-	KammoGUI::GnuVGCanvas::ElementReference root_element(this);
+	KammoGUI::GnuVGCanvas::ElementReference root_element(this, "timeline_group");
 
 	{ // timeline group creation block
 		std::stringstream ss;
@@ -133,7 +133,7 @@ void TimeLines::clear_time_index() {
 }
 
 void TimeLines::create_time_index() {
-	KammoGUI::GnuVGCanvas::ElementReference root_element(this);
+	KammoGUI::GnuVGCanvas::ElementReference root_element(this, "timeline_group");
 
 	{ // time index container
 		std::stringstream ss;
@@ -292,6 +292,11 @@ void TimeLines::on_resize() {
 	tmp = canvas_h / ((double)canvas_height_fingers);
 	finger_height = tmp;
 
+	auto root = KammoGUI::GnuVGCanvas::ElementReference(this);
+	root.get_viewport(document_size);
+
+	scaling = finger_height / (double)document_size.height;
+
 	SATAN_ERROR("Timelines finger_height: %d\n", (int)finger_height);
 
 	// font_size = finger_height / 3 - but in integer math
@@ -300,6 +305,10 @@ void TimeLines::on_resize() {
 
 	SATAN_DEBUG("TimeLines::Font size set to : %d\n", font_size);
 	regenerate_graphics();
+
+	loop_marker = KammoGUI::GnuVGCanvas::ElementReference(this, "loopMarker");
+	loop_start_marker = KammoGUI::GnuVGCanvas::ElementReference(this, "loopStart");
+	loop_stop_marker = KammoGUI::GnuVGCanvas::ElementReference(this, "loopStop");
 }
 
 void TimeLines::add_scroll_callback(std::function<void(double, double, int, int)> _cb) {
@@ -347,10 +356,27 @@ void TimeLines::on_render() {
 	int line_offset_i = line_offset_d; // we need the pure integer version too
 
 	// calculate the pixel offset for the first line
-	graphics_offset = 0.0;
+
+	{ // Move loop markers
+		KammoGUI::GnuVGCanvas::SVGMatrix loop_start_mtrx, loop_stop_mtrx;
+
+		auto loop_start_offset = (loop_start + line_offset_d) * minor_spacing * ((double)minors_per_major);
+		auto loop_stop_offset = (loop_stop + line_offset_d) * minor_spacing * ((double)minors_per_major);
+
+		loop_start_mtrx.scale(scaling, scaling);
+		loop_start_mtrx.translate(loop_start_offset, 0);
+		loop_stop_mtrx.scale(scaling, scaling);
+		loop_stop_mtrx.translate(loop_stop_offset, 0);
+
+		loop_start_marker.set_transform(loop_start_mtrx);
+		loop_stop_marker.set_transform(loop_stop_mtrx);
+
+		auto fhh = finger_height / 2.0;
+		loop_marker.set_rect_coords(loop_start_offset, fhh, loop_stop_offset - loop_start_offset, fhh);
+	}
 
 	{ // select visible minors, and translate time line graphics
-		graphics_offset = (line_offset_d - (double)line_offset_i) * minor_spacing * ((double)minors_per_major);
+		double graphics_offset = (line_offset_d - (double)line_offset_i) * minor_spacing * ((double)minors_per_major);
 
 		double zfactor = ((double)minors_per_major) / (horizontal_zoom_factor * 4.0f);
 
@@ -400,9 +426,29 @@ void TimeLines::on_render() {
 }
 
 TimeLines::TimeLines(KammoGUI::GnuVGCanvas* cnvs)
-	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/empty.svg"), cnvs) {
+	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/timeLines.svg"), cnvs) {
 	sgd = new KammoGUI::ScaleGestureDetector(this);
 }
 
 TimeLines::~TimeLines() {
+}
+
+void TimeLines::object_registered(std::shared_ptr<GCO> _gco) {
+	KammoGUI::run_on_GUI_thread(
+		[this, _gco]() {
+			SATAN_DEBUG("TimeLines got gco object...\n");
+			gco_w = _gco;
+			if(auto gco = gco_w.lock()) {
+				SATAN_DEBUG("TimeLines locked gco object...\n");
+				gco->add_global_control_listener(shared_from_this());
+			}
+		}
+		);
+}
+
+void TimeLines::object_unregistered(std::shared_ptr<GCO> _gco) {
+	KammoGUI::run_on_GUI_thread(
+		[this, _gco]() {
+		}
+		);
 }

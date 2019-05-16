@@ -49,20 +49,30 @@ public:
 
 		ScalesFactory() : FactoryTemplate<Scales>(FACTORY_NAME, true) {}
 
-		virtual std::shared_ptr<BaseObject> create(const RemoteInterface::Message &serialized) override {
-			std::lock_guard<std::mutex> lck(clientside_mtx);
-			if(clientside_obj_created) throw StaticSingleObjectAlreadyCreated();
-			clientside_obj_created = true;
-			clientside_scales_object = std::make_shared<Scales>(this, serialized);
-			return clientside_scales_object;
+		virtual std::shared_ptr<BaseObject> create(
+			const RemoteInterface::Message &serialized,
+			RegisterObjectFunction register_object
+			) override {
+			{
+				std::lock_guard<std::mutex> lck(clientside_mtx);
+				if(clientside_obj_created) throw StaticSingleObjectAlreadyCreated();
+				clientside_obj_created = true;
+				clientside_scales_object = std::make_shared<Scales>(this, serialized);
+			}
+			return register_object(clientside_scales_object);
 		}
 
-		virtual std::shared_ptr<BaseObject> create(int32_t new_obj_id) override {
-			std::lock_guard<std::mutex> lck(serverside_mtx);
-			if(serverside_obj_created) throw StaticSingleObjectAlreadyCreated();
-			serverside_obj_created = true;
-			serverside_scales_object = std::make_shared<Scales>(new_obj_id, this);
-			return serverside_scales_object;
+		virtual std::shared_ptr<BaseObject> create(
+			int32_t new_obj_id,
+			RegisterObjectFunction register_object
+			) override {
+			{
+				std::lock_guard<std::mutex> lck(serverside_mtx);
+				if(serverside_obj_created) throw StaticSingleObjectAlreadyCreated();
+				serverside_obj_created = true;
+				serverside_scales_object = std::make_shared<Scales>(new_obj_id, this);
+			}
+			return register_object(serverside_scales_object);
 		}
 
 		static std::shared_ptr<Scales> get_clientside_scales_object() {

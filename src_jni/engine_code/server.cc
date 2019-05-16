@@ -481,8 +481,10 @@ SERVER_CODE(
 						server->run_context();
 					} catch(std::exception const& e) {
 						SATAN_ERROR("RemoteInterface::Server::start_server() - std::exception caught %s\n", e.what());
-					} catch(...) {
-						SATAN_ERROR("RemoteInterface::Server::start_server() - unknown exception caught\n");
+						abort();
+					} catch(jException const& e) {
+						SATAN_ERROR("RemoteInterface::Server::start_server() - jException caught %s\n", e.message.c_str());
+						abort();
 					}
 				}
 				);

@@ -1950,6 +1950,15 @@ void Machine::internal_set_load_state(bool is_loading) {
 					);
 			}
 		}
+		for(auto w_plist : playback_state_listeners) {
+			if(auto plist = w_plist.lock()) {
+				Machine::run_async_function(
+					[plist]() {
+						plist->project_loaded();
+					}
+					);
+			}
+		}
 	}
 }
 
@@ -2013,8 +2022,10 @@ void Machine::register_machine_set_listener(std::weak_ptr<MachineSetListener> ms
 }
 
 void Machine::register_playback_state_listener(std::weak_ptr<PlaybackStateListener> pstate_listener) {
+	SATAN_ERROR("::register_playback_state_listener() will enqueue machine operation...\n");
 	Machine::machine_operation_enqueue(
-		[&pstate_listener] (void *d) {
+		[&pstate_listener] () {
+			SATAN_ERROR("::register_playback_state_listener() machine operation running...\n");
 			playback_state_listeners.insert(pstate_listener);
 
 			auto l_start = __loop_start;
@@ -2025,9 +2036,12 @@ void Machine::register_playback_state_listener(std::weak_ptr<PlaybackStateListen
 			auto is_playing = __is_playing;
 			auto is_recording = __is_recording;
 
+			SATAN_ERROR("::register_playback_state_listener() machine operation will run async function...\n");
 			Machine::run_async_function(
 				[pstate_listener,l_start, l_stop, l_do, bpm, lpb, is_playing, is_recording]() {
+					SATAN_ERROR("::register_playback_state_listener() async begin\n");
 					if(auto plist = pstate_listener.lock()) {
+						SATAN_ERROR("::register_playback_state_listener() async locked...\n");
 						plist->project_loaded();
 						plist->loop_state_changed(l_do);
 						plist->loop_start_changed(l_start);
@@ -2039,8 +2053,9 @@ void Machine::register_playback_state_listener(std::weak_ptr<PlaybackStateListen
 					}
 				}
 				);
+			SATAN_ERROR("::register_playback_state_listener() completed\n");
 		},
-		NULL, true);
+		false);
 }
 
 std::vector<Machine *> Machine::get_machine_set() {
@@ -2121,13 +2136,17 @@ void Machine::set_load_state(bool is_loading) {
 }
 
 void Machine::set_loop_state(bool do_loop) {
+	SATAN_ERROR("Machine::set_loop_state() called\n");
 	Machine::machine_operation_enqueue(
 		[do_loop] () {
+			SATAN_ERROR("Machine::set_loop_state() __do_loop set\n");
 			__do_loop = do_loop;
 			for(auto w_plist : playback_state_listeners) {
 				if(auto plist = w_plist.lock()) {
+					SATAN_ERROR("Machine::set_loop_state() calling async function...\n");
 					Machine::run_async_function(
 						[plist, do_loop]() {
+							SATAN_ERROR("Machine::set_loop_state() async function called...\n");
 							plist->loop_state_changed(do_loop);
 						}
 						);
@@ -2471,5 +2490,9 @@ void Machine::run_async_operation(AsyncOp *op) {
 }
 
 void Machine::run_async_function(std::function<void()> f) {
-	async_ops->run_async_function(f);
+	SATAN_ERROR("::run_async_function() ops == %p\n", async_ops);
+	if(async_ops != NULL)
+		async_ops->run_async_function(f);
+	else
+		f();
 }

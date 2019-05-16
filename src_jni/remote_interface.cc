@@ -754,15 +754,21 @@ RemoteInterface::HandleList::HandleListFactory::HandleListFactory()
 	: FactoryTemplate<HandleList>(__FCT_HANDLELIST) {}
 
 std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::HandleList::HandleListFactory::create(
-	const Message &serialized)
+	const Message &serialized,
+	RegisterObjectFunction register_object
+	)
 {
 	auto hlst = std::make_shared<HandleList>(this, serialized);
 	clientside_handle_list = hlst;
-	return hlst;
+	return register_object(hlst);
 }
 
-std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::HandleList::HandleListFactory::create(int32_t new_obj_id) {
-	return std::make_shared<HandleList>(new_obj_id, this);
+std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::HandleList::HandleListFactory::create(
+	int32_t new_obj_id,
+	RegisterObjectFunction register_object
+	) {
+	auto hlst = std::make_shared<HandleList>(new_obj_id, this);
+	return register_object(hlst);
 }
 
 /***************************
@@ -893,15 +899,21 @@ RemoteInterface::HandleList::HandleListFactory RemoteInterface::HandleList::hand
 RemoteInterface::GlobalControlObject::GlobalControlObjectFactory::GlobalControlObjectFactory()
 	: FactoryTemplate<GlobalControlObject>(__FCT_GLOBALCONTROLOBJECT) {}
 
-std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::GlobalControlObject::GlobalControlObjectFactory::create(const Message &serialized) {
+std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::GlobalControlObject::GlobalControlObjectFactory::create(
+	const Message &serialized,
+	RegisterObjectFunction register_object
+	) {
 	std::lock_guard<std::mutex> lock_guard(gco_mutex);
 	std::shared_ptr<GlobalControlObject> gco = std::make_shared<GlobalControlObject>(this, serialized);
 	clientside_gco = gco;
-	return gco;
+	return register_object(gco);
 }
 
-std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::GlobalControlObject::GlobalControlObjectFactory::create(int32_t new_obj_id) {
-       return std::make_shared<GlobalControlObject>(new_obj_id, this);
+std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::GlobalControlObject::GlobalControlObjectFactory::create(
+	int32_t new_obj_id,
+	RegisterObjectFunction register_object
+	) {
+	return register_object(std::make_shared<GlobalControlObject>(new_obj_id, this));
 }
 
 /***************************
@@ -1323,7 +1335,10 @@ std::vector<std::weak_ptr<RemoteInterface::GlobalControlObject::PlaybackStateLis
 RemoteInterface::SampleBank::SampleBankFactory::SampleBankFactory()
 	: FactoryTemplate<SampleBank>(__FCT_SAMPLEBANK) {}
 
-std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::SampleBank::SampleBankFactory::create(const Message &serialized) {
+std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::SampleBank::SampleBankFactory::create(
+	const Message &serialized,
+	RegisterObjectFunction register_object
+	) {
 	std::lock_guard<std::mutex> lock_guard(clientside_samplebanks_mutex);
 
 	std::shared_ptr<SampleBank> sb = std::make_shared<SampleBank>(this, serialized);
@@ -1333,12 +1348,14 @@ std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::SampleBank::Sample
 	for(auto cssb : clientside_samplebanks) {
 		SATAN_DEBUG(" sbank: %s", cssb.first.c_str());
 	}
-
-	return sb;
+	return register_object(sb);
 }
 
-std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::SampleBank::SampleBankFactory::create(int32_t new_obj_id) {
-	return std::make_shared<SampleBank>(new_obj_id, this);
+std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::SampleBank::SampleBankFactory::create(
+	int32_t new_obj_id,
+	RegisterObjectFunction register_object
+	) {
+	return register_object(std::make_shared<SampleBank>(new_obj_id, this));
 }
 
 /***************************
@@ -1800,13 +1817,18 @@ bool RemoteInterface::RIMachine::RIController::has_midi_controller(int &__coarse
 RemoteInterface::RIMachine::RIMachineFactory::RIMachineFactory()
 	: FactoryTemplate<RIMachine>(__FCT_RIMACHINE) {}
 
-std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::RIMachine::RIMachineFactory::create(const Message &serialized) {
-	std::shared_ptr<RIMachine> hlst = std::make_shared<RIMachine>(this, serialized);
-	return hlst;
+std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::RIMachine::RIMachineFactory::create(
+	const Message &serialized,
+	RegisterObjectFunction register_object
+	) {
+	return register_object(std::make_shared<RIMachine>(this, serialized));
 }
 
-std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::RIMachine::RIMachineFactory::create(int32_t new_obj_id) {
-	return std::make_shared<RIMachine>(new_obj_id, this);
+std::shared_ptr<RemoteInterface::BaseObject> RemoteInterface::RIMachine::RIMachineFactory::create(
+	int32_t new_obj_id,
+	RegisterObjectFunction register_object
+	) {
+	return register_object(std::make_shared<RIMachine>(new_obj_id, this));
 }
 
 /***************************

@@ -26,9 +26,16 @@
 
 #include "machine_sequencer.hh"
 
+#include "engine_code/global_control_object.hh"
+
+typedef RemoteInterface::ClientSpace::GlobalControlObject GCO;
+
 class TimeLines
 	: public KammoGUI::GnuVGCanvas::SVGDocument
 	, public KammoGUI::ScaleGestureDetector::OnScaleGestureListener
+	, public RemoteInterface::Context::ObjectSetListener<GCO>
+	, public GCO::GlobalControlListener
+	, public std::enable_shared_from_this<TimeLines>
 {
 private:
 	// fling detector
@@ -37,8 +44,16 @@ private:
 	KammoGUI::GnuVGCanvas::ElementReference *timeline_container = 0;
 	KammoGUI::GnuVGCanvas::ElementReference *time_index_container = 0;
 
+	// Stuff for loop data
+	std::weak_ptr<GCO> gco_w;
+	KammoGUI::GnuVGCanvas::ElementReference loop_marker;
+	KammoGUI::GnuVGCanvas::ElementReference loop_start_marker;
+	KammoGUI::GnuVGCanvas::ElementReference loop_stop_marker;
+	int loop_start = 0, loop_stop = 16;
+
 	// sizes in pixels
-	double finger_width = 10.0, finger_height = 10.0;
+	KammoGUI::GnuVGCanvas::SVGRect document_size;
+	double finger_width = 10.0, finger_height = 10.0, scaling = 1.0;
 
 	// canvas size in "fingers"
 	int canvas_width_fingers = 8, canvas_height_fingers = 8;
@@ -47,7 +62,7 @@ private:
 	bool ignore_scroll = false;
 	unsigned int skip_interval;
 	float canvas_w_inches, canvas_h_inches;
-	double horizontal_zoom_factor = 1.0, line_offset = 0.0, graphics_offset;
+	double horizontal_zoom_factor = 1.0, line_offset = 0.0;
 	int minor_width, canvas_w, canvas_h;
 	int minors_per_major = 16;
 	std::vector<KammoGUI::GnuVGCanvas::ElementReference *> major_n_minors;
@@ -107,6 +122,8 @@ public:
 	virtual void on_resize() override;
 	virtual void on_render() override;
 
+	virtual void object_registered(std::shared_ptr<GCO> gco) override;
+	virtual void object_unregistered(std::shared_ptr<GCO> gco) override;
 };
 
 #endif
