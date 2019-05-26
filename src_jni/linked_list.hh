@@ -36,7 +36,7 @@ public:
 		} else {
 			T* this_element = head;
 			while(this_element->next != NULL &&
-			      (*this_element) < (*new_element)) {
+			      *(this_element->next) < (*new_element)) {
 				this_element = this_element->next;
 			}
 			new_element->next = this_element->next;
