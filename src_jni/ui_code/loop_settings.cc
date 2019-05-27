@@ -95,7 +95,6 @@ LoopSettings::LoopSettings(KammoGUI::GnuVGCanvas *cnvs)
 					SATAN_DEBUG("LoopSettings locked gco object to set state...\n");
 					gco->set_loop_state(!loop_state);
 				}
-				refresh_loop_state_icons();
 			}
 		}
 		);
@@ -164,7 +163,12 @@ void LoopSettings::on_resize() {
 }
 
 void LoopSettings::loop_state_changed(bool new_state) {
-	loop_state = new_state;
+	KammoGUI::run_on_GUI_thread(
+		[this, new_state]() {
+			loop_state = new_state;
+			refresh_loop_state_icons();
+		}
+		);
 }
 
 void LoopSettings::object_registered(std::shared_ptr<GCO> _gco) {
