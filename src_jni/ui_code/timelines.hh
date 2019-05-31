@@ -37,6 +37,9 @@ class TimeLines
 	, public GCO::GlobalControlListener
 	, public std::enable_shared_from_this<TimeLines>
 {
+public:
+	typedef std::function<void(int loop_start, int loop_stop)> LoopSettingCallback;
+
 private:
 	// fling detector
 	KammoGUI::FlingGestureDetector fling_detector;
@@ -45,11 +48,18 @@ private:
 	KammoGUI::GnuVGCanvas::ElementReference *time_index_container = 0;
 
 	// Stuff for loop data
+	enum ModifyingLoop {
+		neither_start_or_stop,
+		start_marker,
+		stop_marker
+	};
 	std::weak_ptr<GCO> gco_w;
 	KammoGUI::GnuVGCanvas::ElementReference loop_marker;
 	KammoGUI::GnuVGCanvas::ElementReference loop_start_marker;
 	KammoGUI::GnuVGCanvas::ElementReference loop_stop_marker;
-	int loop_start = 0, loop_stop = 16;
+	int loop_start = 0, loop_stop = 16, new_marker_position;
+	ModifyingLoop currently_modifying = neither_start_or_stop;
+	void on_loop_marker_event(ModifyingLoop selected_marker, const KammoGUI::MotionEvent &event);
 
 	// sizes in pixels
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
@@ -94,7 +104,6 @@ private:
 	};
 
 	std::set<std::shared_ptr<CallbackContainer> > scroll_callbacks;
-
 	void call_scroll_callbacks() {
 		auto min_visible_offset = get_sequence_minor_position_at(0);
 		auto max_visible_offset = get_sequence_minor_position_at(canvas_w);
@@ -103,11 +112,21 @@ private:
 			cbc->cb(minor_spacing, line_offset, min_visible_offset, max_visible_offset);
 	}
 
+	std::set<LoopSettingCallback> loop_setting_callbacks;
+	void call_loop_setting_callbacks(int requested_start, int requested_stop) {
+		for(auto lsc : loop_setting_callbacks) {
+			lsc(requested_start, requested_stop);
+		}
+	}
+
 public:
 	TimeLines(KammoGUI::GnuVGCanvas* cnvs);
 	~TimeLines();
 
+	void change_loop_settings(int new_loop_start, int new_loop_stop);
+
 	void add_scroll_callback(std::function<void(double, double, int, int)>);
+	void add_loop_setting_callback(LoopSettingCallback lsc);
 
 	double get_graphics_horizontal_offset();
 	double get_horizontal_pixels_per_minor();

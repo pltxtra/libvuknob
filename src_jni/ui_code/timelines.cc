@@ -30,7 +30,7 @@
 #include "common.hh"
 #include "fling_animation.hh"
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 void TimeLines::create_timelines() {
@@ -275,6 +275,48 @@ void TimeLines::on_time_index_event(const KammoGUI::MotionEvent &event) {
 	}
 }
 
+void TimeLines::on_loop_marker_event(ModifyingLoop selected_marker, const KammoGUI::MotionEvent &event) {
+	SATAN_DEBUG("TimeLines::on_loop_marker_event()\n");
+
+	switch(event.get_action()) {
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		break;
+	case KammoGUI::MotionEvent::ACTION_DOWN:
+		scroll_start_x = event.get_x();
+		break;
+	case KammoGUI::MotionEvent::ACTION_MOVE:
+	{
+		currently_modifying = selected_marker;
+		auto scroll_x = event.get_x() - scroll_start_x;
+
+		double new_marker_position_delta = scroll_x / (minor_spacing * ((double)minors_per_major));
+		SATAN_DEBUG("new_marker_position_delta: %f\n", new_marker_position_delta);
+		switch(currently_modifying) {
+		case start_marker:
+			new_marker_position = loop_start + new_marker_position_delta;
+			break;
+		case stop_marker:
+			new_marker_position = loop_stop + new_marker_position_delta;
+			break;
+		case neither_start_or_stop:
+		default:
+			break;
+		}
+	}
+		break;
+	case KammoGUI::MotionEvent::ACTION_UP:
+		call_loop_setting_callbacks(
+			currently_modifying == start_marker ? new_marker_position : loop_start,
+			currently_modifying == start_marker ? new_marker_position : loop_stop
+			);
+		currently_modifying = neither_start_or_stop;
+		break;
+	}
+}
+
 void TimeLines::on_resize() {
 	auto canvas = get_canvas();
 	canvas->get_size_pixels(canvas_w, canvas_h);
@@ -309,6 +351,36 @@ void TimeLines::on_resize() {
 	loop_marker = KammoGUI::GnuVGCanvas::ElementReference(this, "loopMarker");
 	loop_start_marker = KammoGUI::GnuVGCanvas::ElementReference(this, "loopStart");
 	loop_stop_marker = KammoGUI::GnuVGCanvas::ElementReference(this, "loopStop");
+
+	loop_start_marker.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			SATAN_DEBUG("Begin loop start marker event...\n");
+			on_loop_marker_event(start_marker, event);
+			SATAN_DEBUG("End loop start marker event...\n");
+		}
+		);
+	loop_stop_marker.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			SATAN_DEBUG("Begin loop stop marker event...\n");
+			on_loop_marker_event(stop_marker, event);
+			SATAN_DEBUG("End loop stop marker event...\n");
+		}
+		);
+	SATAN_ERROR("--------- start_marker element ptr %p -> %p\n",
+		    loop_start_marker.pointer(), &loop_start_marker);
+	SATAN_ERROR("--------- loop_marker element ptr %p -> %p\n",
+		    loop_marker.pointer(), &loop_marker);
+	SATAN_ERROR("--------- stop_marker element ptr %p -> %p\n",
+		    loop_stop_marker.pointer(), &loop_stop_marker);
+}
+
+void TimeLines::change_loop_settings(int new_loop_start, int new_loop_stop) {
+	loop_start = new_loop_start;
+	loop_stop = new_loop_stop;
 }
 
 void TimeLines::add_scroll_callback(std::function<void(double, double, int, int)> _cb) {
@@ -360,8 +432,22 @@ void TimeLines::on_render() {
 	{ // Move loop markers
 		KammoGUI::GnuVGCanvas::SVGMatrix loop_start_mtrx, loop_stop_mtrx;
 
-		auto loop_start_offset = (loop_start + line_offset_d) * minor_spacing * ((double)minors_per_major);
-		auto loop_stop_offset = (loop_stop + line_offset_d) * minor_spacing * ((double)minors_per_major);
+		auto _loop_start = loop_start;
+		auto _loop_stop = loop_stop;
+
+		switch(currently_modifying) {
+		case neither_start_or_stop:
+			break;
+		case start_marker:
+			_loop_start = new_marker_position;
+			break;
+		case stop_marker:
+			_loop_stop = new_marker_position;
+			break;
+		}
+
+		auto loop_start_offset = (_loop_start + line_offset_d) * minor_spacing * ((double)minors_per_major);
+		auto loop_stop_offset = (_loop_stop + line_offset_d) * minor_spacing * ((double)minors_per_major);
 
 		loop_start_mtrx.scale(scaling, scaling);
 		loop_start_mtrx.translate(loop_start_offset, 0);
