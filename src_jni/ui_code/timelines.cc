@@ -299,7 +299,7 @@ void TimeLines::on_loop_marker_event(ModifyingLoop selected_marker, const KammoG
 			new_marker_position = loop_start + new_marker_position_delta;
 			break;
 		case stop_marker:
-			new_marker_position = loop_stop + new_marker_position_delta;
+			new_marker_position = loop_start + loop_length + new_marker_position_delta;
 			break;
 		case neither_start_or_stop:
 		default:
@@ -311,15 +311,15 @@ void TimeLines::on_loop_marker_event(ModifyingLoop selected_marker, const KammoG
 		SATAN_DEBUG("calling request_new_loop_settings()....\n");
 		request_new_loop_settings(
 			currently_modifying == start_marker ? new_marker_position : loop_start,
-			currently_modifying == stop_marker ? new_marker_position : loop_stop
+			currently_modifying == stop_marker ?
+			(new_marker_position - loop_start) : (loop_length + loop_start - new_marker_position)
 			);
 		currently_modifying = neither_start_or_stop;
 		break;
 	}
 }
 
-void TimeLines::request_new_loop_settings(int new_loop_start, int new_loop_stop) {
-	auto new_loop_length = new_loop_stop - new_loop_start;
+void TimeLines::request_new_loop_settings(int new_loop_start, int new_loop_length) {
 	SATAN_DEBUG("request_new_loop_settings() : %d, %d\n", new_loop_start, new_loop_length);
 	if(new_loop_start < 0 || new_loop_length < 0)
 		return; // Illegal values
@@ -337,7 +337,7 @@ void TimeLines::loop_start_changed(int new_start) {
 }
 
 void TimeLines::loop_length_changed(int new_length) {
-	loop_stop = loop_start + new_length;
+	loop_length = new_length;
 }
 
 void TimeLines::on_resize() {
@@ -401,11 +401,6 @@ void TimeLines::on_resize() {
 		    loop_stop_marker.pointer(), &loop_stop_marker);
 }
 
-void TimeLines::change_loop_settings(int new_loop_start, int new_loop_stop) {
-	loop_start = new_loop_start;
-	loop_stop = new_loop_stop;
-}
-
 void TimeLines::add_scroll_callback(std::function<void(double, double, int, int)> _cb) {
 	auto cbc = std::make_shared<CallbackContainer>(_cb);
 	scroll_callbacks.insert(cbc);
@@ -456,7 +451,7 @@ void TimeLines::on_render() {
 		KammoGUI::GnuVGCanvas::SVGMatrix loop_start_mtrx, loop_stop_mtrx;
 
 		auto _loop_start = loop_start;
-		auto _loop_stop = loop_stop;
+		auto _loop_stop = loop_start + loop_length;
 
 		switch(currently_modifying) {
 		case neither_start_or_stop:

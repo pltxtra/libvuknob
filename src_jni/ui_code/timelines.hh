@@ -57,7 +57,7 @@ private:
 	KammoGUI::GnuVGCanvas::ElementReference loop_marker;
 	KammoGUI::GnuVGCanvas::ElementReference loop_start_marker;
 	KammoGUI::GnuVGCanvas::ElementReference loop_stop_marker;
-	int loop_start = 0, loop_stop = 16, new_marker_position;
+	int loop_start = 0, loop_length = 16, new_marker_position;
 	ModifyingLoop currently_modifying = neither_start_or_stop;
 	void on_loop_marker_event(ModifyingLoop selected_marker, const KammoGUI::MotionEvent &event);
 	void request_new_loop_settings(int new_loop_start, int new_loop_stop);
