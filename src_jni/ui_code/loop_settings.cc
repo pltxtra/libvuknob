@@ -162,6 +162,16 @@ void LoopSettings::on_resize() {
 	base_transform_t.scale(scaling, scaling);
 }
 
+void LoopSettings::show() {
+	KammoGUI::GnuVGCanvas::ElementReference root(this);
+	root.set_display("inline");
+}
+
+void LoopSettings::hide() {
+	KammoGUI::GnuVGCanvas::ElementReference root(this);
+	root.set_display("none");
+}
+
 void LoopSettings::loop_state_changed(bool new_state) {
 	KammoGUI::run_on_GUI_thread(
 		[this, new_state]() {

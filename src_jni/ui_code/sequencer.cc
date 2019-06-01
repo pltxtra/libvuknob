@@ -65,6 +65,7 @@ Sequencer::PatternInstance::PatternInstance(
 		main_container.set_display("inline");
 		plus_button->show();
 		timelines->show_loop_markers();
+		loop_settings->show();
 	};
 
 	set_event_handler(
@@ -87,6 +88,7 @@ Sequencer::PatternInstance::PatternInstance(
 				auto main_container = get_root();
 				main_container.set_display("none");
 				timelines->hide_loop_markers();
+				loop_settings->hide();
 				plus_button->hide();
 				return_button->show();
 				break;
