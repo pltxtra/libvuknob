@@ -85,7 +85,6 @@ private:
 		bool display_action = false;
 
 		std::shared_ptr<RISequence> ri_seq;
-		std::shared_ptr<TimeLines> timelines;
 		int offset;
 
 		std::map<uint32_t, std::string> patterns;
@@ -109,17 +108,19 @@ private:
 					    double width, double height,
 					    double canvas_w, double canvas_h);
 
+		void on_scroll(double _minor_width, double _line_offset,
+			       int _left_side_minor_offset,
+			       int _right_side_minor_offset);
+
 		Sequence(
 			KammoGUI::GnuVGCanvas::ElementReference elref,
 			std::shared_ptr<RISequence> ri_seq,
-			std::shared_ptr<TimeLines> timelines,
 			int offset);
 
 		static std::shared_ptr<Sequence> create_sequence(
 			KammoGUI::GnuVGCanvas::ElementReference &root,
 			KammoGUI::GnuVGCanvas::ElementReference &sequence_graphic_template,
 			std::shared_ptr<RISequence> ri_seq,
-			std::shared_ptr<TimeLines> timelines,
 			int offset);
 	};
 
@@ -128,7 +129,6 @@ private:
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
 
 	std::map<std::shared_ptr<RISequence>, std::shared_ptr<Sequence> >machine2sequence;
-	std::shared_ptr<TimeLines> timelines;
 
 	double scaling; // graphical scaling factor
 	double finger_width = 10.0, finger_height = 10.0; // sizes in pixels
@@ -138,7 +138,7 @@ private:
 
 public:
 
-	Sequencer(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
+	Sequencer(KammoGUI::GnuVGCanvas* cnvs);
 
 	virtual void on_resize() override;
 	virtual void on_render() override;

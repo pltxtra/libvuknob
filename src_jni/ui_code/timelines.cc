@@ -407,6 +407,18 @@ void TimeLines::add_scroll_callback(std::function<void(double, double, int, int)
 	call_scroll_callbacks();
 }
 
+void TimeLines::show_loop_markers() {
+	loop_marker.set_display("inline");
+	loop_start_marker.set_display("inline");
+	loop_stop_marker.set_display("inline");
+}
+
+void TimeLines::hide_loop_markers() {
+	loop_marker.set_display("none");
+	loop_start_marker.set_display("none");
+	loop_stop_marker.set_display("none");
+}
+
 double TimeLines::get_graphics_horizontal_offset() {
 	return line_offset;
 }

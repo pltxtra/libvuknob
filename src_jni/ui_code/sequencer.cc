@@ -64,6 +64,7 @@ Sequencer::PatternInstance::PatternInstance(
 		auto main_container = get_root();
 		main_container.set_display("inline");
 		plus_button->show();
+		timelines->show_loop_markers();
 	};
 
 	set_event_handler(
@@ -76,6 +77,7 @@ Sequencer::PatternInstance::PatternInstance(
 			PatternEditor::show(restore_sequencer, ri_seq, instance_data.pattern_id);
 			auto main_container = get_root();
 			main_container.set_display("none");
+			timelines->hide_loop_markers();
 			plus_button->hide();
 			return_button->show();
 		}
@@ -140,11 +142,9 @@ std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_n
 
 Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 			      std::shared_ptr<RISequence> _ri_seq,
-			      std::shared_ptr<TimeLines> _timelines,
 			      int _offset)
 	: KammoGUI::GnuVGCanvas::ElementReference(elref)
 	, ri_seq(_ri_seq)
-	, timelines(_timelines)
 	, offset(_offset)
 {
 	SATAN_DEBUG("Sequencer::Sequence::Sequence()\n");
@@ -162,33 +162,6 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 		       const KammoGUI::MotionEvent &event) {
 			SATAN_DEBUG("seqBackground event detected.\n");
 			on_sequence_event(event);
-		}
-		);
-
-	_timelines->add_scroll_callback(
-		[this](double _minor_width,
-		       double _line_offset,
-		       int _left_side_minor_offset,
-		       int _right_side_minor_offset) {
-			minor_width = _minor_width;
-			line_offset = _line_offset;
-			left_side_minor_offset = _left_side_minor_offset;
-			right_side_minor_offset = _right_side_minor_offset;
-
-			KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
-			transform_t.init_identity();
-			transform_t.translate(line_offset, 0.0);
-
-			auto instanceContainer = find_child_by_class("instanceContainer");
-			instanceContainer.set_transform(transform_t);
-
-			for(auto p : instances) {
-				auto inst = p.second;
-
-				inst->calculate_visibility(
-					minor_width, left_side_minor_offset, right_side_minor_offset
-					);
-			}
 		}
 		);
 }
@@ -379,11 +352,36 @@ void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
 	button_container.set_transform(transform_t);
 }
 
+
+void Sequencer::Sequence::on_scroll(double _minor_width,
+				    double _line_offset,
+				    int _left_side_minor_offset,
+				    int _right_side_minor_offset) {
+	minor_width = _minor_width;
+	line_offset = _line_offset;
+	left_side_minor_offset = _left_side_minor_offset;
+	right_side_minor_offset = _right_side_minor_offset;
+
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
+	transform_t.init_identity();
+	transform_t.translate(line_offset, 0.0);
+
+	auto instanceContainer = find_child_by_class("instanceContainer");
+	instanceContainer.set_transform(transform_t);
+
+	for(auto p : instances) {
+		auto inst = p.second;
+
+		inst->calculate_visibility(
+			minor_width, left_side_minor_offset, right_side_minor_offset
+			);
+	}
+}
+
 auto Sequencer::Sequence::create_sequence(
 	KammoGUI::GnuVGCanvas::ElementReference &root,
 	KammoGUI::GnuVGCanvas::ElementReference &sequence_graphic_template,
 	std::shared_ptr<RISequence> ri_sequence,
-	std::shared_ptr<TimeLines> _timelines,
 	int offset) -> std::shared_ptr<Sequence> {
 
 	char bfr[32];
@@ -394,7 +392,7 @@ auto Sequencer::Sequence::create_sequence(
 
 	SATAN_DEBUG("Sequencer::Sequence::create_sequence() -- bfr: %s\n", bfr);
 
-	auto new_sequence = std::make_shared<Sequence>(new_graphic, ri_sequence, _timelines, offset);
+	auto new_sequence = std::make_shared<Sequence>(new_graphic, ri_sequence, offset);
 	ri_sequence->add_sequence_listener(new_sequence);
 	return new_sequence;
 }
@@ -405,14 +403,27 @@ auto Sequencer::Sequence::create_sequence(
  *
  ***************************/
 
-Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> _timelines)
+Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/sequencerMachine.svg"), cnvs)
-	, timelines(_timelines)
 {
 	sequence_graphic_template = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerMachineTemplate");
 	root = KammoGUI::GnuVGCanvas::ElementReference(this);
 
 	sequence_graphic_template.set_display("none");
+
+	timelines->add_scroll_callback(
+		[this](double _minor_width, double _line_offset,
+		       int _left_side_minor_offset,
+		       int _right_side_minor_offset) {
+			for(auto m2s : machine2sequence) {
+				m2s.second->on_scroll(
+					_minor_width, _line_offset,
+					_left_side_minor_offset,
+					_right_side_minor_offset
+					);
+			}
+		}
+		);
 }
 
 void Sequencer::on_resize() {
@@ -499,7 +510,7 @@ void Sequencer::object_registered(std::shared_ptr<RemoteInterface::ClientSpace::
 			KammoGUI::GnuVGCanvas::ElementReference layer(this, "layer1");
 			auto new_sequence = Sequence::create_sequence(
 				layer, sequence_graphic_template,
-				ri_seq, timelines,
+				ri_seq,
 				new_offset);
 			machine2sequence[ri_seq] = new_sequence;
 			new_sequence->set_graphic_parameters(
@@ -536,7 +547,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		cnvs->set_bg_color(1.0, 1.0, 1.0);
 
 		timelines = std::make_shared<TimeLines>(cnvs);
-		sequencer = std::make_shared<Sequencer>(cnvs, timelines);
+		sequencer = std::make_shared<Sequencer>(cnvs);
 		plus_button = std::make_shared<GnuVGCornerButton>(
 			cnvs,
 			std::string(SVGLoader::get_svg_directory() + "/plusButton.svg"),

@@ -117,10 +117,10 @@ public:
 	TimeLines(KammoGUI::GnuVGCanvas* cnvs);
 	~TimeLines();
 
-	void change_loop_settings(int new_loop_start, int new_loop_stop);
-
 	void add_scroll_callback(std::function<void(double, double, int, int)>);
-	void add_loop_setting_callback(LoopSettingCallback lsc);
+
+	void show_loop_markers();
+	void hide_loop_markers();
 
 	double get_graphics_horizontal_offset();
 	double get_horizontal_pixels_per_minor();
