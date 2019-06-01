@@ -71,15 +71,26 @@ Sequencer::PatternInstance::PatternInstance(
 		[this, ri_seq, restore_sequencer](SVGDocument *source,
 					  ElementReference *e,
 					  const KammoGUI::MotionEvent &event) {
-			SATAN_DEBUG("Clicked on pattern instance for pattern %d, %p (%s)\n",
-				    instance_data.pattern_id, ri_seq.get(), ri_seq->get_name().c_str());
+			switch(event.get_action()) {
+			case KammoGUI::MotionEvent::ACTION_CANCEL:
+			case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+			case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+			case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+			case KammoGUI::MotionEvent::ACTION_DOWN:
+			case KammoGUI::MotionEvent::ACTION_MOVE:
+				break;
+			case KammoGUI::MotionEvent::ACTION_UP:
+				SATAN_DEBUG("Clicked on pattern instance for pattern %d, %p (%s)\n",
+					    instance_data.pattern_id, ri_seq.get(), ri_seq->get_name().c_str());
 
-			PatternEditor::show(restore_sequencer, ri_seq, instance_data.pattern_id);
-			auto main_container = get_root();
-			main_container.set_display("none");
-			timelines->hide_loop_markers();
-			plus_button->hide();
-			return_button->show();
+				PatternEditor::show(restore_sequencer, ri_seq, instance_data.pattern_id);
+				auto main_container = get_root();
+				main_container.set_display("none");
+				timelines->hide_loop_markers();
+				plus_button->hide();
+				return_button->show();
+				break;
+			}
 		}
 		);
 }
