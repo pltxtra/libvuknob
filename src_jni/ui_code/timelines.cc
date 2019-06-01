@@ -308,13 +308,36 @@ void TimeLines::on_loop_marker_event(ModifyingLoop selected_marker, const KammoG
 	}
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
-		call_loop_setting_callbacks(
+		SATAN_DEBUG("calling request_new_loop_settings()....\n");
+		request_new_loop_settings(
 			currently_modifying == start_marker ? new_marker_position : loop_start,
-			currently_modifying == start_marker ? new_marker_position : loop_stop
+			currently_modifying == stop_marker ? new_marker_position : loop_stop
 			);
 		currently_modifying = neither_start_or_stop;
 		break;
 	}
+}
+
+void TimeLines::request_new_loop_settings(int new_loop_start, int new_loop_stop) {
+	auto new_loop_length = new_loop_stop - new_loop_start;
+	SATAN_DEBUG("request_new_loop_settings() : %d, %d\n", new_loop_start, new_loop_length);
+	if(new_loop_start < 0 || new_loop_length < 0)
+		return; // Illegal values
+	SATAN_DEBUG("request_new_loop_settings() : requesting lock...\n");
+	if(auto gco = gco_w.lock()) {
+		SATAN_DEBUG("Calling gco->set_loop_start()....\n");
+		gco->set_loop_start(new_loop_start);
+		SATAN_DEBUG("Called gco->set_loop_start()....\n");
+		gco->set_loop_length(new_loop_length);
+	}
+}
+
+void TimeLines::loop_start_changed(int new_start) {
+	loop_start = new_start;
+}
+
+void TimeLines::loop_length_changed(int new_length) {
+	loop_stop = loop_start + new_length;
 }
 
 void TimeLines::on_resize() {

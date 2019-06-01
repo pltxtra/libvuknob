@@ -39,6 +39,7 @@ SERVER_CODE(
 	}
 
 	void GlobalControlObject::loop_start_changed(int _loop_start) {
+		SATAN_ERROR("GlobalControlObject::loop_start_changed() --- %d\n", _loop_start);
 		{
 			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 			loop_start = _loop_start;
@@ -47,11 +48,13 @@ SERVER_CODE(
 			cmd_set_loop_start,
 			[_loop_start](std::shared_ptr<Message> &msg_to_send) {
 				msg_to_send->set_value("start", std::to_string(_loop_start));
+				SATAN_ERROR("GlobalControlObject::loop_start_changed() sending command... %d\n", _loop_start);
 			}
 			);
 	}
 
 	void GlobalControlObject::loop_length_changed(int _loop_length) {
+		SATAN_ERROR("GlobalControlObject::loop_length_changed() --- %d\n", _loop_length);
 		{
 			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 			loop_length = _loop_length;
@@ -60,6 +63,7 @@ SERVER_CODE(
 			cmd_set_loop_length,
 			[_loop_length](std::shared_ptr<Message> &msg_to_send) {
 				msg_to_send->set_value("length", std::to_string(_loop_length));
+				SATAN_ERROR("GlobalControlObject::loop_length_changed() sending command... %d\n", _loop_length);
 			}
 			);
 	}
@@ -69,21 +73,29 @@ SERVER_CODE(
 							   const RemoteInterface::Message& msg) {
 		SATAN_ERROR("GlobalControlObject::handle_req_set_loop_state() called...\n");
 		bool _loop_state = msg.get_value("state") == "true" ? true : false;
-		Machine::set_loop_state(_loop_state);
+		try {
+			Machine::set_loop_state(_loop_state);
+		} catch(...) { /* ignore */ }
 	}
 
 	void GlobalControlObject::handle_req_set_loop_start(RemoteInterface::Context *context,
 							    RemoteInterface::MessageHandler *src,
 							    const RemoteInterface::Message& msg) {
 		int _loop_start = std::stoi(msg.get_value("start"));
-		Machine::set_loop_start(_loop_start);
+		SATAN_ERROR("GlobalControlObject::handle_req_set_loop_start() --- %d\n", _loop_start);
+		try {
+			Machine::set_loop_start(_loop_start);
+		} catch(...) { /* ignore */ }
 	}
 
 	void GlobalControlObject::handle_req_set_loop_length(RemoteInterface::Context *context,
 							     RemoteInterface::MessageHandler *src,
 							     const RemoteInterface::Message& msg) {
 		int _loop_length = std::stoi(msg.get_value("length"));
-		Machine::set_loop_state(_loop_length);
+		SATAN_ERROR("GlobalControlObject::handle_req_set_loop_length() --- %d\n", _loop_length);
+		try {
+			Machine::set_loop_length(_loop_length);
+		} catch(...) { /* ignore */ }
 	}
 
 	void GlobalControlObject::serialize(std::shared_ptr<Message> &target) {
@@ -119,6 +131,7 @@ CLIENT_CODE(
 		send_message_to_server(
 			req_set_loop_start,
 			[new_start](std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				SATAN_ERROR("GlobalControlObject::set_loop_start() sending new start value: %d\n", new_start);
 				msg2send->set_value("start", std::to_string(new_start));
 			}
 		);
@@ -128,6 +141,7 @@ CLIENT_CODE(
 		send_message_to_server(
 			req_set_loop_length,
 			[new_length](std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				SATAN_ERROR("GlobalControlObject::set_loop_length() sending new length value: %d\n", new_length);
 				msg2send->set_value("length", std::to_string(new_length));
 			}
 		);

@@ -60,6 +60,7 @@ private:
 	int loop_start = 0, loop_stop = 16, new_marker_position;
 	ModifyingLoop currently_modifying = neither_start_or_stop;
 	void on_loop_marker_event(ModifyingLoop selected_marker, const KammoGUI::MotionEvent &event);
+	void request_new_loop_settings(int new_loop_start, int new_loop_stop);
 
 	// sizes in pixels
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
@@ -112,13 +113,6 @@ private:
 			cbc->cb(minor_spacing, line_offset, min_visible_offset, max_visible_offset);
 	}
 
-	std::set<LoopSettingCallback> loop_setting_callbacks;
-	void call_loop_setting_callbacks(int requested_start, int requested_stop) {
-		for(auto lsc : loop_setting_callbacks) {
-			lsc(requested_start, requested_stop);
-		}
-	}
-
 public:
 	TimeLines(KammoGUI::GnuVGCanvas* cnvs);
 	~TimeLines();
@@ -141,6 +135,8 @@ public:
 	virtual void on_resize() override;
 	virtual void on_render() override;
 
+	virtual void loop_start_changed(int new_start) override;
+	virtual void loop_length_changed(int new_length) override;
 	virtual void object_registered(std::shared_ptr<GCO> gco) override;
 	virtual void object_unregistered(std::shared_ptr<GCO> gco) override;
 };

@@ -571,6 +571,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 			});
 
 		RemoteInterface::ClientSpace::Client::register_object_set_listener<RISequence>(sequencer);
+		RemoteInterface::ClientSpace::Client::register_object_set_listener<GCO>(timelines);
 		RemoteInterface::ClientSpace::Client::register_object_set_listener<GCO>(loop_settings);
 	}
 }
