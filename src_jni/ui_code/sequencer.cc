@@ -310,6 +310,7 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 				ri_seq
 				);
 			instances[instance.start_at] = i;
+			timelines->call_scroll_callbacks();
 			i->calculate_visibility(
 				minor_width, left_side_minor_offset, right_side_minor_offset
 				);

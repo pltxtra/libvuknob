@@ -402,9 +402,16 @@ void TimeLines::on_resize() {
 }
 
 void TimeLines::add_scroll_callback(std::function<void(double, double, int, int)> _cb) {
-	auto cbc = std::make_shared<CallbackContainer>(_cb);
-	scroll_callbacks.insert(cbc);
+	scroll_callbacks.push_back(_cb);
 	call_scroll_callbacks();
+}
+
+void TimeLines::call_scroll_callbacks() {
+	auto min_visible_offset = get_sequence_minor_position_at(0);
+	auto max_visible_offset = get_sequence_minor_position_at(canvas_w);
+	for(auto sc : scroll_callbacks) {
+		sc(minor_spacing, line_offset, min_visible_offset, max_visible_offset);
+	}
 }
 
 void TimeLines::show_loop_markers() {
