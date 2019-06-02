@@ -42,7 +42,7 @@ private:
 	{
 	private:
 		RIPatternInstance instance_data;
-
+		KammoGUI::GnuVGCanvas::ElementReference instance_graphic, pattern_id_graphic;
 	public:
 		PatternInstance(
 			KammoGUI::GnuVGCanvas::ElementReference &elref,

@@ -60,6 +60,13 @@ Sequencer::PatternInstance::PatternInstance(
 	: KammoGUI::GnuVGCanvas::ElementReference(elref)
 	, instance_data(_instance_data)
 {
+	instance_graphic = find_child_by_class("instance_graphic");
+	pattern_id_graphic = find_child_by_class("id_graphic");
+
+	std::stringstream ss;
+	ss << instance_data.pattern_id;
+	pattern_id_graphic.set_text_content(ss.str());
+
 	auto restore_sequencer = [this]() {
 		auto main_container = get_root();
 		main_container.set_display("inline");
@@ -108,10 +115,14 @@ void Sequencer::PatternInstance::calculate_visibility(double minor_width,
 		    maximum_minor_offset,
 		    minor_width * (double)(instance_data.stop_at - instance_data.start_at)
 		);
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	float x = minor_width * (double)instance_data.start_at;
-	set_attribute("x", x);
+	transform_t.init_identity();
+	transform_t.translate(x, 0.0);
+	set_transform(transform_t);
+
 	float w = (minor_width * (double)(instance_data.stop_at - instance_data.start_at));
-	set_attribute("width", w - 2);
+	instance_graphic.set_attribute("width", w - 2);
 }
 
 std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_new_pattern_instance(
@@ -128,14 +139,26 @@ std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_n
 
 	float w = (minor_width * (_instance_data.stop_at - _instance_data.start_at));
 
-	ss << "<rect "
-	   << "style=\"fill:#ff0000;fill-opacity:1\" "
-	   << "id=\"" << ss_new_id.str() << "\" "
-	   << "width=\"" << w << "\" "
-	   << "height=\"" << height << "\" "
-	   << "x=\"" << (minor_width * _instance_data.start_at) << "\" "
-	   << "y=\"0.0\" />"
-
+	ss << ""
+	   << "<g "
+	   << " id=\"" << ss_new_id.str() << "\" "
+	   << "> "
+	   << "  <rect "
+	   << "   style=\"fill:#ffa123;fill-opacity:1.0\" "
+	   << "   class=\"instance_graphic\""
+	   << "   width=\"" << w << "\" "
+	   << "   height=\"" << height << "\" "
+	   << "   x=\"" << (minor_width * _instance_data.start_at) << "\" "
+	   << "   y=\"0.0\" "
+	   << "  />"
+	   << "  <text "
+	   << "   x=\"10.0\" "
+	   << "   y=\"30.0\" "
+	   << "   class=\"id_graphic\" "
+	   << "   style=\"font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:25px;line-height:0%;font-family:Roboto;-inkscape-font-specification:Roboto;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none\" "
+	   << "   >0</text> "
+	   << "</g>"
+	   << ""
 		;
 
 	parent.add_svg_child(ss.str());
