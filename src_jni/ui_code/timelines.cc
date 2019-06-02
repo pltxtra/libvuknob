@@ -333,11 +333,21 @@ void TimeLines::request_new_loop_settings(int new_loop_start, int new_loop_lengt
 }
 
 void TimeLines::loop_start_changed(int new_start) {
-	loop_start = new_start;
+	KammoGUI::run_on_GUI_thread(
+		[this, new_start]() {
+			SATAN_DEBUG("TimeLines::loop_start_changed(%d)\n", new_start);
+			loop_start = new_start;
+		}
+		);
 }
 
 void TimeLines::loop_length_changed(int new_length) {
-	loop_length = new_length;
+	KammoGUI::run_on_GUI_thread(
+		[this, new_length]() {
+			SATAN_DEBUG("TimeLines::loop_length_changed(%d)\n", new_length);
+			loop_length = new_length;
+		}
+		);
 }
 
 void TimeLines::on_resize() {

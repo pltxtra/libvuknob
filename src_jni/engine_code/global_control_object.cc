@@ -110,12 +110,17 @@ CLIENT_CODE(
 
 	void GlobalControlObject::add_global_control_listener(std::shared_ptr<GlobalControlObject::GlobalControlListener> glol) {
 		bool _loop_state;
+		int _loop_start, _loop_length;
 		{
 			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 			gco_listeners.insert(glol);
 			_loop_state = loop_state;
+			_loop_start = loop_start;
+			_loop_length = loop_length;
 		}
 		glol->loop_state_changed(_loop_state);
+		glol->loop_start_changed(_loop_start);
+		glol->loop_length_changed(_loop_length);
 	}
 
 	void GlobalControlObject::set_loop_state(bool new_state) {
