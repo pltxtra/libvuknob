@@ -478,8 +478,6 @@ void TimeLines::on_render() {
 	line_offset_d = line_offset / (minor_spacing * (double)minors_per_major);
 	int line_offset_i = line_offset_d; // we need the pure integer version too
 
-	// calculate the pixel offset for the first line
-
 	{ // Move loop markers
 		KammoGUI::GnuVGCanvas::SVGMatrix loop_start_mtrx, loop_stop_mtrx;
 
