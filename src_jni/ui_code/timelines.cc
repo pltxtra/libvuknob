@@ -180,10 +180,13 @@ void TimeLines::scrolled_horizontal(float pixels_changed) {
 }
 
 bool TimeLines::on_scale(KammoGUI::ScaleGestureDetector *detector) {
-	horizontal_zoom_factor *= detector->get_scale_factor();
-	if(horizontal_zoom_factor < 1.0) horizontal_zoom_factor = 1.0;
-
-	line_offset *= detector->get_scale_factor();
+	auto focal_x = detector->get_focus_x();
+	auto sfactor = detector->get_scale_factor();
+	if(horizontal_zoom_factor * sfactor < 1.0) {
+		sfactor = 1.0 / horizontal_zoom_factor;
+	}
+	horizontal_zoom_factor *= sfactor;
+	line_offset = focal_x - (focal_x - line_offset) * sfactor;
 
 	SATAN_DEBUG("  new zoom factor: %f\n", horizontal_zoom_factor);
 
@@ -241,9 +244,10 @@ void TimeLines::on_time_index_event(const KammoGUI::MotionEvent &event) {
 		}
 
 		switch(event.get_action()) {
+		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+			ignore_scroll = true;
 		case KammoGUI::MotionEvent::ACTION_CANCEL:
 		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
 		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 			break;
 		case KammoGUI::MotionEvent::ACTION_DOWN:
