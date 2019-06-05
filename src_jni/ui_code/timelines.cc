@@ -511,20 +511,17 @@ void TimeLines::on_render() {
 	{ // select visible minors, and translate time line graphics
 		double graphics_offset = (line_offset_d - (double)line_offset_i) * minor_spacing * ((double)minors_per_major);
 
-		double zfactor = ((double)minors_per_major) / (horizontal_zoom_factor * 4.0f);
+		double zfactor = ((double)minors_per_major) / ((double)horizontal_zoom_factor * 4.0);
 
 		skip_interval = (unsigned int)zfactor;
 
 		// clamp skip_interval to [1, MAX_LEGAL]
-		static int legal_intervals[] = {
-			0, 1, 2, 2, 4, 4, 4, 4, 8, 8, 8,  8,  8,  8,  8,  8,  16
+		static unsigned int legal_intervals[] = {
+			1, 1, 2, 2, 4, 4, 4, 4, 8, 8, 8,  8,  8,  8,  8,  8,  16
 		};
-#define MAX_LEGAL (sizeof(legal_intervals) / sizeof(int))
-		if(skip_interval > MAX_LEGAL) skip_interval = MAX_LEGAL;
-		if(skip_interval <= 0) skip_interval = 1;
+#define MAX_LEGAL (sizeof(legal_intervals) / sizeof(unsigned int))
+		if(skip_interval >= MAX_LEGAL) skip_interval = MAX_LEGAL - 1;
 		skip_interval = legal_intervals[skip_interval];
-
-//		SATAN_DEBUG("skip_interval: %d\n", skip_interval);
 
 		KammoGUI::GnuVGCanvas::SVGMatrix mtrx;
 
