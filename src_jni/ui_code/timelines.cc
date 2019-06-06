@@ -182,8 +182,8 @@ void TimeLines::scrolled_horizontal(float pixels_changed) {
 bool TimeLines::on_scale(KammoGUI::ScaleGestureDetector *detector) {
 	auto focal_x = detector->get_focus_x();
 	auto sfactor = detector->get_scale_factor();
-	if(horizontal_zoom_factor * sfactor < 1.0) {
-		sfactor = 1.0 / horizontal_zoom_factor;
+	if(horizontal_zoom_factor * sfactor < 0.0625) {
+		sfactor = 0.0625 / horizontal_zoom_factor;
 	}
 	horizontal_zoom_factor *= sfactor;
 	line_offset = focal_x - (focal_x - line_offset) * sfactor;
@@ -471,6 +471,16 @@ void TimeLines::set_prefix_string(const std::string &_prefix) {
 }
 
 void TimeLines::on_render() {
+	// calculate the denominator for the horizontal zoom factor in fractional form
+	double inverse_zoom_factor = 1.0 / horizontal_zoom_factor;
+	int zoom_multiplier = (int)inverse_zoom_factor;
+	static int legal_zoom_multipliers[] = {
+		1, 2, 4, 4, 4, 8, 8, 8, 8, 8, 8, 16
+	};
+	#define MAX_LEGAL_ZOOM (sizeof(legal_zoom_multipliers) / sizeof(int))
+	if(zoom_multiplier >= MAX_LEGAL_ZOOM) zoom_multiplier = MAX_LEGAL_ZOOM - 1;
+	zoom_multiplier = legal_zoom_multipliers[zoom_multiplier];
+
 	// calcualte current space between minor lines, given the current zoom factor
 	minor_spacing = horizontal_zoom_factor * minor_width;
 
@@ -513,7 +523,7 @@ void TimeLines::on_render() {
 	{ // select visible minors, and translate time line graphics
 		double graphics_offset = (line_offset_d - (double)line_offset_i) * minor_spacing * ((double)minors_per_major);
 
-		double zfactor = ((double)minors_per_major) / ((double)horizontal_zoom_factor * 4.0);
+		double zfactor = ((double)minors_per_major) / ((double)horizontal_zoom_factor * 4.0 * zoom_multiplier);
 
 		skip_interval = (unsigned int)zfactor;
 
@@ -527,32 +537,58 @@ void TimeLines::on_render() {
 
 		KammoGUI::GnuVGCanvas::SVGMatrix mtrx;
 
+		int k = 0;
+		int minor = 0;
+		int line_number = -line_offset_i;
+		double max_graphics_offset = (double)canvas_w;
 		// translate by graphics_offset
 		mtrx.translate(graphics_offset, 0);
+		SATAN_DEBUG("BEGIN --- %f (%f)\n", graphics_offset, max_graphics_offset);
+		for(; graphics_offset < max_graphics_offset; graphics_offset += minor_spacing) {
+//			SATAN_DEBUG(" --- %d / %d == %d -- %d (%d < %d)\n",
+//				    minor, zoom_multiplier, minor % zoom_multiplier,
+//				    line_number, k, major_n_minors.size()
+//				);
+			if(
+				((minor % zoom_multiplier) == 0) &&
+				(line_number >= 0) &&
+				(
+					(0 <= k) &&
+					(k < major_n_minors.size())
+				)
 
-		for(unsigned int k = 0; k < major_n_minors.size(); k++) {
-			// transform the line marker
-			(major_n_minors[k])->set_transform(mtrx);
+				){
+//				SATAN_DEBUG("  -*- k: %d\n", k);
+				// transform the line marker
+				(major_n_minors[k])->set_transform(mtrx);
 
-			// then do an additional translation for the next one
-			mtrx.translate(minor_spacing, 0);
+				if(k % skip_interval == 0) {
+					SATAN_DEBUG("   -- LINE at %f - %d, %d, %d\n", graphics_offset, line_number, k, minor);
+					major_n_minors[k]->set_display("inline");
 
-			// calculate prospective line number
-			int line_number = (-line_offset_i + (k / minors_per_major));
+					try { // for major lines (not minors) set timetext to the current line number
+						std::stringstream ss;
+						ss << line_number;
 
-			if((line_number >= 0) && (k % skip_interval == 0)) {
-				major_n_minors[k]->set_display("inline");
-
-				try { // for major lines (not minors) set timetext to the current line number
-					std::stringstream ss;
-					ss << line_number;
-
-					major_n_minors[k]->find_child_by_class("timetext").set_text_content(
-						prefix_string + ss.str());
-				} catch(KammoGUI::GnuVGCanvas::NoSuchElementException e) { /* timetext only available on major lines, not minors */ }
-			} else {
-				major_n_minors[k]->set_display("none");
+						major_n_minors[k]->find_child_by_class("timetext").set_text_content(
+							prefix_string + ss.str());
+					} catch(KammoGUI::GnuVGCanvas::NoSuchElementException e)
+					{ /* timetext only available on major lines, not minors */ }
+				} else {
+					major_n_minors[k]->set_display("none");
+				}
+				k++;
 			}
+
+			mtrx.translate(minor_spacing, 0);
+			minor++;
+			if(minor == minors_per_major) {
+				line_number++;
+				minor = 0;
+			}
+		}
+		for(; k < major_n_minors.size(); k++) {
+			major_n_minors[k]->set_display("none");
 		}
 	}
 }
