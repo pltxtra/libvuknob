@@ -541,14 +541,13 @@ void TimeLines::on_render() {
 		int minor = 0;
 		int line_number = -line_offset_i;
 		double max_graphics_offset = (double)canvas_w;
+
+		graphics_offset -= (double)(line_number % zoom_multiplier) * (minor_spacing * ((double)minors_per_major));
+		line_number -= line_number % zoom_multiplier;
+
 		// translate by graphics_offset
 		mtrx.translate(graphics_offset, 0);
-		SATAN_DEBUG("BEGIN --- %f (%f)\n", graphics_offset, max_graphics_offset);
 		for(; graphics_offset < max_graphics_offset; graphics_offset += minor_spacing) {
-//			SATAN_DEBUG(" --- %d / %d == %d -- %d (%d < %d)\n",
-//				    minor, zoom_multiplier, minor % zoom_multiplier,
-//				    line_number, k, major_n_minors.size()
-//				);
 			if(
 				((minor % zoom_multiplier) == 0) &&
 				(line_number >= 0) &&
@@ -558,12 +557,10 @@ void TimeLines::on_render() {
 				)
 
 				){
-//				SATAN_DEBUG("  -*- k: %d\n", k);
 				// transform the line marker
 				(major_n_minors[k])->set_transform(mtrx);
 
 				if(k % skip_interval == 0) {
-					SATAN_DEBUG("   -- LINE at %f - %d, %d, %d\n", graphics_offset, line_number, k, minor);
 					major_n_minors[k]->set_display("inline");
 
 					try { // for major lines (not minors) set timetext to the current line number
