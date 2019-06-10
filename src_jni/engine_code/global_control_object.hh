@@ -55,6 +55,10 @@ namespace RemoteInterface {
 					virtual void loop_state_changed(bool new_state) {};
 					virtual void loop_start_changed(int new_start) {};
 					virtual void loop_length_changed(int new_length) {};
+					virtual void playback_state_changed(bool playing) {};
+					virtual void record_state_changed(bool recording) {};
+					virtual void bpm_changed(int bpm) {};
+					virtual void lpb_changed(int lpb) {};
 				};
 
 				void add_global_control_listener(std::shared_ptr<GlobalControlListener> glol);
@@ -62,6 +66,14 @@ namespace RemoteInterface {
 				void set_loop_state(bool new_state);
 				void set_loop_start(int new_start);
 				void set_loop_length(int new_length);
+
+				void play();
+				void stop();
+
+				void set_record_state(bool record);
+
+				void set_bpm(int bpm);
+				void set_lpb(int lpb);
 				);
 
 			GlobalControlObject(const Factory *factory, const RemoteInterface::Message &serialized);
@@ -74,10 +86,10 @@ namespace RemoteInterface {
 				virtual void loop_state_changed(bool loop_state) override;
 				virtual void loop_start_changed(int loop_start) override;
 				virtual void loop_length_changed(int loop_length) override;
-				virtual void playback_state_changed(bool playing) override {};
-				virtual void record_state_changed(bool recording) override {};
-				virtual void bpm_changed(int bpm) override {};
-				virtual void lpb_changed(int bpm) override {};
+				virtual void playback_state_changed(bool playing) override;
+				virtual void record_state_changed(bool recording) override;
+				virtual void bpm_changed(int bpm) override;
+				virtual void lpb_changed(int lbp) override;
 				)
 
 			virtual void on_delete(RemoteInterface::Context* context) override {
@@ -85,8 +97,8 @@ namespace RemoteInterface {
 			}
 
 		private:
-			bool loop_state;
-			int loop_start, loop_length;
+			bool loop_state, playing, record;
+			int loop_start, loop_length, bpm, lpb;
 
 			ON_CLIENT(
 				std::set<std::shared_ptr<GlobalControlListener> > gco_listeners;
@@ -98,19 +110,35 @@ namespace RemoteInterface {
 			SERVER_SIDE_HANDLER(req_set_loop_state, "req_set_loop_state");
 			SERVER_SIDE_HANDLER(req_set_loop_start, "req_set_loop_start");
 			SERVER_SIDE_HANDLER(req_set_loop_length, "req_set_loop_length");
+			SERVER_SIDE_HANDLER(req_set_playback_state, "req_set_playback_state");
+			SERVER_SIDE_HANDLER(req_set_record_state, "req_set_record_state");
+			SERVER_SIDE_HANDLER(req_set_bpm, "req_set_bpm");
+			SERVER_SIDE_HANDLER(req_set_lpb, "req_set_lpb");
 
 			CLIENT_SIDE_HANDLER(cmd_set_loop_state, "cmd_set_loop_state");
 			CLIENT_SIDE_HANDLER(cmd_set_loop_start, "cmd_set_loop_start");
 			CLIENT_SIDE_HANDLER(cmd_set_loop_length, "cmd_set_loop_length");
+			CLIENT_SIDE_HANDLER(cmd_set_playback_state, "cmd_set_playback_state");
+			CLIENT_SIDE_HANDLER(cmd_set_record_state, "cmd_set_record_state");
+			CLIENT_SIDE_HANDLER(cmd_set_bpm, "cmd_set_bpm");
+			CLIENT_SIDE_HANDLER(cmd_set_lpb, "cmd_set_lpb");
 
 			void register_handlers() {
 				SERVER_REG_HANDLER(GlobalControlObject,req_set_loop_state);
 				SERVER_REG_HANDLER(GlobalControlObject,req_set_loop_start);
 				SERVER_REG_HANDLER(GlobalControlObject,req_set_loop_length);
+				SERVER_REG_HANDLER(GlobalControlObject,req_set_playback_state);
+				SERVER_REG_HANDLER(GlobalControlObject,req_set_record_state);
+				SERVER_REG_HANDLER(GlobalControlObject,req_set_bpm);
+				SERVER_REG_HANDLER(GlobalControlObject,req_set_lpb);
 
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_loop_state);
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_loop_start);
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_loop_length);
+				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_playback_state);
+				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_record_state);
+				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_bpm);
+				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_lpb);
 			}
 
 			// serder is an either an ItemSerializer or ItemDeserializer object.

@@ -354,6 +354,15 @@ void TimeLines::loop_length_changed(int new_length) {
 		);
 }
 
+void TimeLines::lpb_changed(int new_lpb) {
+	KammoGUI::run_on_GUI_thread(
+		[this, new_lpb]() {
+			SATAN_DEBUG("TimeLines::lpb_changed(%d)\n", new_lpb);
+			lpb = new_lpb;
+		}
+		);
+}
+
 void TimeLines::on_resize() {
 	auto canvas = get_canvas();
 	canvas->get_size_pixels(canvas_w, canvas_h);

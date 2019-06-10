@@ -68,6 +68,66 @@ SERVER_CODE(
 			);
 	}
 
+	void GlobalControlObject::playback_state_changed(bool _playing) {
+		SATAN_ERROR("GlobalControlObject::playback_state_changed() called...\n");
+		{
+			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+			playing = _playing;
+		}
+		send_message(
+			cmd_set_playback_state,
+			[_playing](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("playing", _playing ? "true" : "false");
+				SATAN_ERROR("GlobalControlObject::playback_state_changed() sending command...\n");
+			}
+			);
+	}
+
+	void GlobalControlObject::record_state_changed(bool _record) {
+		SATAN_ERROR("GlobalControlObject::record_state_changed() called...\n");
+		{
+			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+			record = _record;
+		}
+		send_message(
+			cmd_set_record_state,
+			[_record](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("record", _record ? "true" : "false");
+				SATAN_ERROR("GlobalControlObject::record_state_changed() sending command...\n");
+			}
+			);
+	}
+
+	void GlobalControlObject::bpm_changed(int _bpm) {
+		SATAN_ERROR("GlobalControlObject::bpm_changed() --- %d\n", _bpm);
+		{
+			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+			bpm = _bpm;
+		}
+		send_message(
+			cmd_set_bpm,
+			[_bpm](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("bpm", std::to_string(_bpm));
+				SATAN_ERROR("GlobalControlObject::bpm_changed() sending command... %d\n", _bpm);
+			}
+			);
+	}
+
+	void GlobalControlObject::lpb_changed(int _lpb) {
+		SATAN_ERROR("GlobalControlObject::lpb_changed() --- %d\n", _lpb);
+		{
+			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+			lpb = _lpb;
+		}
+		send_message(
+			cmd_set_lpb,
+			[_lpb](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("lpb", std::to_string(_lpb));
+				SATAN_ERROR("GlobalControlObject::lpb_changed() sending command... %d\n", _lpb);
+			}
+			);
+	}
+
 	void GlobalControlObject::handle_req_set_loop_state(RemoteInterface::Context *context,
 							   RemoteInterface::MessageHandler *src,
 							   const RemoteInterface::Message& msg) {
@@ -95,6 +155,49 @@ SERVER_CODE(
 		SATAN_ERROR("GlobalControlObject::handle_req_set_loop_length() --- %d\n", _loop_length);
 		try {
 			Machine::set_loop_length(_loop_length);
+		} catch(...) { /* ignore */ }
+	}
+
+	void GlobalControlObject::handle_req_set_playback_state(RemoteInterface::Context *context,
+								RemoteInterface::MessageHandler *src,
+								const RemoteInterface::Message& msg) {
+		SATAN_ERROR("GlobalControlObject::handle_req_set_playback_state() called...\n");
+		bool _playing = msg.get_value("playing") == "true" ? true : false;
+		try {
+			if(_playing)
+				Machine::play();
+			else
+				Machine::stop();
+		} catch(...) { /* ignore */ }
+	}
+
+	void GlobalControlObject::handle_req_set_record_state(RemoteInterface::Context *context,
+								 RemoteInterface::MessageHandler *src,
+								 const RemoteInterface::Message& msg) {
+		SATAN_ERROR("GlobalControlObject::handle_req_set_record_state() called...\n");
+		bool _record = msg.get_value("record") == "true" ? true : false;
+		try {
+			Machine::set_record_state(_record);
+		} catch(...) { /* ignore */ }
+	}
+
+	void GlobalControlObject::handle_req_set_bpm(RemoteInterface::Context *context,
+						     RemoteInterface::MessageHandler *src,
+						     const RemoteInterface::Message& msg) {
+		int _bpm = std::stoi(msg.get_value("bpm"));
+		SATAN_ERROR("GlobalControlObject::handle_req_set_bpm() --- %d\n", _bpm);
+		try {
+			Machine::set_bpm(_bpm);
+		} catch(...) { /* ignore */ }
+	}
+
+	void GlobalControlObject::handle_req_set_lpb(RemoteInterface::Context *context,
+						     RemoteInterface::MessageHandler *src,
+						     const RemoteInterface::Message& msg) {
+		int _lpb = std::stoi(msg.get_value("lpb"));
+		SATAN_ERROR("GlobalControlObject::handle_req_set_lpb() --- %d\n", _lpb);
+		try {
+			Machine::set_lpb(_lpb);
 		} catch(...) { /* ignore */ }
 	}
 
@@ -152,6 +255,53 @@ CLIENT_CODE(
 		);
 	}
 
+	void GlobalControlObject::play() {
+		send_message_to_server(
+			req_set_playback_state,
+			[](std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				msg2send->set_value("playing", "true");
+			}
+		);
+	}
+
+	void GlobalControlObject::stop() {
+		send_message_to_server(
+			req_set_playback_state,
+			[](std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				msg2send->set_value("playing", "false");
+			}
+		);
+	}
+
+	void GlobalControlObject::set_record_state(bool _record) {
+		send_message_to_server(
+			req_set_record_state,
+			[_record](std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				msg2send->set_value("record", _record ? "true" : "false");
+			}
+		);
+	}
+
+	void GlobalControlObject::set_bpm(int new_bpm) {
+		send_message_to_server(
+			req_set_bpm,
+			[new_bpm](std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				SATAN_ERROR("GlobalControlObject::set_bpm() sending new bpm value: %d\n", new_bpm);
+				msg2send->set_value("bpm", std::to_string(new_bpm));
+			}
+		);
+	}
+
+	void GlobalControlObject::set_lpb(int new_lpb) {
+		send_message_to_server(
+			req_set_lpb,
+			[new_lpb](std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				SATAN_ERROR("GlobalControlObject::set_lpb() sending new lpb value: %d\n", new_lpb);
+				msg2send->set_value("lpb", std::to_string(new_lpb));
+			}
+		);
+	}
+
 	void GlobalControlObject::handle_cmd_set_loop_state(RemoteInterface::Context *context,
 							   RemoteInterface::MessageHandler *src,
 							   const RemoteInterface::Message& msg) {
@@ -203,6 +353,74 @@ CLIENT_CODE(
 			glol->loop_length_changed(_loop_length);
 	}
 
+	void GlobalControlObject::handle_cmd_set_playback_state(RemoteInterface::Context *context,
+								RemoteInterface::MessageHandler *src,
+								const RemoteInterface::Message& msg) {
+		std::set<std::shared_ptr<GlobalControlListener> > _gco_listeners;
+		auto _playing = msg.get_value("playing") == "true" ? true : false;
+		{
+			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+			playing = _playing;
+			_gco_listeners = gco_listeners;
+		}
+
+		SATAN_ERROR("(client) ::handle_cmd_set_playback_state() -- %d\n", gco_listeners.size());
+
+		for(auto glol : _gco_listeners)
+			glol->playback_state_changed(_playing);
+	}
+
+	void GlobalControlObject::handle_cmd_set_record_state(RemoteInterface::Context *context,
+								 RemoteInterface::MessageHandler *src,
+								 const RemoteInterface::Message& msg) {
+		std::set<std::shared_ptr<GlobalControlListener> > _gco_listeners;
+		auto _record = msg.get_value("record") == "true" ? true : false;
+		{
+			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+			record = _record;
+			_gco_listeners = gco_listeners;
+		}
+
+		SATAN_ERROR("(client) ::handle_cmd_set_record_state() -- %d\n", gco_listeners.size());
+
+		for(auto glol : _gco_listeners)
+			glol->record_state_changed(_record);
+	}
+
+	void GlobalControlObject::handle_cmd_set_bpm(RemoteInterface::Context *context,
+						     RemoteInterface::MessageHandler *src,
+						     const RemoteInterface::Message& msg) {
+		std::set<std::shared_ptr<GlobalControlListener> > _gco_listeners;
+		int _bpm = std::stoi(msg.get_value("bpm"));
+		{
+			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+			bpm = _bpm;
+			_gco_listeners = gco_listeners;
+		}
+
+		SATAN_ERROR("(client) ::handle_cmd_set_bpm() -- %d\n", gco_listeners.size());
+
+		for(auto glol : _gco_listeners)
+			glol->bpm_changed(_bpm);
+	}
+
+	void GlobalControlObject::handle_cmd_set_lpb(RemoteInterface::Context *context,
+						     RemoteInterface::MessageHandler *src,
+						     const RemoteInterface::Message& msg) {
+		std::set<std::shared_ptr<GlobalControlListener> > _gco_listeners;
+		int _lpb = std::stoi(msg.get_value("lpb"));
+		{
+			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+			lpb = _lpb;
+			_gco_listeners = gco_listeners;
+		}
+
+		SATAN_ERROR("(client) ::handle_cmd_set_lpb() -- %d\n", gco_listeners.size());
+
+		for(auto glol : _gco_listeners)
+			glol->lpb_changed(_lpb);
+	}
+
 	);
 
 SERVER_N_CLIENT_CODE(
@@ -210,8 +428,12 @@ SERVER_N_CLIENT_CODE(
 	template <class SerderClassT>
 	void GlobalControlObject::serderize(SerderClassT& iserder) {
 		iserder.process(loop_state);
+		iserder.process(playing);
+		iserder.process(record);
 		iserder.process(loop_start);
 		iserder.process(loop_length);
+		iserder.process(bpm);
+		iserder.process(lpb);
 	}
 
 	GlobalControlObject::GlobalControlObject(const Factory *factory, const RemoteInterface::Message &serialized)
