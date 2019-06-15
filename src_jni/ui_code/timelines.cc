@@ -470,11 +470,6 @@ int TimeLines::get_sequence_minor_position_at(int horizontal_pixel_value) {
 	return (int)rval;
 }
 
-void TimeLines::set_minor_steps(int minor_steps_per_major) {
-	minors_per_major = minor_steps_per_major;
-	regenerate_graphics();
-}
-
 void TimeLines::set_prefix_string(const std::string &_prefix) {
 	prefix_string = _prefix;
 }

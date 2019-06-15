@@ -119,7 +119,6 @@ public:
 		return minor_spacing;
 	}
 
-	void set_minor_steps(int minor_steps_per_major);
 	void set_prefix_string(const std::string &prefix);
 
 	virtual void on_resize() override;
