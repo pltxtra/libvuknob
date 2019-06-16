@@ -212,18 +212,26 @@ SERVER_CODE(
 CLIENT_CODE(
 
 	void GlobalControlObject::add_global_control_listener(std::shared_ptr<GlobalControlObject::GlobalControlListener> glol) {
-		bool _loop_state;
-		int _loop_start, _loop_length;
+		bool _loop_state, _playing, _record;
+		int _loop_start, _loop_length, _bpm, _lpb;
 		{
 			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 			gco_listeners.insert(glol);
 			_loop_state = loop_state;
 			_loop_start = loop_start;
 			_loop_length = loop_length;
+			_playing = playing;
+			_record = record;
+			_bpm = bpm;
+			_lpb = lpb;
 		}
 		glol->loop_state_changed(_loop_state);
 		glol->loop_start_changed(_loop_start);
 		glol->loop_length_changed(_loop_length);
+		glol->playback_state_changed(_playing);
+		glol->record_state_changed(_record);
+		glol->bpm_changed(_bpm);
+		glol->lpb_changed(_lpb);
 	}
 
 	void GlobalControlObject::set_loop_state(bool new_state) {

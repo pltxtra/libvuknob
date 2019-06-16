@@ -2031,8 +2031,8 @@ void Machine::register_playback_state_listener(std::weak_ptr<PlaybackStateListen
 			auto l_start = __loop_start;
 			auto l_stop = __loop_stop;
 			auto l_do = __do_loop;
-			auto bpm = __do_loop;
-			auto lpb = __do_loop;
+			auto bpm = __bpm;
+			auto lpb = __lpb;
 			auto is_playing = __is_playing;
 			auto is_recording = __is_recording;
 
