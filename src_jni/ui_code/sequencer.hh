@@ -53,11 +53,11 @@ private:
 		static std::shared_ptr<PatternInstance> create_new_pattern_instance(
 			const RIPatternInstance &instance_data,
 			KammoGUI::GnuVGCanvas::ElementReference &parent,
-			int minor_width, double height,
+			int line_width, double height,
 			std::shared_ptr<RISequence> ri_seq
 			);
 
-		void calculate_visibility(double minor_width,
+		void calculate_visibility(double line_width,
 					  int minimum_minor_offset,
 					  int maximum_minor_offset);
 	};
@@ -95,7 +95,7 @@ private:
 
 		void on_sequence_event(const KammoGUI::MotionEvent &event);
 
-		double minor_width, line_offset;
+		double line_width, line_offset;
 		int left_side_minor_offset, right_side_minor_offset;
 
 	public:
@@ -108,7 +108,7 @@ private:
 					    double width, double height,
 					    double canvas_w, double canvas_h);
 
-		void on_scroll(double _minor_width, double _line_offset,
+		void on_scroll(double _line_width, double _line_offset,
 			       int _left_side_minor_offset,
 			       int _right_side_minor_offset);
 

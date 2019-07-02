@@ -57,10 +57,17 @@ private:
 	KammoGUI::GnuVGCanvas::ElementReference loop_marker;
 	KammoGUI::GnuVGCanvas::ElementReference loop_start_marker;
 	KammoGUI::GnuVGCanvas::ElementReference loop_stop_marker;
-	int lpb = 0, loop_start = 0, loop_length = 16, new_marker_position;
+	int lpb = 3, loop_start = 0, loop_length = 16, new_marker_position;
 	ModifyingLoop currently_modifying = neither_start_or_stop;
 	void on_loop_marker_event(ModifyingLoop selected_marker, const KammoGUI::MotionEvent &event);
 	void request_new_loop_settings(int new_loop_start, int new_loop_stop);
+
+	std::vector<unsigned int> legal_zoom_multipliers;// = {
+//		1, 2, 4, 4, 4, 8, 8, 8, 8, 8, 8, 16
+//	};
+	std::vector<unsigned int> legal_intervals;// = {
+//		1, 1, 2, 2, 4, 4, 4, 4, 8, 8, 8,  8,  8,  8,  8,  8,  16
+//	};
 
 	// sizes in pixels
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
@@ -71,12 +78,13 @@ private:
 	int font_size = 55; // in pixels
 	double scroll_start_x = 0;
 	bool ignore_scroll = false;
-	unsigned int skip_interval;
 	float canvas_w_inches, canvas_h_inches;
-	double horizontal_zoom_factor = 1.0, line_offset = 0.0;
-	int minor_width, canvas_w, canvas_h;
-	int minors_per_major = 16;
-	std::vector<KammoGUI::GnuVGCanvas::ElementReference *> major_n_minors;
+	// sequence_line_width means how wide a line in the sequencer is, not a visible time line.
+	// A time line may represent one or more sequencer lines, depending on zoom etc.
+	double horizontal_zoom_factor = 1.0, line_offset = 0.0, default_sequence_line_width, zoomed_sequence_line_width;
+	int canvas_w, canvas_h;
+	std::vector<KammoGUI::GnuVGCanvas::ElementReference *> majors;
+	std::vector<KammoGUI::GnuVGCanvas::ElementReference *> minors;
 	std::string prefix_string = "1:";
 
 	// for calculating sequencer positions from pixel offsets
@@ -113,11 +121,8 @@ public:
 	void hide_loop_markers();
 
 	double get_graphics_horizontal_offset();
-	double get_horizontal_pixels_per_minor();
-	int get_sequence_minor_position_at(int horizontal_pixel_value);
-	int get_minor_spacing() {
-		return minor_spacing;
-	}
+	double get_horizontal_pixels_per_line();
+	int get_sequence_line_position_at(int horizontal_pixel_value);
 
 	void set_prefix_string(const std::string &prefix);
 

@@ -104,8 +104,8 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		event_right_x = event_current_x;
 	}
 
-	start_at_sequence_position = timelines->get_sequence_minor_position_at(event_left_x);
-	stop_at_sequence_position = timelines->get_sequence_minor_position_at(event_right_x);
+	start_at_sequence_position = timelines->get_sequence_line_position_at(event_left_x);
+	stop_at_sequence_position = timelines->get_sequence_line_position_at(event_right_x);
 
 	if(start_at_sequence_position < 0)
 		start_at_sequence_position = 0;
@@ -128,7 +128,7 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		auto stt = start_at_sequence_position;
 		auto stp = stop_at_sequence_position;
 		auto timelines_offset = timelines->get_graphics_horizontal_offset();
-		auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_minor();
+		auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_line();
 		double lft = timelines_minor_spacing * stt + timelines_offset;
 		double rgt = timelines_minor_spacing * stp + timelines_offset;
 
@@ -183,8 +183,6 @@ void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event)
 
 	auto finger_coord = (int)floor(event_current_y / finger_height);
 	auto new_tone_index = ((int)floor(pianoroll_offset)) + canvas_height_fingers - finger_coord - 1;
-
-	auto current_note_index = event_current_y / finger_height;
 
 	switch(event.get_action()) {
 	case KammoGUI::MotionEvent::ACTION_CANCEL:
@@ -279,8 +277,8 @@ void PatternEditor::on_single_note_event(RINote selected_note,
 	}
 
 	// Calculate the note drag horizontal offset
-	start_at_sequence_position = timelines->get_sequence_minor_position_at(event_start_x);
-	stop_at_sequence_position = timelines->get_sequence_minor_position_at(event_current_x);
+	start_at_sequence_position = timelines->get_sequence_line_position_at(event_start_x);
+	stop_at_sequence_position = timelines->get_sequence_line_position_at(event_current_x);
 	start_at_sequence_position = (start_at_sequence_position >> 4) << 4;
 	stop_at_sequence_position = (stop_at_sequence_position >> 4) << 4;
 	auto note_on_offset = stop_at_sequence_position - start_at_sequence_position;
@@ -305,7 +303,7 @@ void PatternEditor::on_single_note_event(RINote selected_note,
 		auto stt = start_at_sequence_position;
 		auto stp = stop_at_sequence_position;
 		auto timelines_offset = timelines->get_graphics_horizontal_offset();
-		auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_minor();
+		auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_line();
 		double lft = timelines_minor_spacing * stt + timelines_offset;
 		double rgt = timelines_minor_spacing * stp + timelines_offset;
 
@@ -429,7 +427,7 @@ void PatternEditor::refresh_note_graphics() {
 	int lowest_note = (int)pianoroll_offset;
 	int highest_note = lowest_note + canvas_height_fingers + 1;
 	auto timelines_offset = timelines->get_graphics_horizontal_offset();
-	auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_minor();
+	auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_line();
 	double temp = -timelines_offset / timelines_minor_spacing;
 	int earliest_visible_note = (int)temp;
 	int last_visible_note = earliest_visible_note + canvas_width_fingers * 16;

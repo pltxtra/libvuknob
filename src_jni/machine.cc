@@ -48,6 +48,8 @@
 
 #include <fixedpointmath.h>
 
+#include "musical_constants.hh"
+
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
@@ -2193,7 +2195,7 @@ void Machine::set_loop_length(int loop_length) {
 }
 
 void Machine::set_bpm(int bpm) {
-	if(bpm < 20 || bpm > 200) throw ParameterOutOfSpec();
+	if(bpm < __MIN_BPM__ || bpm > __MAX_BPM__) throw ParameterOutOfSpec();
 	Machine::machine_operation_enqueue(
 		[bpm] () {
 			__bpm = bpm;
@@ -2211,7 +2213,7 @@ void Machine::set_bpm(int bpm) {
 }
 
 void Machine::set_lpb(int lpb) {
-	if(lpb < 2 || lpb > 24) throw ParameterOutOfSpec();
+	if(lpb < __MIN_LPB__ || lpb > __MAX_LPB__) throw ParameterOutOfSpec();
 	Machine::machine_operation_enqueue(
 		[lpb] () {
 			__lpb = lpb;

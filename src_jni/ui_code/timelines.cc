@@ -28,6 +28,7 @@
 #include "timelines.hh"
 #include "svg_loader.hh"
 #include "common.hh"
+#include "musical_constants.hh"
 #include "fling_animation.hh"
 
 #define __DO_SATAN_DEBUG
@@ -53,70 +54,77 @@ void TimeLines::create_timelines() {
 
 		// "optimal" horizontal finger count
 		double line_count_d = canvas_w_inches / INCHES_PER_FINGER;
-
 		int line_count = (int)line_count_d; // line_count is now the number of VISIBLE lines
-		minor_width = canvas_w / (line_count * minors_per_major);
+		default_sequence_line_width = canvas_w / line_count;
+		zoomed_sequence_line_width = default_sequence_line_width * horizontal_zoom_factor;
 		int line_width = canvas_w / line_count;
 
-		// generate line_count * 2 + 2 line nodes, because of scrolling + zooming
-		for(int k = 0; k < (line_count * 2 + 2) * minors_per_major ; k++) {
+		// generate line_count * 2
+		for(int k = 0; k < (line_count * 2 + 2); k++) {
 			std::stringstream new_id;
-			new_id << "majorntimel_" << k;
-			if(k % minors_per_major == 0) {
-				// create main timeline
+			new_id << "majorl_" << k;
+			// create main timeline
+			std::stringstream ss;
+			ss << "<svg id=\"" << new_id.str() << "\" "
+			   << " x=\"0\" \n"
+			   << " y=\"0\" \n"
+			   << " width=\"" << line_width << "\" \n"
+			   << " height=\"" << canvas_h << "\" \n"
+			   << ">\n"
+			   << "<line class=\"timeline\" "
+			   << "stroke=\"black\" "
+			   << "stroke-width=\"1.0\" "
+			   << "x1=\"0\" "
+			   << "x2=\"0\" "
+			   << "y1=\"0\" "
+			   << "y2=\"" << canvas_h << "\" "
+			   << "/>\n"
+			   << "<text x=\"5\" y=\"45\" "
+			   << "class=\"timetext\" "
+			   << "font-family=\"Roboto\" font-size=\"" << font_size << "\" fill=\"black\"> "
+			   << "0"
+			   << "</text>\n"
+			   << "</svg>\n"
+				;
+			timeline_container->add_svg_child(ss.str());
+			majors.push_back(new KammoGUI::GnuVGCanvas::ElementReference(this, new_id.str()));
+		}
+		// generate line_count * 2 * __MAX_LPB__
+		for(int k = 0; k < (line_count * __MAX_LPB__ + 2); k++) {
+			std::stringstream new_id;
+			new_id << "minorl_" << k;
+			std::stringstream ss;
+			ss << "<line id=\"" << new_id.str() << "\" "
+			   << "stroke=\"black\" "
+			   << "stroke-opacity=\"0.2\" "
+			   << "stroke-width=\"1.0\" "
+			   << "x1=\"0\" "
+			   << "x2=\"0\" "
+			   << "y1=\"0\" "
+			   << "y2=\"" << canvas_h << "\" "
+			   << "/>\n";
+			timeline_container->add_svg_child(ss.str());
 
-				std::stringstream ss;
-				ss << "<svg id=\"" << new_id.str() << "\" "
-				   << " x=\"0\" \n"
-				   << " y=\"0\" \n"
-				   << " width=\"" << line_width << "\" \n"
-				   << " height=\"" << canvas_h << "\" \n"
-				   << ">\n"
-				   << "<line class=\"timeline\" "
-				   << "stroke=\"black\" "
-				   << "stroke-width=\"1.0\" "
-				   << "x1=\"0\" "
-				   << "x2=\"0\" "
-				   << "y1=\"0\" "
-				   << "y2=\"" << canvas_h << "\" "
-				   << "/>\n"
-				   << "<text x=\"5\" y=\"45\" "
-				   << "class=\"timetext\" "
-				   << "font-family=\"Roboto\" font-size=\"" << font_size << "\" fill=\"black\"> "
-				   << "0"
-				   << "</text>\n"
-				   << "</svg>\n"
-					;
-				timeline_container->add_svg_child(ss.str());
-
-				major_n_minors.push_back(new KammoGUI::GnuVGCanvas::ElementReference(this, new_id.str()));
-			} else {
-				// create minors_per_major - 1 dashed lines marking the "in between" minors per major timeline
-
-				std::stringstream ss;
-				ss << "<line id=\"" << new_id.str() << "\" "
-				   << "stroke=\"black\" "
-				   << "stroke-opacity=\"0.2\" "
-				   << "stroke-width=\"1.0\" "
-				   << "x1=\"0\" "
-				   << "x2=\"0\" "
-				   << "y1=\"0\" "
-				   << "y2=\"" << canvas_h << "\" "
-				   << "/>\n";
-				timeline_container->add_svg_child(ss.str());
-
-				major_n_minors.push_back(new KammoGUI::GnuVGCanvas::ElementReference(this, new_id.str()));
-			}
+			minors.push_back(new KammoGUI::GnuVGCanvas::ElementReference(this, new_id.str()));
 		}
 	}
 }
 
 void TimeLines::clear_timelines() {
-	for(auto major_or_minor : major_n_minors) {
-		major_or_minor->drop_element();
-		delete major_or_minor;
+	{
+		for(auto major : majors) {
+			major->drop_element();
+			delete major;
+		}
+		majors.clear();
 	}
-	major_n_minors.clear();
+	{
+		for(auto minor : minors) {
+			minor->drop_element();
+			delete minor;
+		}
+		minors.clear();
+	}
 
 	if(timeline_container) {
 		timeline_container->drop_element();
@@ -186,6 +194,7 @@ bool TimeLines::on_scale(KammoGUI::ScaleGestureDetector *detector) {
 		sfactor = 0.0625 / horizontal_zoom_factor;
 	}
 	horizontal_zoom_factor *= sfactor;
+	zoomed_sequence_line_width = default_sequence_line_width * horizontal_zoom_factor;
 	line_offset = focal_x - (focal_x - line_offset) * sfactor;
 
 	SATAN_DEBUG("  new zoom factor: %f\n", horizontal_zoom_factor);
@@ -296,7 +305,7 @@ void TimeLines::on_loop_marker_event(ModifyingLoop selected_marker, const KammoG
 		currently_modifying = selected_marker;
 		auto scroll_x = event.get_x() - scroll_start_x;
 
-		double new_marker_position_delta = scroll_x / (minor_spacing * ((double)minors_per_major));
+		double new_marker_position_delta = scroll_x / (zoomed_sequence_line_width);
 		SATAN_DEBUG("new_marker_position_delta: %f\n", new_marker_position_delta);
 		switch(currently_modifying) {
 		case start_marker:
@@ -354,16 +363,128 @@ void TimeLines::loop_length_changed(int new_length) {
 		);
 }
 
+/*
+1 = 1
+2 = 2
+3 = 3
+4 = 2
+5 = 5
+6 = 3
+7 = 7
+8 = 2
+9 = 3
+10 = 5
+11 = 11
+12 = 3
+13 = 13
+14 = 7
+15 = 5
+16 = 2
+17 = 17
+18 = 3
+19 = 19
+20 = 5
+21 = 7
+22 = 2
+23 = 23
+24 = 2
+*/
+static unsigned int lpb_base_map[] = {
+//	0 = 1
+	1,
+//	1 = 2
+	2,
+//	2 = 2
+	2,
+//	3 = 3
+	3,
+//	4 = 2
+	2,
+//	5 = 5
+	5,
+//	6 = 3
+	3,
+//	7 = 7
+	7,
+//	8 = 2
+	2,
+//	9 = 3
+	3,
+//	10 = 5
+	5,
+//	11 = 11
+	11,
+//	12 = 3
+	3,
+//	13 = 13
+	13,
+//	14 = 7
+	7,
+//	15 = 5
+	5,
+//	16 = 2
+	2,
+//	17 = 17
+	17,
+//	18 = 3
+	3,
+//	19 = 19
+	19,
+//	20 = 5
+	5,
+//	21 = 7
+	7,
+//	22 = 2
+	2,
+//	23 = 23
+	23,
+//	24 = 2
+	2
+};
+
 void TimeLines::lpb_changed(int new_lpb) {
 	KammoGUI::run_on_GUI_thread(
 		[this, new_lpb]() {
 			SATAN_DEBUG("TimeLines::lpb_changed(%d)\n", new_lpb);
-			lpb = new_lpb;
+			unsigned int lpb = (unsigned int)new_lpb;
+
+			legal_zoom_multipliers.clear();
+			legal_intervals.clear();
+			if(lpb < 1) lpb = 1;
+			if(lpb > 24) lpb = 24;
+			auto lpb_base = lpb_base_map[lpb];
+
+			legal_zoom_multipliers.push_back(1);
+			legal_intervals.push_back(1);
+			legal_intervals.push_back(1);
+
+			unsigned int m = lpb_base;
+			for(unsigned int k = 1; k < 32; k++) {
+				legal_intervals.push_back(m);
+				if(k == m)
+					m *= 2;
+				legal_zoom_multipliers.push_back(m);
+			}
+			std::stringstream mult, inte;
+			mult << "multipliers[] = {";
+			inte << "intervals[]   = {";
+
+			for(auto v : legal_zoom_multipliers)
+				mult << v << ", ";
+
+			for(auto v : legal_intervals)
+				inte << v << ", ";
+
+			mult << "}";
+			inte << "}";
+			SATAN_DEBUG("%s\n", mult.str().c_str());
+			SATAN_DEBUG("%s\n", inte.str().c_str());
 		}
 		);
 }
 
 void TimeLines::on_resize() {
+	SATAN_ERROR("TimeLines::on_resize()\n");
 	auto canvas = get_canvas();
 	canvas->get_size_pixels(canvas_w, canvas_h);
 	canvas->get_size_inches(canvas_w_inches, canvas_h_inches);
@@ -430,10 +551,10 @@ void TimeLines::add_scroll_callback(std::function<void(double, double, int, int)
 }
 
 void TimeLines::call_scroll_callbacks() {
-	auto min_visible_offset = get_sequence_minor_position_at(0);
-	auto max_visible_offset = get_sequence_minor_position_at(canvas_w);
+	auto min_visible_offset = get_sequence_line_position_at(0);
+	auto max_visible_offset = get_sequence_line_position_at(canvas_w);
 	for(auto sc : scroll_callbacks) {
-		sc(minor_spacing, line_offset, min_visible_offset, max_visible_offset);
+		sc(zoomed_sequence_line_width, line_offset, min_visible_offset, max_visible_offset);
 	}
 }
 
@@ -453,11 +574,11 @@ double TimeLines::get_graphics_horizontal_offset() {
 	return line_offset;
 }
 
-double TimeLines::get_horizontal_pixels_per_minor() {
-	return minor_spacing;
+double TimeLines::get_horizontal_pixels_per_line() {
+	return zoomed_sequence_line_width;
 }
 
-int TimeLines::get_sequence_minor_position_at(int horizontal_pixel_value) {
+int TimeLines::get_sequence_line_position_at(int horizontal_pixel_value) {
 	/*
 	SATAN_DEBUG("pixel value: %d - spacing: %f - offset: %f\n",
 		    horizontal_pixel_value,
@@ -465,8 +586,8 @@ int TimeLines::get_sequence_minor_position_at(int horizontal_pixel_value) {
 		    line_offset_d);
 	*/
 	double rval = (double)horizontal_pixel_value;
-	rval /= minor_spacing;
-	rval -= (line_offset_d * minors_per_major);
+	rval /= zoomed_sequence_line_width;
+	rval -= line_offset_d;
 	return (int)rval;
 }
 
@@ -475,21 +596,37 @@ void TimeLines::set_prefix_string(const std::string &_prefix) {
 }
 
 void TimeLines::on_render() {
-	// calculate the denominator for the horizontal zoom factor in fractional form
-	double inverse_zoom_factor = 1.0 / horizontal_zoom_factor;
-	int zoom_multiplier = (int)inverse_zoom_factor;
-	static int legal_zoom_multipliers[] = {
-		1, 2, 4, 4, 4, 8, 8, 8, 8, 8, 8, 16
-	};
-	#define MAX_LEGAL_ZOOM (sizeof(legal_zoom_multipliers) / sizeof(int))
-	if(zoom_multiplier >= MAX_LEGAL_ZOOM) zoom_multiplier = MAX_LEGAL_ZOOM - 1;
-	zoom_multiplier = legal_zoom_multipliers[zoom_multiplier];
+        // calculate the denominator for the horizontal zoom factor in fractional form
+        double inverse_zoom_factor = 1.0 / horizontal_zoom_factor;
+        unsigned int zoom_denominator = (unsigned int)inverse_zoom_factor;
+	unsigned int zoom_numerator = (unsigned int)horizontal_zoom_factor;
+        static int legal_zoom_multipliers[] = {
+                1, 2, 4, 4, 4, 8, 8, 8, 8, 8, 8, 16
+        };
+        #define MAX_LEGAL_ZOOM (sizeof(legal_zoom_multipliers) / sizeof(int))
+        if(zoom_denominator >= MAX_LEGAL_ZOOM) zoom_denominator = MAX_LEGAL_ZOOM - 1;
+        zoom_denominator = legal_zoom_multipliers[zoom_denominator];
+        if(zoom_numerator >= MAX_LEGAL_ZOOM) zoom_numerator = MAX_LEGAL_ZOOM - 1;
+        zoom_numerator = legal_zoom_multipliers[zoom_numerator];
 
-	// calcualte current space between minor lines, given the current zoom factor
-	minor_spacing = horizontal_zoom_factor * minor_width;
+	int minors_per_major, sequence_lines_per_minor;
+	if(zoom_denominator >= 2) {
+		sequence_lines_per_minor = lpb * zoom_denominator / 2;
+		minors_per_major = 2;
+	} else {
+		sequence_lines_per_minor = 1;
+		minors_per_major = lpb;
+	}
+
+	SATAN_ERROR("zoom_denominator: %d, lpb: %d\n",
+		    zoom_denominator, lpb);
+	SATAN_ERROR("sequence_lines_per_minor: %d, width: %f\n",
+		    sequence_lines_per_minor, zoomed_sequence_line_width);
+	double minor_spacing = (double)sequence_lines_per_minor * zoomed_sequence_line_width;
+	auto sequence_lines_per_major = sequence_lines_per_minor * minors_per_major;
 
 	// calculate line offset
-	line_offset_d = line_offset / (minor_spacing * (double)minors_per_major);
+	line_offset_d = line_offset / zoomed_sequence_line_width;
 	int line_offset_i = line_offset_d; // we need the pure integer version too
 
 	{ // Move loop markers
@@ -509,8 +646,8 @@ void TimeLines::on_render() {
 			break;
 		}
 
-		auto loop_start_offset = (_loop_start + line_offset_d) * minor_spacing * ((double)minors_per_major);
-		auto loop_stop_offset = (_loop_stop + line_offset_d) * minor_spacing * ((double)minors_per_major);
+		auto loop_start_offset = (_loop_start + line_offset_d) * zoomed_sequence_line_width;
+		auto loop_stop_offset = (_loop_stop + line_offset_d) * zoomed_sequence_line_width;
 
 		loop_start_mtrx.scale(scaling, scaling);
 		loop_start_mtrx.translate(loop_start_offset, 0);
@@ -525,72 +662,58 @@ void TimeLines::on_render() {
 	}
 
 	{ // select visible minors, and translate time line graphics
-		double graphics_offset = (line_offset_d - (double)line_offset_i) * minor_spacing * ((double)minors_per_major);
-
-		double zfactor = ((double)minors_per_major) / ((double)horizontal_zoom_factor * 4.0 * zoom_multiplier);
-
-		skip_interval = (unsigned int)zfactor;
-
-		// clamp skip_interval to [1, MAX_LEGAL]
-		static unsigned int legal_intervals[] = {
-			1, 1, 2, 2, 4, 4, 4, 4, 8, 8, 8,  8,  8,  8,  8,  8,  16
-		};
-#define MAX_LEGAL (sizeof(legal_intervals) / sizeof(unsigned int))
-		if(skip_interval >= MAX_LEGAL) skip_interval = MAX_LEGAL - 1;
-		skip_interval = legal_intervals[skip_interval];
+		double graphics_offset = (line_offset_d - (double)line_offset_i - 1) * zoomed_sequence_line_width;
 
 		KammoGUI::GnuVGCanvas::SVGMatrix mtrx;
 
-		int k = 0;
-		int minor = 0;
-		int line_number = -line_offset_i;
+		int line_number = -line_offset_i - 1;
 		double max_graphics_offset = (double)canvas_w;
-
-		graphics_offset -= (double)(line_number % zoom_multiplier) * (minor_spacing * ((double)minors_per_major));
-		line_number -= line_number % zoom_multiplier;
 
 		// translate by graphics_offset
 		mtrx.translate(graphics_offset, 0);
-		for(; graphics_offset < max_graphics_offset; graphics_offset += minor_spacing) {
-			if(
-				((minor % zoom_multiplier) == 0) &&
-				(line_number >= 0) &&
-				(
-					(0 <= k) &&
-					(k < major_n_minors.size())
-				)
 
-				){
-				// transform the line marker
-				(major_n_minors[k])->set_transform(mtrx);
+		auto major = majors.begin();
+		auto minor = minors.begin();
 
-				if(k % skip_interval == 0) {
-					major_n_minors[k]->set_display("inline");
+		SATAN_ERROR("graphics_offset: %f, line_offset_i: %d, spacing: %f\n",
+			    graphics_offset, line_offset_i, minor_spacing);
+		for(;
+		    graphics_offset < max_graphics_offset;
+		    graphics_offset += zoomed_sequence_line_width, line_number++) {
+			if(line_number >= 0 && (line_number % sequence_lines_per_minor) == 0) {
+				if(
+					((line_number % sequence_lines_per_major) == 0)
+					&&
+					(major != majors.end())
+					)
+				{
+					// transform the line marker
+					(*major)->set_transform(mtrx);
+					(*major)->set_display("inline");
 
-					try { // for major lines (not minors) set timetext to the current line number
-						std::stringstream ss;
-						ss << line_number;
+					std::stringstream ss;
+					ss << line_number;
+					auto text_item = (*major)->find_child_by_class("timetext");
+					text_item.set_text_content(prefix_string + ss.str());
 
-						major_n_minors[k]->find_child_by_class("timetext").set_text_content(
-							prefix_string + ss.str());
-					} catch(KammoGUI::GnuVGCanvas::NoSuchElementException e)
-					{ /* timetext only available on major lines, not minors */ }
-				} else {
-					major_n_minors[k]->set_display("none");
+					major++;
 				}
-				k++;
-			}
+				else if (minor != minors.end())
+				{
+					// transform the line marker
+					(*minor)->set_transform(mtrx);
+					(*minor)->set_display("inline");
 
-			mtrx.translate(minor_spacing, 0);
-			minor++;
-			if(minor == minors_per_major) {
-				line_number++;
-				minor = 0;
+					minor++;
+				}
 			}
+			mtrx.translate(zoomed_sequence_line_width, 0);
 		}
-		for(; k < major_n_minors.size(); k++) {
-			major_n_minors[k]->set_display("none");
-		}
+
+		for(; major != majors.end(); major++)
+			(*major)->set_display("none");
+		for(; minor != minors.end(); minor++)
+			(*minor)->set_display("none");
 	}
 }
 
