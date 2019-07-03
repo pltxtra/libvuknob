@@ -62,13 +62,6 @@ private:
 	void on_loop_marker_event(ModifyingLoop selected_marker, const KammoGUI::MotionEvent &event);
 	void request_new_loop_settings(int new_loop_start, int new_loop_stop);
 
-	std::vector<unsigned int> legal_zoom_multipliers;// = {
-//		1, 2, 4, 4, 4, 8, 8, 8, 8, 8, 8, 16
-//	};
-	std::vector<unsigned int> legal_intervals;// = {
-//		1, 1, 2, 2, 4, 4, 4, 4, 8, 8, 8,  8,  8,  8,  8,  8,  16
-//	};
-
 	// sizes in pixels
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
 	double finger_width = 10.0, finger_height = 10.0, scaling = 1.0;
