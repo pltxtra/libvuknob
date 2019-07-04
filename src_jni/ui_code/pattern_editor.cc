@@ -111,9 +111,11 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		start_at_sequence_position = 0;
 	if(stop_at_sequence_position < 0)
 		stop_at_sequence_position = 0;
-
-	start_at_sequence_position = (start_at_sequence_position >> 4) << 4;
-	stop_at_sequence_position = 16 + ((stop_at_sequence_position >> 4) << 4);
+	if(start_at_sequence_position > stop_at_sequence_position) {
+		auto t = start_at_sequence_position;
+		start_at_sequence_position = stop_at_sequence_position;
+		stop_at_sequence_position = t;
+	}
 
 	SATAN_DEBUG("Forced - Start: %d - Stop: %d\n",
 		    start_at_sequence_position,

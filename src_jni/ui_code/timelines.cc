@@ -24,6 +24,7 @@
 #endif
 
 #include <iostream>
+#include <cmath>
 
 #include "timelines.hh"
 #include "svg_loader.hh"
@@ -31,7 +32,7 @@
 #include "musical_constants.hh"
 #include "fling_animation.hh"
 
-#define __DO_SATAN_DEBUG
+//#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 void TimeLines::create_timelines() {
@@ -474,10 +475,15 @@ int TimeLines::get_sequence_line_position_at(int horizontal_pixel_value) {
 		    minor_spacing,
 		    line_offset_d);
 	*/
-	double rval = (double)horizontal_pixel_value;
-	rval /= zoomed_sequence_line_width;
-	rval -= line_offset_d;
-	return (int)rval;
+	double line_d = (double)horizontal_pixel_value;
+	line_d /= zoomed_sequence_line_width;
+	line_d -= line_offset_d;
+	line_d /= (double)sequence_lines_per_minor;
+	line_d = round(line_d);
+	int line = (int)line_d;
+	line *= sequence_lines_per_minor;
+	SATAN_ERROR("line at pixel value %d is %d\n", horizontal_pixel_value, line);
+	return line;
 }
 
 void TimeLines::set_prefix_string(const std::string &_prefix) {
@@ -498,7 +504,6 @@ void TimeLines::on_render() {
         if(zoom_numerator >= MAX_LEGAL_ZOOM) zoom_numerator = MAX_LEGAL_ZOOM - 1;
         zoom_numerator = legal_zoom_multipliers[zoom_numerator];
 
-	int minors_per_major, sequence_lines_per_minor;
 	if(zoom_denominator >= 2) {
 		sequence_lines_per_minor = lpb * zoom_denominator / 2;
 		minors_per_major = 2;
@@ -507,9 +512,9 @@ void TimeLines::on_render() {
 		minors_per_major = lpb;
 	}
 
-	SATAN_ERROR("zoom_denominator: %d, lpb: %d\n",
+	SATAN_DEBUG("zoom_denominator: %d, lpb: %d\n",
 		    zoom_denominator, lpb);
-	SATAN_ERROR("sequence_lines_per_minor: %d, width: %f\n",
+	SATAN_DEBUG("sequence_lines_per_minor: %d, width: %f\n",
 		    sequence_lines_per_minor, zoomed_sequence_line_width);
 	double minor_spacing = (double)sequence_lines_per_minor * zoomed_sequence_line_width;
 	auto sequence_lines_per_major = sequence_lines_per_minor * minors_per_major;
@@ -564,7 +569,7 @@ void TimeLines::on_render() {
 		auto major = majors.begin();
 		auto minor = minors.begin();
 
-		SATAN_ERROR("graphics_offset: %f, line_offset_i: %d, spacing: %f\n",
+		SATAN_DEBUG("graphics_offset: %f, line_offset_i: %d, spacing: %f\n",
 			    graphics_offset, line_offset_i, minor_spacing);
 		for(;
 		    graphics_offset < max_graphics_offset;

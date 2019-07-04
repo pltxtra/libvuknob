@@ -72,6 +72,7 @@ private:
 	double scroll_start_x = 0;
 	bool ignore_scroll = false;
 	float canvas_w_inches, canvas_h_inches;
+	int minors_per_major, sequence_lines_per_minor;
 	// sequence_line_width means how wide a line in the sequencer is, not a visible time line.
 	// A time line may represent one or more sequencer lines, depending on zoom etc.
 	double horizontal_zoom_factor = 1.0, line_offset = 0.0, default_sequence_line_width, zoomed_sequence_line_width;
