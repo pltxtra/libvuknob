@@ -2492,7 +2492,6 @@ void Machine::run_async_operation(AsyncOp *op) {
 }
 
 void Machine::run_async_function(std::function<void()> f) {
-	SATAN_ERROR("::run_async_function() ops == %p\n", async_ops);
 	if(async_ops != NULL)
 		async_ops->run_async_function(f);
 	else
