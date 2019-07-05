@@ -51,18 +51,13 @@
 #include <iostream>
 #include <functional>
 
+#include "musical_constants.hh"
 #include "readerwriterqueue/readerwriterqueue.h"
 #include "async_operations.hh"
 #include "satan_project_entry.hh"
 #include "time_measure.hh"
 
 class Machine;
-
-#define BITS_PER_LINE 4
-#define MACHINE_TICKS_PER_LINE (1 << BITS_PER_LINE)
-#define MACHINE_LINE_BITMASK 0xffffff0
-#define MACHINE_TICK_BITMASK 0x000000f
-#define MAX_STATIC_SIGNALS 256
 
 int quantize_tick(int start_tick);
 
