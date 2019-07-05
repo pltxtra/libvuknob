@@ -29,7 +29,7 @@
 
 #include "client.hh"
 
-#define __DO_SATAN_DEBUG
+//#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 CLIENT_CODE(
