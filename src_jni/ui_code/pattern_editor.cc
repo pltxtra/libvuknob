@@ -87,8 +87,8 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 				pattern_id,
 				0, 0, 0x7f,
 				new_tone,
-				MACHINE_TICKS_PER_LINE * start_at_sequence_position,
-				MACHINE_TICKS_PER_LINE * (stop_at_sequence_position - start_at_sequence_position) - (MACHINE_TICKS_PER_LINE >> 1)
+				start_at_sequence_position,
+				stop_at_sequence_position - start_at_sequence_position - (MACHINE_TICKS_PER_LINE >> 1)
 				);
 		}
 
@@ -104,8 +104,8 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		event_right_x = event_current_x;
 	}
 
-	start_at_sequence_position = timelines->get_sequence_line_position_at(event_left_x);
-	stop_at_sequence_position = timelines->get_sequence_line_position_at(event_right_x);
+	start_at_sequence_position = timelines->get_sequence_line_position_at(event_left_x) * MACHINE_TICKS_PER_LINE;
+	stop_at_sequence_position = timelines->get_sequence_line_position_at(event_right_x) * MACHINE_TICKS_PER_LINE;
 
 	if(start_at_sequence_position < 0)
 		start_at_sequence_position = 0;
@@ -117,7 +117,7 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		stop_at_sequence_position = t;
 	}
 	if(stop_at_sequence_position - start_at_sequence_position == 0)
-		stop_at_sequence_position += 1;
+		stop_at_sequence_position +=  MACHINE_TICKS_PER_LINE;
 
 	SATAN_DEBUG("Forced - Start: %d - Stop: %d\n",
 		    start_at_sequence_position,
@@ -132,7 +132,7 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		auto stt = start_at_sequence_position;
 		auto stp = stop_at_sequence_position;
 		auto timelines_offset = timelines->get_graphics_horizontal_offset();
-		auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_line();
+		auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_line() / (double)MACHINE_TICKS_PER_LINE;
 		double lft = timelines_minor_spacing * stt + timelines_offset;
 		double rgt = timelines_minor_spacing * stp + timelines_offset;
 
@@ -281,8 +281,8 @@ void PatternEditor::on_single_note_event(RINote selected_note,
 	}
 
 	// Calculate the note drag horizontal offset
-	start_at_sequence_position = timelines->get_sequence_line_position_at(event_start_x);
-	stop_at_sequence_position = timelines->get_sequence_line_position_at(event_current_x);
+	start_at_sequence_position = timelines->get_sequence_line_position_at(event_start_x) * MACHINE_TICKS_PER_LINE;
+	stop_at_sequence_position = timelines->get_sequence_line_position_at(event_current_x) * MACHINE_TICKS_PER_LINE;
 	auto note_on_offset = stop_at_sequence_position - start_at_sequence_position;
 
 	// set start/stop positions using selected_note, plus offset
@@ -305,7 +305,7 @@ void PatternEditor::on_single_note_event(RINote selected_note,
 		auto stt = start_at_sequence_position;
 		auto stp = stop_at_sequence_position;
 		auto timelines_offset = timelines->get_graphics_horizontal_offset();
-		auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_line();
+		auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_line() / (double)MACHINE_TICKS_PER_LINE;
 		double lft = timelines_minor_spacing * stt + timelines_offset;
 		double rgt = timelines_minor_spacing * stp + timelines_offset;
 
@@ -429,7 +429,7 @@ void PatternEditor::refresh_note_graphics() {
 	int lowest_note = (int)pianoroll_offset;
 	int highest_note = lowest_note + canvas_height_fingers + 1;
 	auto timelines_offset = timelines->get_graphics_horizontal_offset();
-	auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_line();
+	auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_line() / (double)MACHINE_TICKS_PER_LINE;
 	double temp = -timelines_offset / timelines_minor_spacing;
 	int earliest_visible_note = (int)temp;
 	int last_visible_note = earliest_visible_note + canvas_width_fingers * 16;
@@ -442,8 +442,8 @@ void PatternEditor::refresh_note_graphics() {
 		   earliest_visible_note < (n.on_at + n.length) && n.on_at < last_visible_note) {
 			g.set_display("inline");
 
-			double stt = (n.on_at) / ((double)MACHINE_TICKS_PER_LINE);
-			double stp = (n.on_at + n.length) / ((double)MACHINE_TICKS_PER_LINE);
+			double stt = n.on_at;
+			double stp = n.on_at + n.length;
 			double lft = timelines_minor_spacing * stt + timelines_offset;
 			double rgt = timelines_minor_spacing * stp + timelines_offset;
 
