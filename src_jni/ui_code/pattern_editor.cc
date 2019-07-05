@@ -87,8 +87,8 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 				pattern_id,
 				0, 0, 0x7f,
 				new_tone,
-				start_at_sequence_position,
-				stop_at_sequence_position - start_at_sequence_position
+				MACHINE_TICKS_PER_LINE * start_at_sequence_position,
+				MACHINE_TICKS_PER_LINE * (stop_at_sequence_position - start_at_sequence_position) - (MACHINE_TICKS_PER_LINE >> 1)
 				);
 		}
 
@@ -116,6 +116,8 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		start_at_sequence_position = stop_at_sequence_position;
 		stop_at_sequence_position = t;
 	}
+	if(stop_at_sequence_position - start_at_sequence_position == 0)
+		stop_at_sequence_position += 1;
 
 	SATAN_DEBUG("Forced - Start: %d - Stop: %d\n",
 		    start_at_sequence_position,
@@ -281,8 +283,6 @@ void PatternEditor::on_single_note_event(RINote selected_note,
 	// Calculate the note drag horizontal offset
 	start_at_sequence_position = timelines->get_sequence_line_position_at(event_start_x);
 	stop_at_sequence_position = timelines->get_sequence_line_position_at(event_current_x);
-	start_at_sequence_position = (start_at_sequence_position >> 4) << 4;
-	stop_at_sequence_position = (stop_at_sequence_position >> 4) << 4;
 	auto note_on_offset = stop_at_sequence_position - start_at_sequence_position;
 
 	// set start/stop positions using selected_note, plus offset
@@ -442,8 +442,8 @@ void PatternEditor::refresh_note_graphics() {
 		   earliest_visible_note < (n.on_at + n.length) && n.on_at < last_visible_note) {
 			g.set_display("inline");
 
-			auto stt = n.on_at;
-			auto stp = n.on_at + n.length;
+			double stt = (n.on_at) / ((double)MACHINE_TICKS_PER_LINE);
+			double stp = (n.on_at + n.length) / ((double)MACHINE_TICKS_PER_LINE);
 			double lft = timelines_minor_spacing * stt + timelines_offset;
 			double rgt = timelines_minor_spacing * stp + timelines_offset;
 
