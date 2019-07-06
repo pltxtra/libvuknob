@@ -432,7 +432,7 @@ void PatternEditor::refresh_note_graphics() {
 	auto timelines_minor_spacing = timelines->get_horizontal_pixels_per_line() / (double)MACHINE_TICKS_PER_LINE;
 	double temp = -timelines_offset / timelines_minor_spacing;
 	int earliest_visible_note = (int)temp;
-	int last_visible_note = earliest_visible_note + canvas_width_fingers * 16;
+	int last_visible_note = earliest_visible_note + canvas_w / timelines_minor_spacing;
 	double offset = pianoroll_offset - floor(pianoroll_offset);
 
 	for(auto n_grph : note_graphics) {
