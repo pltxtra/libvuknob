@@ -148,7 +148,7 @@ std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_n
 	   << "   class=\"instance_graphic\""
 	   << "   width=\"" << w << "\" "
 	   << "   height=\"" << height << "\" "
-	   << "   x=\"" << (sequence_line_width * _instance_data.start_at) << "\" "
+	   << "   x=\"0.0\" "
 	   << "   y=\"0.0\" "
 	   << "  />"
 	   << "  <text "
