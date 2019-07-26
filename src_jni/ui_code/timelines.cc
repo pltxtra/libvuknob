@@ -441,10 +441,10 @@ void TimeLines::add_scroll_callback(std::function<void(double, double, int, int)
 }
 
 void TimeLines::call_scroll_callbacks() {
-	auto min_visible_offset = get_sequence_line_position_at(0);
-	auto max_visible_offset = get_sequence_line_position_at(canvas_w);
+	auto min_visible_line = get_sequence_line_position_at(0);
+	auto max_visible_line = get_sequence_line_position_at(canvas_w);
 	for(auto sc : scroll_callbacks) {
-		sc(zoomed_sequence_line_width, line_offset, min_visible_offset, max_visible_offset);
+		sc(zoomed_sequence_line_width, line_offset, min_visible_line, max_visible_line);
 	}
 }
 

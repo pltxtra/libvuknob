@@ -26,6 +26,7 @@
 #include "engine_code/sequence.hh"
 
 #include "timelines.hh"
+#include "tap_detector.hh"
 
 typedef RemoteInterface::ClientSpace::Sequence RISequence;
 typedef RemoteInterface::ClientSpace::Sequence::PatternInstance RIPatternInstance;
@@ -36,30 +37,50 @@ class Sequencer
 {
 
 private:
+	enum InstanceEventType {
+		moved
+	};
+	struct InstanceEvent {
+		InstanceEventType type;
+		int moving_offset;
+	};
 	class PatternInstance
 		: public KammoGUI::GnuVGCanvas::ElementReference
 		, public std::enable_shared_from_this<PatternInstance>
 	{
 	private:
+		TapDetector tap_detector;
+
+		bool display_action = false;
 		RIPatternInstance instance_data;
 		KammoGUI::GnuVGCanvas::ElementReference instance_graphic, pattern_id_graphic;
+		std::function<void(const InstanceEvent &e)> event_callback;
+
+		double line_width = 1.0;
+		int moving_offset = 0, start_at_sequence_position = 0, minimum_visible_line = 0, maximum_visible_line = 10;
+
+		void refresh_visibility();
+		void on_instance_event(std::shared_ptr<RISequence> ri_seq,
+				       const KammoGUI::MotionEvent &event);
 	public:
 		PatternInstance(
 			KammoGUI::GnuVGCanvas::ElementReference &elref,
 			const RIPatternInstance &instance_data,
-			std::shared_ptr<RISequence> ri_seq
+			std::shared_ptr<RISequence> ri_seq,
+			std::function<void(const InstanceEvent &e)> event_callback
 			);
 
 		static std::shared_ptr<PatternInstance> create_new_pattern_instance(
 			const RIPatternInstance &instance_data,
 			KammoGUI::GnuVGCanvas::ElementReference &parent,
 			int line_width, double height,
-			std::shared_ptr<RISequence> ri_seq
+			std::shared_ptr<RISequence> ri_seq,
+			std::function<void(const InstanceEvent &e)> event_callback
 			);
 
 		void calculate_visibility(double line_width,
-					  int minimum_minor_offset,
-					  int maximum_minor_offset);
+					  int minimum_visible_line,
+					  int maximum_visible_line);
 	};
 
 	class Sequence
@@ -96,7 +117,7 @@ private:
 		void on_sequence_event(const KammoGUI::MotionEvent &event);
 
 		double line_width, line_offset;
-		int left_side_minor_offset, right_side_minor_offset;
+		int minimum_visible_line, maximum_visible_line;
 
 	public:
 		virtual void pattern_added(const std::string &name, uint32_t id);
@@ -109,8 +130,8 @@ private:
 					    double canvas_w, double canvas_h);
 
 		void on_scroll(double _line_width, double _line_offset,
-			       int _left_side_minor_offset,
-			       int _right_side_minor_offset);
+			       int _minimum_visible_line,
+			       int _maximum_visible_line);
 
 		Sequence(
 			KammoGUI::GnuVGCanvas::ElementReference elref,

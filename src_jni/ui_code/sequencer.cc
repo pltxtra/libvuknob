@@ -55,10 +55,12 @@ static std::shared_ptr<LoopSettings> loop_settings;
 Sequencer::PatternInstance::PatternInstance(
 	KammoGUI::GnuVGCanvas::ElementReference &elref,
 	const RIPatternInstance &_instance_data,
-	std::shared_ptr<RISequence> ri_seq
+	std::shared_ptr<RISequence> ri_seq,
+	std::function<void(const InstanceEvent &)> _event_callback
 	)
 	: KammoGUI::GnuVGCanvas::ElementReference(elref)
 	, instance_data(_instance_data)
+	, event_callback(_event_callback)
 {
 	instance_graphic = find_child_by_class("instance_graphic");
 	pattern_id_graphic = find_child_by_class("id_graphic");
@@ -67,6 +69,17 @@ Sequencer::PatternInstance::PatternInstance(
 	ss << instance_data.pattern_id;
 	pattern_id_graphic.set_text_content(ss.str());
 
+	set_event_handler(
+		[this, ri_seq](SVGDocument *source,
+			       ElementReference *e,
+			       const KammoGUI::MotionEvent &event) {
+			on_instance_event(ri_seq, event);
+		}
+		);
+}
+
+void Sequencer::PatternInstance::on_instance_event(std::shared_ptr<RISequence> ri_seq,
+						   const KammoGUI::MotionEvent &event) {
 	auto restore_sequencer = [this]() {
 		auto main_container = get_root();
 		main_container.set_display("inline");
@@ -75,48 +88,50 @@ Sequencer::PatternInstance::PatternInstance(
 		loop_settings->show();
 	};
 
-	set_event_handler(
-		[this, ri_seq, restore_sequencer](SVGDocument *source,
-					  ElementReference *e,
-					  const KammoGUI::MotionEvent &event) {
-			switch(event.get_action()) {
-			case KammoGUI::MotionEvent::ACTION_CANCEL:
-			case KammoGUI::MotionEvent::ACTION_OUTSIDE:
-			case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
-			case KammoGUI::MotionEvent::ACTION_POINTER_UP:
-			case KammoGUI::MotionEvent::ACTION_DOWN:
-			case KammoGUI::MotionEvent::ACTION_MOVE:
-				break;
-			case KammoGUI::MotionEvent::ACTION_UP:
-				SATAN_DEBUG("Clicked on pattern instance for pattern %d, %p (%s)\n",
-					    instance_data.pattern_id, ri_seq.get(), ri_seq->get_name().c_str());
+	if(tap_detector.analyze_events(event)) {
+		SATAN_DEBUG("Clicked on pattern instance for pattern %d, %p (%s)\n",
+			    instance_data.pattern_id, ri_seq.get(), ri_seq->get_name().c_str());
 
-				PatternEditor::show(restore_sequencer, ri_seq, instance_data.pattern_id);
-				auto main_container = get_root();
-				main_container.set_display("none");
-				timelines->hide_loop_markers();
-				loop_settings->hide();
-				plus_button->hide();
-				return_button->show();
-				break;
-			}
-		}
-		);
+		PatternEditor::show(restore_sequencer, ri_seq, instance_data.pattern_id);
+		auto main_container = get_root();
+		main_container.set_display("none");
+		timelines->hide_loop_markers();
+		loop_settings->hide();
+		plus_button->hide();
+		return_button->show();
+	}
+
+	auto event_current_x = event.get_x();
+	auto current_sequence_position = timelines->get_sequence_line_position_at(event_current_x);
+
+	switch(event.get_action()) {
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		break;
+	case KammoGUI::MotionEvent::ACTION_DOWN:
+		start_at_sequence_position = current_sequence_position;
+	case KammoGUI::MotionEvent::ACTION_MOVE:
+		moving_offset = current_sequence_position - start_at_sequence_position;
+		SATAN_DEBUG("move offset: %d\n", moving_offset);
+		refresh_visibility();
+		break;
+	case KammoGUI::MotionEvent::ACTION_UP:
+	{
+		InstanceEvent e;
+		e.type = InstanceEventType::moved;
+		e.moving_offset = moving_offset;
+		event_callback(e);
+	}
+		moving_offset = 0;
+		break;
+	}
 }
 
-void Sequencer::PatternInstance::calculate_visibility(double line_width,
-						      int minimum_minor_offset,
-						      int maximum_minor_offset) {
-	SATAN_DEBUG("instance(%d, %d) ==> calculate_visibility(%f, %d, %d) - set_attribute('width', %f)\n",
-		    instance_data.start_at,
-		    instance_data.stop_at,
-		    line_width,
-		    minimum_minor_offset,
-		    maximum_minor_offset,
-		    line_width * (double)(instance_data.stop_at - instance_data.start_at)
-		);
+void Sequencer::PatternInstance::refresh_visibility() {
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
-	float x = line_width * (double)instance_data.start_at;
+	float x = line_width * (double)(instance_data.start_at + moving_offset);
 	transform_t.init_identity();
 	transform_t.translate(x, 0.0);
 	set_transform(transform_t);
@@ -125,11 +140,29 @@ void Sequencer::PatternInstance::calculate_visibility(double line_width,
 	instance_graphic.set_attribute("width", w - 2);
 }
 
+void Sequencer::PatternInstance::calculate_visibility(double _line_width,
+						      int _minimum_visible_line,
+						      int _maximum_visible_line) {
+	SATAN_DEBUG("instance(%d, %d) ==> calculate_visibility(%f, %d, %d) - set_attribute('width', %f)\n",
+		    instance_data.start_at,
+		    instance_data.stop_at,
+		    _line_width,
+		    _minimum_visible_line,
+		    _maximum_visible_line,
+		    _line_width * (double)(instance_data.stop_at - instance_data.start_at)
+		);
+	line_width = _line_width;
+	minimum_visible_line = _minimum_visible_line;
+	maximum_visible_line = _maximum_visible_line;
+	refresh_visibility();
+}
+
 std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_new_pattern_instance(
 	const RIPatternInstance &_instance_data,
 	KammoGUI::GnuVGCanvas::ElementReference &parent,
 	int sequence_line_width, double height,
-	std::shared_ptr<RISequence> ri_seq
+	std::shared_ptr<RISequence> ri_seq,
+	std::function<void(const InstanceEvent &e)> event_callback
 	)
 {
 	std::stringstream ss_new_id;
@@ -165,7 +198,7 @@ std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_n
 
 	KammoGUI::GnuVGCanvas::ElementReference elref(&parent, ss_new_id.str());
 
-	auto rval = std::make_shared<PatternInstance>(elref, _instance_data, ri_seq);
+	auto rval = std::make_shared<PatternInstance>(elref, _instance_data, ri_seq, event_callback);
 
 	return rval;
 }
@@ -319,21 +352,38 @@ void Sequencer::Sequence::pattern_deleted(uint32_t id) {
 }
 
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
-	KammoGUI::run_on_GUI_thread(
-		[this, instance]() {
-			auto instanceContainer = find_child_by_class("instanceContainer");
+  	auto event_callback = [this, instance](const InstanceEvent &e) {
+		switch(e.type) {
+		case InstanceEventType::moved:
+		{
+			auto new_start_at = instance.start_at + e.moving_offset;
+			auto length = instance.stop_at - instance.start_at;
+			if(new_start_at < 0) new_start_at = 0;
 
+			ri_seq->delete_pattern_from_sequence(instance);
+			ri_seq->insert_pattern_in_sequence(
+				instance.pattern_id,
+				new_start_at, instance.loop_length,
+				new_start_at + length);
+			break;
+		}
+	}
+			};
+	KammoGUI::run_on_GUI_thread(
+		[this, event_callback, instance]() {
+			auto instanceContainer = find_child_by_class("instanceContainer");
 			auto i = PatternInstance::create_new_pattern_instance(
 				instance,
 				instanceContainer,
 				timelines->get_horizontal_pixels_per_line(),
 				height,
-				ri_seq
+				ri_seq,
+				event_callback
 				);
 			instances[instance.start_at] = i;
 			timelines->call_scroll_callbacks();
 			i->calculate_visibility(
-				line_width, left_side_minor_offset, right_side_minor_offset
+				line_width, minimum_visible_line, maximum_visible_line
 				);
 		}
 		);
@@ -390,12 +440,12 @@ void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
 
 void Sequencer::Sequence::on_scroll(double _line_width,
 				    double _line_offset,
-				    int _left_side_minor_offset,
-				    int _right_side_minor_offset) {
+				    int _minimum_visible_line,
+				    int _maximum_visible_line) {
 	line_width = _line_width;
 	line_offset = _line_offset;
-	left_side_minor_offset = _left_side_minor_offset;
-	right_side_minor_offset = _right_side_minor_offset;
+	minimum_visible_line = _minimum_visible_line;
+	_maximum_visible_line = _maximum_visible_line;
 
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	transform_t.init_identity();
@@ -408,7 +458,7 @@ void Sequencer::Sequence::on_scroll(double _line_width,
 		auto inst = p.second;
 
 		inst->calculate_visibility(
-			line_width, left_side_minor_offset, right_side_minor_offset
+			line_width, minimum_visible_line, maximum_visible_line
 			);
 	}
 }
@@ -448,13 +498,13 @@ Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 
 	timelines->add_scroll_callback(
 		[this](double _line_width, double _line_offset,
-		       int _left_side_minor_offset,
-		       int _right_side_minor_offset) {
+		       int _minimum_visible_line,
+		       int _maximum_visible_line) {
 			for(auto m2s : machine2sequence) {
 				m2s.second->on_scroll(
 					_line_width, _line_offset,
-					_left_side_minor_offset,
-					_right_side_minor_offset
+					_minimum_visible_line,
+					_maximum_visible_line
 					);
 			}
 		}
