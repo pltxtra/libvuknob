@@ -58,20 +58,20 @@ Sequencer::PatternInstance::PatternInstance(
 	std::shared_ptr<RISequence> ri_seq,
 	std::function<void(const InstanceEvent &)> _event_callback
 	)
-	: KammoGUI::GnuVGCanvas::ElementReference(elref)
+	: svg_reference(elref)
 	, instance_data(_instance_data)
 	, event_callback(_event_callback)
 {
-	instance_graphic = find_child_by_class("instance_graphic");
-	pattern_id_graphic = find_child_by_class("id_graphic");
+	instance_graphic = svg_reference.find_child_by_class("instance_graphic");
+	pattern_id_graphic = svg_reference.find_child_by_class("id_graphic");
 
 	std::stringstream ss;
 	ss << instance_data.pattern_id;
 	pattern_id_graphic.set_text_content(ss.str());
 
-	set_event_handler(
+	svg_reference.set_event_handler(
 		[this, ri_seq](SVGDocument *source,
-			       ElementReference *e,
+			       KammoGUI::GnuVGCanvas::ElementReference *e,
 			       const KammoGUI::MotionEvent &event) {
 			on_instance_event(ri_seq, event);
 		}
@@ -122,7 +122,7 @@ void Sequencer::PatternInstance::refresh_visibility() {
 	float x = line_width * (double)(instance_data.start_at + moving_offset);
 	transform_t.init_identity();
 	transform_t.translate(x, 0.0);
-	set_transform(transform_t);
+	svg_reference.set_transform(transform_t);
 
 	float w = (line_width * (double)(instance_data.stop_at - instance_data.start_at));
 	instance_graphic.set_attribute("width", w - 2);
@@ -409,7 +409,6 @@ void Sequencer::Sequence::instance_deleted(const RIPatternInstance& original_i) 
 
 			auto instance_to_erase = instances.find(instance.start_at);
 			if(instance_to_erase != instances.end()) {
-				instance_to_erase->second->drop_element();
 				instances.erase(instance_to_erase);
 			}
 		}

@@ -47,10 +47,10 @@ private:
 		int moving_offset;
 	};
 	class PatternInstance
-		: public KammoGUI::GnuVGCanvas::ElementReference
-		, public std::enable_shared_from_this<PatternInstance>
+		: public std::enable_shared_from_this<PatternInstance>
 	{
 	private:
+		KammoGUI::GnuVGCanvas::ElementReference svg_reference;
 		TapDetector tap_detector;
 
 		bool display_action = false;
@@ -71,6 +71,10 @@ private:
 			std::shared_ptr<RISequence> ri_seq,
 			std::function<void(const InstanceEvent &e)> event_callback
 			);
+
+		virtual ~PatternInstance() {
+			svg_reference.drop_element();
+		}
 
 		static std::shared_ptr<PatternInstance> create_new_pattern_instance(
 			const RIPatternInstance &instance_data,
