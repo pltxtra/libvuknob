@@ -76,6 +76,10 @@ private:
 			svg_reference.drop_element();
 		}
 
+		const RIPatternInstance& data() {
+			return instance_data;
+		}
+
 		static std::shared_ptr<PatternInstance> create_new_pattern_instance(
 			const RIPatternInstance &instance_data,
 			KammoGUI::GnuVGCanvas::ElementReference &parent,
@@ -116,6 +120,7 @@ private:
 
 		std::map<uint32_t, std::string> patterns;
 		std::map<int, std::shared_ptr<PatternInstance> > instances;
+		std::shared_ptr<PatternInstance> tapped_instance;
 
 		static constexpr uint32_t NO_ACTIVE_PATTERN = IDAllocator::NO_ID_AVAILABLE;
 		uint32_t active_pattern_id = NO_ACTIVE_PATTERN;

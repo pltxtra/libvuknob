@@ -353,6 +353,7 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 			auto event_callback = [this, instance, restore_sequencer](const InstanceEvent &e) {
 				switch(e.type) {
 				case InstanceEventType::selected:
+				tapped_instance.reset();
 				break;
 				case InstanceEventType::moved:
 				{
@@ -369,6 +370,10 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 				break;
 				case InstanceEventType::tapped:
 				{
+					auto found = instances.find(instance.start_at);
+					if(found != instances.end()) {
+						tapped_instance = found->second;
+					}
 					SATAN_DEBUG("Tapped on pattern instance for pattern %d, %p (%s)\n",
 						    instance.pattern_id, ri_seq.get(), ri_seq->get_name().c_str());
 
@@ -406,6 +411,10 @@ void Sequencer::Sequence::instance_deleted(const RIPatternInstance& original_i) 
 	KammoGUI::run_on_GUI_thread(
 		[this, instance]() {
 			SATAN_DEBUG("::instance_deleted()\n");
+
+			if(tapped_instance && tapped_instance->data().start_at == instance.start_at) {
+				tapped_instance.reset();
+			}
 
 			auto instance_to_erase = instances.find(instance.start_at);
 			if(instance_to_erase != instances.end()) {
