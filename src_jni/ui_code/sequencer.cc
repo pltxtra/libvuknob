@@ -80,25 +80,14 @@ Sequencer::PatternInstance::PatternInstance(
 
 void Sequencer::PatternInstance::on_instance_event(std::shared_ptr<RISequence> ri_seq,
 						   const KammoGUI::MotionEvent &event) {
-	auto restore_sequencer = [this]() {
-		auto main_container = get_root();
-		main_container.set_display("inline");
-		plus_button->show();
-		timelines->show_loop_markers();
-		loop_settings->show();
-	};
+	auto last_moving_offset = moving_offset;
+	moving_offset = 0;
 
 	if(tap_detector.analyze_events(event)) {
-		SATAN_DEBUG("Clicked on pattern instance for pattern %d, %p (%s)\n",
-			    instance_data.pattern_id, ri_seq.get(), ri_seq->get_name().c_str());
-
-		PatternEditor::show(restore_sequencer, ri_seq, instance_data.pattern_id);
-		auto main_container = get_root();
-		main_container.set_display("none");
-		timelines->hide_loop_markers();
-		loop_settings->hide();
-		plus_button->hide();
-		return_button->show();
+		InstanceEvent e;
+		e.type = InstanceEventType::tapped;
+		event_callback(e);
+		return;
 	}
 
 	auto event_current_x = event.get_x();
@@ -121,10 +110,9 @@ void Sequencer::PatternInstance::on_instance_event(std::shared_ptr<RISequence> r
 	{
 		InstanceEvent e;
 		e.type = InstanceEventType::moved;
-		e.moving_offset = moving_offset;
+		e.moving_offset = last_moving_offset;
 		event_callback(e);
 	}
-		moving_offset = 0;
 		break;
 	}
 }
@@ -352,25 +340,49 @@ void Sequencer::Sequence::pattern_deleted(uint32_t id) {
 }
 
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
-  	auto event_callback = [this, instance](const InstanceEvent &e) {
-		switch(e.type) {
-		case InstanceEventType::moved:
-		{
-			auto new_start_at = instance.start_at + e.moving_offset;
-			auto length = instance.stop_at - instance.start_at;
-			if(new_start_at < 0) new_start_at = 0;
-
-			ri_seq->delete_pattern_from_sequence(instance);
-			ri_seq->insert_pattern_in_sequence(
-				instance.pattern_id,
-				new_start_at, instance.loop_length,
-				new_start_at + length);
-			break;
-		}
-	}
-			};
 	KammoGUI::run_on_GUI_thread(
-		[this, event_callback, instance]() {
+		[this, instance]() {
+			auto restore_sequencer = [this]() {
+				auto main_container = get_root();
+				main_container.set_display("inline");
+				plus_button->show();
+				timelines->show_loop_markers();
+				loop_settings->show();
+			};
+
+			auto event_callback = [this, instance, restore_sequencer](const InstanceEvent &e) {
+				switch(e.type) {
+				case InstanceEventType::selected:
+				break;
+				case InstanceEventType::moved:
+				{
+					auto new_start_at = instance.start_at + e.moving_offset;
+					auto length = instance.stop_at - instance.start_at;
+					if(new_start_at < 0) new_start_at = 0;
+
+					ri_seq->delete_pattern_from_sequence(instance);
+					ri_seq->insert_pattern_in_sequence(
+						instance.pattern_id,
+						new_start_at, instance.loop_length,
+						new_start_at + length);
+				}
+				break;
+				case InstanceEventType::tapped:
+				{
+					SATAN_DEBUG("Tapped on pattern instance for pattern %d, %p (%s)\n",
+						    instance.pattern_id, ri_seq.get(), ri_seq->get_name().c_str());
+
+					PatternEditor::show(restore_sequencer, ri_seq, instance.pattern_id);
+					auto main_container = get_root();
+					main_container.set_display("none");
+					timelines->hide_loop_markers();
+					loop_settings->hide();
+					plus_button->hide();
+					return_button->show();
+				}
+				}
+			};
+
 			auto instanceContainer = find_child_by_class("instanceContainer");
 			auto i = PatternInstance::create_new_pattern_instance(
 				instance,
@@ -592,9 +604,9 @@ void Sequencer::object_registered(std::shared_ptr<RemoteInterface::ClientSpace::
 			int new_offset = (int)machine2sequence.size();
 			SATAN_DEBUG("new_offset is %d\n", new_offset);
 
-			KammoGUI::GnuVGCanvas::ElementReference layer(this, "layer1");
+			KammoGUI::GnuVGCanvas::ElementReference sequencer_container(this, "sequencerContainer");
 			auto new_sequence = Sequence::create_sequence(
-				layer, sequence_graphic_template,
+				sequencer_container, sequence_graphic_template,
 				ri_seq,
 				new_offset);
 			machine2sequence[ri_seq] = new_sequence;

@@ -38,7 +38,9 @@ class Sequencer
 
 private:
 	enum InstanceEventType {
-		moved
+		selected,
+		moved,
+		tapped
 	};
 	struct InstanceEvent {
 		InstanceEventType type;
