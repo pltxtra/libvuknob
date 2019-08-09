@@ -45,6 +45,7 @@ private:
 	struct InstanceEvent {
 		InstanceEventType type;
 		int moving_offset;
+		double x, y; // top left corner of tapped instance
 	};
 	class PatternInstance
 		: public std::enable_shared_from_this<PatternInstance>
@@ -129,6 +130,8 @@ private:
 
 		double line_width, line_offset;
 		int minimum_visible_line, maximum_visible_line;
+
+		void refresh_tapped_instance_icons(const InstanceEvent &e);
 
 	public:
 		virtual void pattern_added(const std::string &name, uint32_t id);

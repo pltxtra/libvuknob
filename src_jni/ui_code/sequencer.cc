@@ -46,6 +46,8 @@ static std::shared_ptr<GnuVGCornerButton> return_button;
 static std::shared_ptr<PatternEditor> pattern_editor;
 static std::shared_ptr<LoopSettings> loop_settings;
 
+static const float TRANSITION_DURATION = 0.25f;
+
 /***************************
  *
  *  Class Sequencer::PatternInstance
@@ -84,8 +86,15 @@ void Sequencer::PatternInstance::on_instance_event(std::shared_ptr<RISequence> r
 	moving_offset = 0;
 
 	if(tap_detector.analyze_events(event)) {
+		KammoGUI::GnuVGCanvas::SVGRect r;
+		svg_reference.get_boundingbox(r);
+		SATAN_DEBUG("bounding box: %f, %f -> %f, %f\n",
+			    r.x, r.y, r.width, r.height);
+
 		InstanceEvent e;
 		e.type = InstanceEventType::tapped;
+		e.x = r.x;
+		e.y = r.y;
 		event_callback(e);
 		return;
 	}
@@ -339,6 +348,38 @@ void Sequencer::Sequence::pattern_deleted(uint32_t id) {
 		);
 }
 
+void Sequencer::Sequence::refresh_tapped_instance_icons(const InstanceEvent &e) {
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
+	transform_t.init_identity();
+	transform_t.translate(e.x, e.y);
+
+	auto trashcan_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "trashcanIcon");
+	trashcan_icon.set_transform(transform_t);
+	trashcan_icon.set_style("opacity:0.0");
+
+	auto button_container = find_child_by_class("buttonContainer");
+	button_container.set_style("opacity:1.0");
+
+	auto instance_icons_transition = new KammoGUI::SimpleAnimation(
+		TRANSITION_DURATION,
+		[=](float progress) mutable {
+			{
+				std::stringstream opacity;
+				opacity << "opacity:" << progress;
+				trashcan_icon.set_style(opacity.str());
+			}
+			{
+				std::stringstream opacity;
+				opacity << "opacity:" << (1.0f - 0.8f * progress);
+				button_container.set_style(opacity.str());
+			}
+		}
+		);
+	sequencer->start_animation(instance_icons_transition);
+
+	SATAN_DEBUG("Trashcan icon graphic moved. %f, %f", e.x, e.y);
+}
+
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 	KammoGUI::run_on_GUI_thread(
 		[this, instance]() {
@@ -374,6 +415,8 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 					if(found != instances.end()) {
 						tapped_instance = found->second;
 					}
+					refresh_tapped_instance_icons(e);
+					/*
 					SATAN_DEBUG("Tapped on pattern instance for pattern %d, %p (%s)\n",
 						    instance.pattern_id, ri_seq.get(), ri_seq->get_name().c_str());
 
@@ -384,6 +427,7 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 					loop_settings->hide();
 					plus_button->hide();
 					return_button->show();
+					*/
 				}
 				}
 			};
