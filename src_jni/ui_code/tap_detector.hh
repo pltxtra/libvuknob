@@ -25,11 +25,11 @@
 
 class TapDetector {
 private:
-	TimeMeasure timer;
-	double event_start_x, event_start_y;
+	mutable TimeMeasure timer;
+	mutable double event_start_x, event_start_y;
 
 public:
-	bool analyze_events(const KammoGUI::MotionEvent &event) {
+	bool analyze_events(const KammoGUI::MotionEvent &event) const {
 		auto event_current_x = event.get_x();
 		auto event_current_y = event.get_y();
 		switch(event.get_action()) {

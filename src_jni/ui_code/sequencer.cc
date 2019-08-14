@@ -46,8 +46,6 @@ static std::shared_ptr<GnuVGCornerButton> return_button;
 static std::shared_ptr<PatternEditor> pattern_editor;
 static std::shared_ptr<LoopSettings> loop_settings;
 
-static const float TRANSITION_DURATION = 0.25f;
-
 /***************************
  *
  *  Class Sequencer::PatternInstance
@@ -109,6 +107,11 @@ void Sequencer::PatternInstance::on_instance_event(std::shared_ptr<RISequence> r
 	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 		break;
 	case KammoGUI::MotionEvent::ACTION_DOWN:
+	{
+		InstanceEvent e;
+		e.type = InstanceEventType::finger_on;
+		event_callback(e);
+	}
 		start_at_sequence_position = current_sequence_position;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
 		moving_offset = current_sequence_position - start_at_sequence_position;
@@ -349,33 +352,6 @@ void Sequencer::Sequence::pattern_deleted(uint32_t id) {
 }
 
 void Sequencer::Sequence::refresh_tapped_instance_icons(const InstanceEvent &e) {
-	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
-	transform_t.init_identity();
-	transform_t.translate(e.x, e.y);
-
-	auto trashcan_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "trashcanIcon");
-	trashcan_icon.set_transform(transform_t);
-	trashcan_icon.set_style("opacity:0.0");
-
-	auto button_container = find_child_by_class("buttonContainer");
-	button_container.set_style("opacity:1.0");
-
-	auto instance_icons_transition = new KammoGUI::SimpleAnimation(
-		TRANSITION_DURATION,
-		[=](float progress) mutable {
-			{
-				std::stringstream opacity;
-				opacity << "opacity:" << progress;
-				trashcan_icon.set_style(opacity.str());
-			}
-			{
-				std::stringstream opacity;
-				opacity << "opacity:" << (1.0f - 0.8f * progress);
-				button_container.set_style(opacity.str());
-			}
-		}
-		);
-	sequencer->start_animation(instance_icons_transition);
 
 	SATAN_DEBUG("Trashcan icon graphic moved. %f, %f", e.x, e.y);
 }
@@ -393,8 +369,7 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 
 			auto event_callback = [this, instance, restore_sequencer](const InstanceEvent &e) {
 				switch(e.type) {
-				case InstanceEventType::selected:
-				tapped_instance.reset();
+				case InstanceEventType::finger_on:
 				break;
 				case InstanceEventType::moved:
 				{
@@ -413,9 +388,9 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 				{
 					auto found = instances.find(instance.start_at);
 					if(found != instances.end()) {
-						tapped_instance = found->second;
+						tapped_instance_w = found->second;
 					}
-					refresh_tapped_instance_icons(e);
+					sequencer->hide_sequencers(0.2, true, e.x, e.y);
 					/*
 					SATAN_DEBUG("Tapped on pattern instance for pattern %d, %p (%s)\n",
 						    instance.pattern_id, ri_seq.get(), ri_seq->get_name().c_str());
@@ -455,10 +430,6 @@ void Sequencer::Sequence::instance_deleted(const RIPatternInstance& original_i) 
 	KammoGUI::run_on_GUI_thread(
 		[this, instance]() {
 			SATAN_DEBUG("::instance_deleted()\n");
-
-			if(tapped_instance && tapped_instance->data().start_at == instance.start_at) {
-				tapped_instance.reset();
-			}
 
 			auto instance_to_erase = instances.find(instance.start_at);
 			if(instance_to_erase != instances.end()) {
@@ -556,9 +527,15 @@ Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/sequencerMachine.svg"), cnvs)
 {
 	sequence_graphic_template = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerMachineTemplate");
+	trashcan_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "trashcanIcon");
+	notes_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "notesIcon");
+	sequencer_shade = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerShade");
 	root = KammoGUI::GnuVGCanvas::ElementReference(this);
 
 	sequence_graphic_template.set_display("none");
+	trashcan_icon.set_display("none");
+	notes_icon.set_display("none");
+	sequencer_shade.set_display("none");
 
 	timelines->add_scroll_callback(
 		[this](double _line_width, double _line_offset,
@@ -573,6 +550,117 @@ Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 			}
 		}
 		);
+}
+
+void Sequencer::hide_sequencers(float hiding_opacity, bool show_icons, double icon_anchor_x, double icon_anchor_y) {
+	loop_settings->hide();
+	plus_button->hide();
+
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
+	transform_t.init_identity();
+	transform_t.translate(icon_anchor_x, icon_anchor_y + finger_height);
+	trashcan_icon.set_transform(transform_t);
+	transform_t.translate(finger_width, 0.0);
+	notes_icon.set_transform(transform_t);
+
+	trashcan_icon.set_display(show_icons ? "inline" : "none");
+	trashcan_icon.set_style("opacity:0.0");
+	notes_icon.set_display(show_icons ? "inline" : "none");
+	notes_icon.set_style("opacity:0.0");
+
+	sequencer_shade.set_event_handler(
+		[](SVGDocument *source,
+		   KammoGUI::GnuVGCanvas::ElementReference *e,
+		   const KammoGUI::MotionEvent &event) {
+			/* ignored during transition */
+			SATAN_DEBUG("Ignoring event handler during hiding...\n");
+		}
+		);
+	sequencer_shade.set_display("inline");
+	sequencer_shade.set_style("opacity:1.0");
+	sequencer_shade.set_rect_coords(0, 0, canvas_w, canvas_h);
+	sequencer_shade_hiding_opacity = hiding_opacity;
+
+	auto shade_transition = new KammoGUI::SimpleAnimation(
+		TRANSITION_TIME,
+		[this, hiding_opacity](float progress) mutable {
+			{
+				std::stringstream opacity;
+				opacity << "opacity:" << progress;
+				trashcan_icon.set_style(opacity.str());
+				notes_icon.set_style(opacity.str());
+			}
+			{
+				std::stringstream opacity;
+				opacity << "opacity:" << (progress - hiding_opacity * progress);
+				sequencer_shade.set_style(opacity.str());
+			}
+
+			SATAN_DEBUG("hide transition animation %f...\n", progress);
+			if(progress >= 1.0f) {
+				SATAN_DEBUG("  completed - injecting new event handler...\n");
+				sequencer_shade.set_event_handler(
+					[this](SVGDocument *source,
+					   KammoGUI::GnuVGCanvas::ElementReference *e,
+					   const KammoGUI::MotionEvent &event) {
+						if(tap_detector.analyze_events(event)) {
+							show_sequencers();
+							plus_button->show();
+							loop_settings->show();
+						}
+					}
+					);
+			}
+		}
+		);
+	sequencer->start_animation(shade_transition);
+}
+
+void Sequencer::show_sequencers() {
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
+	trashcan_icon.set_style("opacity:1.0");
+	notes_icon.set_style("opacity:1.0");
+
+	{
+		sequencer_shade.set_event_handler(
+			[](SVGDocument *source,
+			   KammoGUI::GnuVGCanvas::ElementReference *e,
+			   const KammoGUI::MotionEvent &event) {
+				/* ignored during transition */
+				SATAN_DEBUG("ignoring event handler during show...\n");
+			}
+			);
+		std::stringstream opacity;
+		opacity << "opacity:" << (1.0f - sequencer_shade_hiding_opacity);
+		sequencer_shade.set_style(opacity.str());
+	}
+
+	auto shade_transition = new KammoGUI::SimpleAnimation(
+		TRANSITION_TIME,
+		[this](float progress) mutable {
+			auto reverse_progress = 1.0f - progress;
+			{
+				std::stringstream opacity;
+				opacity << "opacity:" << (reverse_progress);
+				trashcan_icon.set_style(opacity.str());
+				notes_icon.set_style(opacity.str());
+			}
+			{
+				std::stringstream opacity;
+				opacity << "opacity:" << (reverse_progress - sequencer_shade_hiding_opacity * reverse_progress);
+				sequencer_shade.set_style(opacity.str());
+			}
+
+			SATAN_DEBUG("show transition animation %f...\n", progress);
+			if(progress >= 1.0f) {
+				SATAN_DEBUG("show transmission complete...\n");
+				trashcan_icon.set_display("none");
+				notes_icon.set_display("none");
+				sequencer_shade.set_display("none");
+			}
+		}
+		);
+	sequencer->start_animation(shade_transition);
 }
 
 void Sequencer::on_resize() {

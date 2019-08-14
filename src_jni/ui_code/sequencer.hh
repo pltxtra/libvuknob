@@ -38,7 +38,7 @@ class Sequencer
 
 private:
 	enum InstanceEventType {
-		selected,
+		finger_on,
 		moved,
 		tapped
 	};
@@ -121,7 +121,7 @@ private:
 
 		std::map<uint32_t, std::string> patterns;
 		std::map<int, std::shared_ptr<PatternInstance> > instances;
-		std::shared_ptr<PatternInstance> tapped_instance;
+		std::weak_ptr<PatternInstance> tapped_instance_w;
 
 		static constexpr uint32_t NO_ACTIVE_PATTERN = IDAllocator::NO_ID_AVAILABLE;
 		uint32_t active_pattern_id = NO_ACTIVE_PATTERN;
@@ -161,6 +161,7 @@ private:
 
 	KammoGUI::GnuVGCanvas::ElementReference root;
 	KammoGUI::GnuVGCanvas::ElementReference sequence_graphic_template;
+	KammoGUI::GnuVGCanvas::ElementReference trashcan_icon, notes_icon, sequencer_shade;
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
 
 	std::map<std::shared_ptr<RISequence>, std::shared_ptr<Sequence> >machine2sequence;
@@ -171,9 +172,15 @@ private:
 	float canvas_w_inches, canvas_h_inches; // sizes in inches
 	int canvas_w, canvas_h; // sizes in pixels
 
+	TapDetector tap_detector;
+	float sequencer_shade_hiding_opacity;
+
 public:
 
 	Sequencer(KammoGUI::GnuVGCanvas* cnvs);
+
+	void hide_sequencers(float hiding_opacity, bool show_icons, double icon_anchor_x, double icon_anchor_y);
+	void show_sequencers();
 
 	virtual void on_resize() override;
 	virtual void on_render() override;

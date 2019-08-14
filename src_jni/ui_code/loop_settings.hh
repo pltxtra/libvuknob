@@ -42,6 +42,8 @@ private:
 	KammoGUI::GnuVGCanvas::ElementReference playAsLoopIcon, playAsEndlessIcon;
 	KammoGUI::GnuVGCanvas::ElementReference startStopIcon, editStartStopIcon;
 
+	KammoGUI::GnuVGCanvas::ElementReference root_element;
+
 	double first_selection_x, first_selection_y;
 	bool is_a_tap;
 

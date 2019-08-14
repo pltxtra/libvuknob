@@ -113,6 +113,7 @@ LoopSettings::LoopSettings(KammoGUI::GnuVGCanvas *cnvs)
 	playAsEndlessIcon = KammoGUI::GnuVGCanvas::ElementReference(this, "playAsEndless");
 	startStopIcon = KammoGUI::GnuVGCanvas::ElementReference(this, "startStopIcon");
 	editStartStopIcon = KammoGUI::GnuVGCanvas::ElementReference(this, "editStartStopIcon");
+	root_element = KammoGUI::GnuVGCanvas::ElementReference(this);
 
 	refresh_loop_state_icons();
 }
@@ -125,11 +126,8 @@ void LoopSettings::refresh_loop_state_icons() {
 }
 
 void LoopSettings::on_render() {
-	// Translate the document, and scale it properly to fit the defined viewbox
-	KammoGUI::GnuVGCanvas::ElementReference root(this);
-
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t = base_transform_t;
-	root.set_transform(transform_t);
+	root_element.set_transform(transform_t);
 }
 
 void LoopSettings::on_resize() {
@@ -152,9 +150,8 @@ void LoopSettings::on_resize() {
 	auto finger_height = tmp;
 
 	// get data
-	auto root = KammoGUI::GnuVGCanvas::ElementReference(this);
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
-	root.get_viewport(document_size);
+	root_element.get_viewport(document_size);
 	auto scaling = finger_height / document_size.height;
 
 	// initiate transform_m
@@ -163,13 +160,34 @@ void LoopSettings::on_resize() {
 }
 
 void LoopSettings::show() {
-	KammoGUI::GnuVGCanvas::ElementReference root(this);
-	root.set_display("inline");
+	root_element.set_display("inline");
+	root_element.set_style("opacity:0.0");
+
+	auto show_transition = new KammoGUI::SimpleAnimation(
+		TRANSITION_TIME,
+		[this](float progress) mutable {
+			std::stringstream opacity;
+			opacity << "opacity:" << progress;
+			root_element.set_style(opacity.str());
+		}
+		);
+	start_animation(show_transition);
 }
 
 void LoopSettings::hide() {
-	KammoGUI::GnuVGCanvas::ElementReference root(this);
-	root.set_display("none");
+	auto hide_transition = new KammoGUI::SimpleAnimation(
+		TRANSITION_TIME,
+		[this](float progress) mutable {
+			std::stringstream opacity;
+			opacity << "opacity:" << (1.0 - progress);
+			root_element.set_style(opacity.str());
+
+			if(progress >= 1.0f) {
+				root_element.set_display("none");
+			}
+		}
+		);
+	start_animation(hide_transition);
 }
 
 void LoopSettings::loop_state_changed(bool new_state) {
