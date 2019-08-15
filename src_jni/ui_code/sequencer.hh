@@ -26,7 +26,6 @@
 #include "engine_code/sequence.hh"
 
 #include "timelines.hh"
-#include "tap_detector.hh"
 
 typedef RemoteInterface::ClientSpace::Sequence RISequence;
 typedef RemoteInterface::ClientSpace::Sequence::PatternInstance RIPatternInstance;
@@ -52,7 +51,6 @@ private:
 	{
 	private:
 		KammoGUI::GnuVGCanvas::ElementReference svg_reference;
-		TapDetector tap_detector;
 
 		bool display_action = false;
 		RIPatternInstance instance_data;
@@ -121,7 +119,6 @@ private:
 
 		std::map<uint32_t, std::string> patterns;
 		std::map<int, std::shared_ptr<PatternInstance> > instances;
-		std::weak_ptr<PatternInstance> tapped_instance_w;
 
 		static constexpr uint32_t NO_ACTIVE_PATTERN = IDAllocator::NO_ID_AVAILABLE;
 		uint32_t active_pattern_id = NO_ACTIVE_PATTERN;
@@ -130,8 +127,6 @@ private:
 
 		double line_width, line_offset;
 		int minimum_visible_line, maximum_visible_line;
-
-		void refresh_tapped_instance_icons(const InstanceEvent &e);
 
 	public:
 		virtual void pattern_added(const std::string &name, uint32_t id);
@@ -172,14 +167,17 @@ private:
 	float canvas_w_inches, canvas_h_inches; // sizes in inches
 	int canvas_w, canvas_h; // sizes in pixels
 
-	TapDetector tap_detector;
 	float sequencer_shade_hiding_opacity;
 
 public:
 
 	Sequencer(KammoGUI::GnuVGCanvas* cnvs);
 
-	void hide_sequencers(float hiding_opacity, bool show_icons, double icon_anchor_x, double icon_anchor_y);
+	void hide_sequencers(float hiding_opacity,
+			     bool show_icons, double icon_anchor_x, double icon_anchor_y,
+			     std::weak_ptr<RISequence>ri_seq,
+			     std::weak_ptr<PatternInstance>instance
+		);
 	void show_sequencers();
 
 	virtual void on_resize() override;

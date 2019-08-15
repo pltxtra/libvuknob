@@ -36,6 +36,8 @@
 #include "../engine_code/sequence.hh"
 #include "../engine_code/client.hh"
 
+#include "tap_detector.hh"
+
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
@@ -45,6 +47,7 @@ static std::shared_ptr<GnuVGCornerButton> plus_button;
 static std::shared_ptr<GnuVGCornerButton> return_button;
 static std::shared_ptr<PatternEditor> pattern_editor;
 static std::shared_ptr<LoopSettings> loop_settings;
+static TapDetector tap_detector;
 
 /***************************
  *
@@ -351,23 +354,10 @@ void Sequencer::Sequence::pattern_deleted(uint32_t id) {
 		);
 }
 
-void Sequencer::Sequence::refresh_tapped_instance_icons(const InstanceEvent &e) {
-
-	SATAN_DEBUG("Trashcan icon graphic moved. %f, %f", e.x, e.y);
-}
-
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 	KammoGUI::run_on_GUI_thread(
 		[this, instance]() {
-			auto restore_sequencer = [this]() {
-				auto main_container = get_root();
-				main_container.set_display("inline");
-				plus_button->show();
-				timelines->show_loop_markers();
-				loop_settings->show();
-			};
-
-			auto event_callback = [this, instance, restore_sequencer](const InstanceEvent &e) {
+			auto event_callback = [this, instance](const InstanceEvent &e) {
 				switch(e.type) {
 				case InstanceEventType::finger_on:
 				break;
@@ -388,21 +378,11 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 				{
 					auto found = instances.find(instance.start_at);
 					if(found != instances.end()) {
-						tapped_instance_w = found->second;
+						sequencer->hide_sequencers(
+							0.2, true, e.x, e.y,
+							ri_seq,
+							found->second);
 					}
-					sequencer->hide_sequencers(0.2, true, e.x, e.y);
-					/*
-					SATAN_DEBUG("Tapped on pattern instance for pattern %d, %p (%s)\n",
-						    instance.pattern_id, ri_seq.get(), ri_seq->get_name().c_str());
-
-					PatternEditor::show(restore_sequencer, ri_seq, instance.pattern_id);
-					auto main_container = get_root();
-					main_container.set_display("none");
-					timelines->hide_loop_markers();
-					loop_settings->hide();
-					plus_button->hide();
-					return_button->show();
-					*/
 				}
 				}
 			};
@@ -552,7 +532,11 @@ Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 		);
 }
 
-void Sequencer::hide_sequencers(float hiding_opacity, bool show_icons, double icon_anchor_x, double icon_anchor_y) {
+void Sequencer::hide_sequencers(float hiding_opacity,
+				bool show_icons, double icon_anchor_x, double icon_anchor_y,
+				std::weak_ptr<RISequence>ri_seq_w,
+				std::weak_ptr<PatternInstance>tapped_instance_w
+	) {
 	loop_settings->hide();
 	plus_button->hide();
 
@@ -581,9 +565,52 @@ void Sequencer::hide_sequencers(float hiding_opacity, bool show_icons, double ic
 	sequencer_shade.set_rect_coords(0, 0, canvas_w, canvas_h);
 	sequencer_shade_hiding_opacity = hiding_opacity;
 
+	auto on_completion = [this, ri_seq_w, tapped_instance_w]() {
+		SATAN_DEBUG("  completed hiding - injecting new event handlers for icons...\n");
+		notes_icon.set_event_handler(
+			[this, ri_seq_w, tapped_instance_w](SVGDocument *source,
+			       KammoGUI::GnuVGCanvas::ElementReference *e,
+			       const KammoGUI::MotionEvent &event) {
+				auto restore_sequencer = [this]() {
+					root.set_display("inline");
+					timelines->show_loop_markers();
+					loop_settings->show();
+					plus_button->show();
+				};
+
+				if(tap_detector.analyze_events(event)) {
+					sequencer->show_sequencers();
+					auto instance = tapped_instance_w.lock();
+					auto ri_seq = ri_seq_w.lock();
+					if(instance && ri_seq) {
+						PatternEditor::show(restore_sequencer,
+								    ri_seq,
+								    instance->data().pattern_id);
+						root.set_display("none");
+						timelines->hide_loop_markers();
+						return_button->show();
+					}
+				}
+			}
+			);
+
+
+		sequencer_shade.set_event_handler(
+			[this](SVGDocument *source,
+			       KammoGUI::GnuVGCanvas::ElementReference *e,
+			       const KammoGUI::MotionEvent &event) {
+				if(tap_detector.analyze_events(event)) {
+					show_sequencers();
+					loop_settings->show();
+					plus_button->show();
+				}
+			}
+			);
+	};
+
 	auto shade_transition = new KammoGUI::SimpleAnimation(
 		TRANSITION_TIME,
-		[this, hiding_opacity](float progress) mutable {
+		[this, on_completion, hiding_opacity](float progress) mutable {
 			{
 				std::stringstream opacity;
 				opacity << "opacity:" << progress;
@@ -598,18 +625,7 @@ void Sequencer::hide_sequencers(float hiding_opacity, bool show_icons, double ic
 
 			SATAN_DEBUG("hide transition animation %f...\n", progress);
 			if(progress >= 1.0f) {
-				SATAN_DEBUG("  completed - injecting new event handler...\n");
-				sequencer_shade.set_event_handler(
-					[this](SVGDocument *source,
-					   KammoGUI::GnuVGCanvas::ElementReference *e,
-					   const KammoGUI::MotionEvent &event) {
-						if(tap_detector.analyze_events(event)) {
-							show_sequencers();
-							plus_button->show();
-							loop_settings->show();
-						}
-					}
-					);
+				on_completion();
 			}
 		}
 		);
