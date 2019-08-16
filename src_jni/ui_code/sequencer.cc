@@ -510,6 +510,7 @@ Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 	trashcan_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "trashcanIcon");
 	notes_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "notesIcon");
 	sequencer_shade = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerShade");
+	tapped_instance = KammoGUI::GnuVGCanvas::ElementReference(this, "tappedInstance");
 	root = KammoGUI::GnuVGCanvas::ElementReference(this);
 
 	sequence_graphic_template.set_display("none");
@@ -564,6 +565,17 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 	sequencer_shade.set_style("opacity:1.0");
 	sequencer_shade.set_rect_coords(0, 0, canvas_w, canvas_h);
 	sequencer_shade_hiding_opacity = hiding_opacity;
+
+	if(auto instance = tapped_instance_w.lock()) {
+		auto instance_data = instance->data();
+		tapped_instance.set_display("inline");
+		tapped_instance.set_style("opacity:0.0");
+		tapped_instance.set_rect_coords(
+			icon_anchor_x, icon_anchor_y,
+			timelines->get_horizontal_pixels_per_line() * (instance_data.stop_at - instance_data.start_at),
+			finger_height
+			);
+	}
 
 	auto on_completion = [this, ri_seq_w, tapped_instance_w]() {
 		SATAN_DEBUG("  completed hiding - injecting new event handlers for icons...\n");
@@ -633,6 +645,7 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 				opacity << "opacity:" << progress;
 				trashcan_icon.set_style(opacity.str());
 				notes_icon.set_style(opacity.str());
+				tapped_instance.set_style(opacity.str());
 			}
 			{
 				std::stringstream opacity;
@@ -677,6 +690,7 @@ void Sequencer::show_sequencers() {
 				opacity << "opacity:" << (reverse_progress);
 				trashcan_icon.set_style(opacity.str());
 				notes_icon.set_style(opacity.str());
+				tapped_instance.set_style(opacity.str());
 			}
 			{
 				std::stringstream opacity;
@@ -690,6 +704,7 @@ void Sequencer::show_sequencers() {
 				trashcan_icon.set_display("none");
 				notes_icon.set_display("none");
 				sequencer_shade.set_display("none");
+				tapped_instance.set_display("none");
 			}
 		}
 		);

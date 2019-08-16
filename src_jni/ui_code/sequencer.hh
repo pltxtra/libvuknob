@@ -156,7 +156,7 @@ private:
 
 	KammoGUI::GnuVGCanvas::ElementReference root;
 	KammoGUI::GnuVGCanvas::ElementReference sequence_graphic_template;
-	KammoGUI::GnuVGCanvas::ElementReference trashcan_icon, notes_icon, sequencer_shade;
+	KammoGUI::GnuVGCanvas::ElementReference trashcan_icon, notes_icon, tapped_instance, sequencer_shade;
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
 
 	std::map<std::shared_ptr<RISequence>, std::shared_ptr<Sequence> >machine2sequence;
