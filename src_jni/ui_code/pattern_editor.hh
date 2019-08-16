@@ -47,15 +47,15 @@ private:
 
 	KammoGUI::FlingGestureDetector fling_detector;
 
-	KammoGUI::GnuVGCanvas::ElementReference *backdrop_reference = 0;
-	KammoGUI::GnuVGCanvas::ElementReference *pianorollscroll_reference = 0;
-	KammoGUI::GnuVGCanvas::ElementReference *pianoroll_reference = 0;
+	KammoGUI::GnuVGCanvas::ElementReference backdrop_reference;
+	KammoGUI::GnuVGCanvas::ElementReference pianorollscroll_reference;
+	KammoGUI::GnuVGCanvas::ElementReference pianoroll_reference;
 	uint32_t pattern_id;
 	std::shared_ptr<RISequence> ri_seq;
 	std::shared_ptr<TimeLines> timelines;
 	std::function<void()> on_exit_pattern_editor;
 
-	double pianoroll_offset = 0.0;
+	double pianoroll_offset = 0.0, pianoroll_horizontal_offset = 0;
 	int finger_position, new_tone, pianoroll_tone;
 	double event_left_x, event_right_x;
 	double event_start_x, event_start_y;

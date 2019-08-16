@@ -123,7 +123,7 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		    start_at_sequence_position,
 		    stop_at_sequence_position);
 
-	auto root_element = backdrop_reference->get_root();
+	auto root_element = backdrop_reference.get_root();
 	auto new_piece_indicator = root_element.find_child_by_class("newPieceIndicator");
 
 	new_piece_indicator.set_display(display_action ? "inline" : "none");
@@ -295,7 +295,7 @@ void PatternEditor::on_single_note_event(RINote selected_note,
 		    start_at_sequence_position,
 		    stop_at_sequence_position);
 
-	auto root_element = backdrop_reference->get_root();
+	auto root_element = backdrop_reference.get_root();
 	auto new_piece_indicator = root_element.find_child_by_class("newPieceIndicator");
 
 	new_piece_indicator.set_display(display_action ? "inline" : "none");
@@ -399,8 +399,8 @@ PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
 				       });
 	singleton = this;
 
-	backdrop_reference = new KammoGUI::GnuVGCanvas::ElementReference(this, "backdrop");
-	backdrop_reference->set_event_handler(
+	backdrop_reference = KammoGUI::GnuVGCanvas::ElementReference(this, "backdrop");
+	backdrop_reference.set_event_handler(
 		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
 		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
 		       const KammoGUI::MotionEvent &event) {
@@ -409,8 +409,8 @@ PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
 		}
 		);
 
-	pianorollscroll_reference = new KammoGUI::GnuVGCanvas::ElementReference(this, "pianorollscroll");
-	pianorollscroll_reference->set_event_handler(
+	pianorollscroll_reference = KammoGUI::GnuVGCanvas::ElementReference(this, "pianorollscroll");
+	pianorollscroll_reference.set_event_handler(
 		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
 		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
 		       const KammoGUI::MotionEvent &event) {
@@ -418,7 +418,7 @@ PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
 			SATAN_DEBUG("End backdrop event...\n");
 		}
 		);
-	pianoroll_reference = new KammoGUI::GnuVGCanvas::ElementReference(this, "pianoroll");
+	pianoroll_reference = KammoGUI::GnuVGCanvas::ElementReference(this, "pianoroll");
 }
 
 PatternEditor::~PatternEditor() {
@@ -494,10 +494,10 @@ void PatternEditor::on_resize() {
 		);
 
 	// resize the backdrop
-	backdrop_reference->set_rect_coords(0, finger_height, canvas_w, canvas_h - finger_height);
+	backdrop_reference.set_rect_coords(0, finger_height, canvas_w, canvas_h - finger_height);
 
 	// resize the pianoroll scroll
-	pianorollscroll_reference->set_rect_coords(0, 0, finger_width, canvas_h);
+	pianorollscroll_reference.set_rect_coords(0, 0, finger_width, canvas_h);
 }
 
 void PatternEditor::on_render() {
@@ -510,8 +510,8 @@ void PatternEditor::on_render() {
 		// we assume that there are 108 keys in the keyboard graphic....
 		108.0 * finger_height / document_size.height
 		);
-	transform_t.translate(0.0, -pianoroll_offset * finger_height);
-	pianoroll_reference->set_transform(transform_t);
+	transform_t.translate(pianoroll_horizontal_offset, -pianoroll_offset * finger_height);
+	pianoroll_reference.set_transform(transform_t);
 }
 
 void PatternEditor::hide() {
@@ -541,6 +541,14 @@ void PatternEditor::show(std::function<void()> _on_exit_pattern_editor,
 		singleton->clear_note_graphics();
 
 		ri_seq->add_pattern_listener(pattern_id, singleton->shared_from_this());
+
+		auto pianoroll_transition = new KammoGUI::SimpleAnimation(
+			TRANSITION_TIME,
+			[singleton](float progress) mutable {
+				singleton->pianoroll_horizontal_offset = ((double)progress - 1.0) * singleton->finger_width;
+			}
+		);
+		singleton->start_animation(pianoroll_transition);
 	}
 }
 
