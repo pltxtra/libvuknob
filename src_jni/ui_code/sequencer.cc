@@ -594,6 +594,23 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 			}
 			);
 
+		trashcan_icon.set_event_handler(
+			[this, ri_seq_w, tapped_instance_w](SVGDocument *source,
+			       KammoGUI::GnuVGCanvas::ElementReference *e,
+			       const KammoGUI::MotionEvent &event) {
+				if(tap_detector.analyze_events(event)) {
+					auto instance = tapped_instance_w.lock();
+					auto ri_seq = ri_seq_w.lock();
+					if(instance && ri_seq) {
+						ri_seq->delete_pattern_from_sequence(instance->data());
+					}
+
+					sequencer->show_sequencers();
+					loop_settings->show();
+					plus_button->show();
+				}
+			}
+			);
 
 		sequencer_shade.set_event_handler(
 			[this](SVGDocument *source,
