@@ -108,6 +108,8 @@ public:
 	TimeLines(KammoGUI::GnuVGCanvas* cnvs);
 	~TimeLines();
 
+	void scroll_pixels(double pxl_count);
+
 	void add_scroll_callback(std::function<void(double, double, int, int)>);
 	void call_scroll_callbacks();
 

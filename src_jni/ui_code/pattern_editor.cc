@@ -544,7 +544,7 @@ void PatternEditor::show(std::function<void()> _on_exit_pattern_editor,
 
 		auto pianoroll_transition = new KammoGUI::SimpleAnimation(
 			TRANSITION_TIME,
-			[singleton](float progress) mutable {
+			[](float progress) mutable {
 				singleton->pianoroll_horizontal_offset = ((double)progress - 1.0) * singleton->finger_width;
 			}
 		);

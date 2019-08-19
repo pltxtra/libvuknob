@@ -50,6 +50,10 @@ private:
 		: public std::enable_shared_from_this<PatternInstance>
 	{
 	private:
+		KammoGUI::SimpleAnimation *scroll_animation;
+		double scroll_speed;
+		float last_scroll_time;
+
 		KammoGUI::GnuVGCanvas::ElementReference svg_reference;
 
 		bool display_action = false;

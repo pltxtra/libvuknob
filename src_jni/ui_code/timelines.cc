@@ -435,6 +435,11 @@ void TimeLines::on_resize() {
 		    loop_stop_marker.pointer(), &loop_stop_marker);
 }
 
+void TimeLines::scroll_pixels(double pxl_count) {
+	SATAN_ERROR("TimeLines::scroll_pixels(%f)\n", pxl_count);
+	scrolled_horizontal((float)pxl_count);
+}
+
 void TimeLines::add_scroll_callback(std::function<void(double, double, int, int)> _cb) {
 	scroll_callbacks.push_back(_cb);
 	call_scroll_callbacks();
@@ -516,7 +521,6 @@ void TimeLines::on_render() {
 		    zoom_denominator, lpb);
 	SATAN_DEBUG("sequence_lines_per_minor: %d, width: %f\n",
 		    sequence_lines_per_minor, zoomed_sequence_line_width);
-	double minor_spacing = (double)sequence_lines_per_minor * zoomed_sequence_line_width;
 	auto sequence_lines_per_major = sequence_lines_per_minor * minors_per_major;
 
 	// calculate line offset
