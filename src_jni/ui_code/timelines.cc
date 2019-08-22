@@ -487,7 +487,6 @@ int TimeLines::get_sequence_line_position_at(int horizontal_pixel_value) {
 	line_d = round(line_d);
 	int line = (int)line_d;
 	line *= sequence_lines_per_minor;
-	SATAN_ERROR("line at pixel value %d is %d\n", horizontal_pixel_value, line);
 	return line;
 }
 

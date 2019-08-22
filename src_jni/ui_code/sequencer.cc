@@ -91,8 +91,6 @@ void Sequencer::PatternInstance::on_instance_event(std::shared_ptr<RISequence> r
 	if(tap_detector.analyze_events(event)) {
 		KammoGUI::GnuVGCanvas::SVGRect r;
 		svg_reference.get_boundingbox(r);
-		SATAN_DEBUG("bounding box: %f, %f -> %f, %f\n",
-			    r.x, r.y, r.width, r.height);
 
 		scroll_speed = 0.0;
 		if(scroll_animation) {
@@ -268,7 +266,6 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
 		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
 		       const KammoGUI::MotionEvent &event) {
-			SATAN_DEBUG("seqBackground event detected.\n");
 			on_sequence_event(event);
 		}
 		);
@@ -290,20 +287,15 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 
 		start_at_sequence_position = timelines->get_sequence_line_position_at(event.get_x());
 
-		SATAN_DEBUG("event_start_x: %f\n", event_start_x);
 		break;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
 		event_current_x = evt_x;
 		event_current_y = evt_y;
 
-		SATAN_DEBUG("event_current_x: %f\n", event_current_x);
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
 		stop_at_sequence_position = timelines->get_sequence_line_position_at(event.get_x());
 		if(evt_x > event_start_x) {
-			SATAN_DEBUG("Start: %d - Stop: %d\n",
-				    start_at_sequence_position,
-				    stop_at_sequence_position);
 			if(start_at_sequence_position < 0)
 				start_at_sequence_position = 0;
 			if(stop_at_sequence_position < 0)
@@ -314,10 +306,6 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 				start_at_sequence_position = stop_at_sequence_position;
 				stop_at_sequence_position = t;
 			}
-			SATAN_DEBUG("Forced - Start: %d - Stop: %d\n",
-				    start_at_sequence_position,
-				    stop_at_sequence_position);
-
 			if(start_at_sequence_position != stop_at_sequence_position) {
 				pending_add = std::make_shared<PendingAdd>(
 					start_at_sequence_position,
@@ -326,8 +314,10 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 			}
 
 			if(active_pattern_id == NO_ACTIVE_PATTERN) {
+				SATAN_DEBUG("Adding new pattern for machine...\n");
 				ri_seq->add_pattern("New pattern");
 			} else if(pending_add != nullptr) {
+				SATAN_DEBUG("Directly adding pattern instance for machine...(%d)\n", active_pattern_id);
 				ri_seq->insert_pattern_in_sequence(
 					active_pattern_id,
 					pending_add->start_at, -1,
@@ -422,6 +412,8 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 				}
 				}
 			};
+
+			SATAN_DEBUG("Instance was added for machine...(%d)\n", instance.pattern_id);
 
 			auto instanceContainer = find_child_by_class("instanceContainer");
 			auto i = PatternInstance::create_new_pattern_instance(
