@@ -47,6 +47,10 @@ namespace RemoteInterface {
 		ON_SERVER(, public Machine)
 		{
 		public:
+			ON_SERVER(
+				IDAllocator pattern_id_allocator;
+				);
+
 			static constexpr const char* FACTORY_NAME		= "Sequence";
 
 			struct PatternInstance {

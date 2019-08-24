@@ -34,8 +34,6 @@
 #define SEQUENCE_MIDI_OUTPUT_NAME "midi_OUTPUT"
 
 SERVER_CODE(
-	static IDAllocator pattern_id_allocator;
-
 	void Sequence::handle_req_add_pattern(RemoteInterface::Context *context,
 					      RemoteInterface::MessageHandler *src,
 					      const RemoteInterface::Message& msg) {
