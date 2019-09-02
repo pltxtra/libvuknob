@@ -32,6 +32,7 @@
 #include "gnuvg_corner_button.hh"
 #include "svg_loader.hh"
 #include "common.hh"
+#include "fling_animation.hh"
 
 #include "../engine_code/sequence.hh"
 #include "../engine_code/client.hh"
@@ -267,6 +268,40 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
 		       const KammoGUI::MotionEvent &event) {
 			on_sequence_event(event);
+		}
+		);
+
+	button_background = find_child_by_class("machineButtonBackground");
+	controlls_button = find_child_by_class("controllsButton");
+	mute_button = find_child_by_class("muteButton");
+	envelope_button = find_child_by_class("envelopeButton");
+
+	button_background.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			sequencer->vertical_scroll_event(event);
+		}
+		);
+	controlls_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			sequencer->vertical_scroll_event(event);
+		}
+		);
+	mute_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			sequencer->vertical_scroll_event(event);
+		}
+		);
+	envelope_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			sequencer->vertical_scroll_event(event);
 		}
 		);
 }
@@ -534,6 +569,7 @@ auto Sequencer::Sequence::create_sequence(
 Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/sequencerMachine.svg"), cnvs)
 {
+	sequencer_container = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerContainer");
 	sequence_graphic_template = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerMachineTemplate");
 	trashcan_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "trashcanIcon");
 	notes_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "notesIcon");
@@ -739,6 +775,66 @@ void Sequencer::show_sequencers() {
 	sequencer->start_animation(shade_transition);
 }
 
+void Sequencer::scrolled_vertical(double pixels_changed) {
+	sequencer_vertical_offset += pixels_changed;
+	SATAN_DEBUG("Scrolled vertical, new offset: %f\n", sequencer_vertical_offset);
+
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
+	transform_t.init_identity();
+	transform_t.translate(0.0, sequencer_vertical_offset);
+	sequencer_container.set_transform(transform_t);
+}
+
+void Sequencer::vertical_scroll_event(const KammoGUI::MotionEvent &event) {
+	if(fling_detector.on_touch_event(event)) {
+		SATAN_DEBUG("fling detected.\n");
+		float speed_x, speed_y;
+		float abs_speed_x, abs_speed_y;
+
+		fling_detector.get_speed(speed_x, speed_y);
+		fling_detector.get_absolute_speed(abs_speed_x, abs_speed_y);
+
+		bool do_horizontal_fling = abs_speed_x > abs_speed_y ? true : false;
+
+		float speed = 0.0f, abs_speed;
+		std::function<void(float pixels_changed)> scrolled;
+
+		if(do_horizontal_fling) {
+			abs_speed = abs_speed_x;
+			speed = speed_x;
+			scrolled = [this](float pixels_changed){
+				SATAN_DEBUG("Scrolled horizontal: %f\n", pixels_changed);
+			};
+		} else {
+			abs_speed = abs_speed_y;
+			speed = speed_y;
+			scrolled = [this](float pixels_changed){
+				scrolled_vertical((double)pixels_changed);
+			};
+		}
+
+		float fling_duration = abs_speed / FLING_DEACCELERATION;
+
+		FlingAnimation *flinganim =
+			new FlingAnimation(speed, fling_duration, scrolled);
+		start_animation(flinganim);
+	}
+
+	switch(event.get_action()) {
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		break;
+	case KammoGUI::MotionEvent::ACTION_MOVE:
+	case KammoGUI::MotionEvent::ACTION_UP:
+		scrolled_vertical(event.get_y() - scroll_start_y);
+	case KammoGUI::MotionEvent::ACTION_DOWN:
+		scroll_start_y = event.get_y();
+		break;
+	}
+}
+
 void Sequencer::on_resize() {
 	auto canvas = get_canvas();
 	canvas->get_size_pixels(canvas_w, canvas_h);
@@ -820,7 +916,6 @@ void Sequencer::object_registered(std::shared_ptr<RemoteInterface::ClientSpace::
 			int new_offset = (int)machine2sequence.size();
 			SATAN_DEBUG("new_offset is %d\n", new_offset);
 
-			KammoGUI::GnuVGCanvas::ElementReference sequencer_container(this, "sequencerContainer");
 			auto new_sequence = Sequence::create_sequence(
 				sequencer_container, sequence_graphic_template,
 				ri_seq,

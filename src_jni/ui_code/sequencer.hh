@@ -22,10 +22,11 @@
 
 #include <map>
 #include <gnuVGcanvas.hh>
-//#include <kamogui.hh>
+#include <kamogui_fling_detector.hh>
 #include "engine_code/sequence.hh"
 
 #include "timelines.hh"
+
 
 typedef RemoteInterface::ClientSpace::Sequence RISequence;
 typedef RemoteInterface::ClientSpace::Sequence::PatternInstance RIPatternInstance;
@@ -110,7 +111,8 @@ private:
 
 		std::shared_ptr<PendingAdd> pending_add;
 
-		KammoGUI::GnuVGCanvas::ElementReference sequence_background;
+		KammoGUI::GnuVGCanvas::ElementReference sequence_background, button_background,
+			controlls_button, mute_button, envelope_button;
 		double inverse_scaling_factor;
 		double event_start_x, event_start_y;
 		double event_current_x, event_current_y;
@@ -158,10 +160,12 @@ private:
 			int offset);
 	};
 
-	KammoGUI::GnuVGCanvas::ElementReference root;
+	KammoGUI::GnuVGCanvas::ElementReference root, sequencer_container;
 	KammoGUI::GnuVGCanvas::ElementReference sequence_graphic_template;
 	KammoGUI::GnuVGCanvas::ElementReference trashcan_icon, notes_icon, tapped_instance, sequencer_shade;
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
+	KammoGUI::FlingGestureDetector fling_detector;
+	double scroll_start_y, sequencer_vertical_offset = 0.0;
 
 	std::map<std::shared_ptr<RISequence>, std::shared_ptr<Sequence> >machine2sequence;
 
@@ -173,6 +177,8 @@ private:
 
 	float sequencer_shade_hiding_opacity;
 
+	void scrolled_vertical(double pixels_changed);
+
 public:
 
 	Sequencer(KammoGUI::GnuVGCanvas* cnvs);
@@ -183,6 +189,8 @@ public:
 			     std::weak_ptr<PatternInstance>instance
 		);
 	void show_sequencers();
+
+	void vertical_scroll_event(const KammoGUI::MotionEvent &event);
 
 	virtual void on_resize() override;
 	virtual void on_render() override;
