@@ -777,7 +777,13 @@ void Sequencer::show_sequencers() {
 
 void Sequencer::scrolled_vertical(double pixels_changed) {
 	sequencer_vertical_offset += pixels_changed;
-	SATAN_DEBUG("Scrolled vertical, new offset: %f\n", sequencer_vertical_offset);
+
+	auto minimum_offset = -((double)(machine2sequence.size() - 1) * finger_height);
+	SATAN_DEBUG("Scrolled vertical, new offset: %f (min: %f)\n", sequencer_vertical_offset, minimum_offset);
+	if(sequencer_vertical_offset > 0)
+		sequencer_vertical_offset = 0;
+	else if(sequencer_vertical_offset < minimum_offset)
+		sequencer_vertical_offset = minimum_offset;
 
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	transform_t.init_identity();
