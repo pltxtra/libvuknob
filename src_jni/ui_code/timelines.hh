@@ -40,6 +40,11 @@ class TimeLines
 public:
 	typedef std::function<void(int loop_start, int loop_stop)> LoopSettingCallback;
 
+	class ZoomContext {
+	public:
+		double horizontal_zoom_factor = 1.0, line_offset = 0.0;
+	};
+
 private:
 	// fling detector
 	KammoGUI::FlingGestureDetector fling_detector;
@@ -75,7 +80,9 @@ private:
 	int minors_per_major, sequence_lines_per_minor;
 	// sequence_line_width means how wide a line in the sequencer is, not a visible time line.
 	// A time line may represent one or more sequencer lines, depending on zoom etc.
-	double horizontal_zoom_factor = 1.0, line_offset = 0.0, default_sequence_line_width, zoomed_sequence_line_width;
+	double default_sequence_line_width, zoomed_sequence_line_width;
+	std::shared_ptr<ZoomContext> current_zoom;
+	std::shared_ptr<ZoomContext> default_zoom;
 	int canvas_w, canvas_h;
 	std::vector<KammoGUI::GnuVGCanvas::ElementReference *> majors;
 	std::vector<KammoGUI::GnuVGCanvas::ElementReference *> minors;
@@ -108,6 +115,7 @@ public:
 	TimeLines(KammoGUI::GnuVGCanvas* cnvs);
 	~TimeLines();
 
+	void use_zoom_context(std::shared_ptr<ZoomContext> context);
 	void scroll_pixels(double pxl_count);
 
 	void add_scroll_callback(std::function<void(double, double, int, int)>);

@@ -69,6 +69,8 @@ private:
 		void on_instance_event(std::shared_ptr<RISequence> ri_seq,
 				       const KammoGUI::MotionEvent &event);
 	public:
+		std::shared_ptr<TimeLines::ZoomContext> zoom_context;
+
 		PatternInstance(
 			KammoGUI::GnuVGCanvas::ElementReference &elref,
 			const RIPatternInstance &instance_data,

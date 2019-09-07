@@ -71,6 +71,8 @@ Sequencer::PatternInstance::PatternInstance(
 	instance_graphic = svg_reference.find_child_by_class("instance_graphic");
 	pattern_id_graphic = svg_reference.find_child_by_class("id_graphic");
 
+	zoom_context = std::make_shared<TimeLines::ZoomContext>();
+
 	std::stringstream ss;
 	ss << instance_data.pattern_id;
 	pattern_id_graphic.set_text_content(ss.str());
@@ -648,6 +650,7 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 			       KammoGUI::GnuVGCanvas::ElementReference *e,
 			       const KammoGUI::MotionEvent &event) {
 				auto restore_sequencer = [this]() {
+					timelines->use_zoom_context(nullptr);
 					root.set_display("inline");
 					timelines->show_loop_markers();
 					loop_settings->show();
@@ -659,6 +662,8 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 					auto instance = tapped_instance_w.lock();
 					auto ri_seq = ri_seq_w.lock();
 					if(instance && ri_seq) {
+						timelines->use_zoom_context(instance->zoom_context);
+
 						PatternEditor::show(restore_sequencer,
 								    ri_seq,
 								    instance->data().pattern_id);

@@ -57,7 +57,7 @@ void TimeLines::create_timelines() {
 		double line_count_d = canvas_w_inches / INCHES_PER_FINGER;
 		int line_count = (int)line_count_d; // line_count is now the number of VISIBLE lines
 		default_sequence_line_width = canvas_w / line_count;
-		zoomed_sequence_line_width = default_sequence_line_width * horizontal_zoom_factor;
+		zoomed_sequence_line_width = default_sequence_line_width * current_zoom->horizontal_zoom_factor;
 		int line_width = canvas_w / line_count;
 
 		// generate line_count * 2
@@ -183,7 +183,7 @@ void TimeLines::regenerate_graphics() {
 }
 
 void TimeLines::scrolled_horizontal(float pixels_changed) {
-	line_offset += pixels_changed;
+	current_zoom->line_offset += pixels_changed;
 
 	call_scroll_callbacks();
 }
@@ -191,14 +191,11 @@ void TimeLines::scrolled_horizontal(float pixels_changed) {
 bool TimeLines::on_scale(KammoGUI::ScaleGestureDetector *detector) {
 	auto focal_x = detector->get_focus_x();
 	auto sfactor = detector->get_scale_factor();
-	if(horizontal_zoom_factor * sfactor < 0.0625) {
-		sfactor = 0.0625 / horizontal_zoom_factor;
+	if(current_zoom->horizontal_zoom_factor * sfactor < 0.0625) {
+		sfactor = 0.0625 / current_zoom->horizontal_zoom_factor;
 	}
-	horizontal_zoom_factor *= sfactor;
-	zoomed_sequence_line_width = default_sequence_line_width * horizontal_zoom_factor;
-	line_offset = focal_x - (focal_x - line_offset) * sfactor;
-
-	SATAN_DEBUG("  new zoom factor: %f\n", horizontal_zoom_factor);
+	current_zoom->line_offset = focal_x - (focal_x - current_zoom->line_offset) * sfactor;
+	current_zoom->horizontal_zoom_factor *= sfactor;
 
 	call_scroll_callbacks();
 
@@ -435,6 +432,14 @@ void TimeLines::on_resize() {
 		    loop_stop_marker.pointer(), &loop_stop_marker);
 }
 
+void TimeLines::use_zoom_context(std::shared_ptr<TimeLines::ZoomContext> other_context) {
+	if(other_context)
+		current_zoom = other_context;
+	else
+		current_zoom = default_zoom;
+	call_scroll_callbacks();
+}
+
 void TimeLines::scroll_pixels(double pxl_count) {
 	SATAN_ERROR("TimeLines::scroll_pixels(%f)\n", pxl_count);
 	scrolled_horizontal((float)pxl_count);
@@ -446,10 +451,11 @@ void TimeLines::add_scroll_callback(std::function<void(double, double, int, int)
 }
 
 void TimeLines::call_scroll_callbacks() {
+	zoomed_sequence_line_width = default_sequence_line_width * current_zoom->horizontal_zoom_factor;
 	auto min_visible_line = get_sequence_line_position_at(0);
 	auto max_visible_line = get_sequence_line_position_at(canvas_w);
 	for(auto sc : scroll_callbacks) {
-		sc(zoomed_sequence_line_width, line_offset, min_visible_line, max_visible_line);
+		sc(zoomed_sequence_line_width, current_zoom->line_offset, min_visible_line, max_visible_line);
 	}
 }
 
@@ -466,7 +472,7 @@ void TimeLines::hide_loop_markers() {
 }
 
 double TimeLines::get_graphics_horizontal_offset() {
-	return line_offset;
+	return current_zoom->line_offset;
 }
 
 double TimeLines::get_horizontal_pixels_per_line() {
@@ -496,11 +502,11 @@ void TimeLines::set_prefix_string(const std::string &_prefix) {
 
 void TimeLines::on_render() {
         // calculate the denominator for the horizontal zoom factor in fractional form
-        double inverse_zoom_factor = 1.0 / horizontal_zoom_factor;
+        double inverse_zoom_factor = 1.0 / current_zoom->horizontal_zoom_factor;
         unsigned int zoom_denominator = (unsigned int)inverse_zoom_factor;
-	unsigned int zoom_numerator = (unsigned int)horizontal_zoom_factor;
+	unsigned int zoom_numerator = (unsigned int)current_zoom->horizontal_zoom_factor;
         static int legal_zoom_multipliers[] = {
-                1, 2, 4, 4, 4, 8, 8, 8, 8, 8, 8, 16
+                1, 1, 2, 4, 4, 8, 8, 8, 8, 8, 8, 16
         };
         #define MAX_LEGAL_ZOOM (sizeof(legal_zoom_multipliers) / sizeof(int))
         if(zoom_denominator >= MAX_LEGAL_ZOOM) zoom_denominator = MAX_LEGAL_ZOOM - 1;
@@ -516,14 +522,15 @@ void TimeLines::on_render() {
 		minors_per_major = lpb;
 	}
 
-	SATAN_DEBUG("zoom_denominator: %d, lpb: %d\n",
-		    zoom_denominator, lpb);
-	SATAN_DEBUG("sequence_lines_per_minor: %d, width: %f\n",
-		    sequence_lines_per_minor, zoomed_sequence_line_width);
+//	SATAN_DEBUG("  zoom factor: %f, zoom_denominator: %d\n", current_zoom->horizontal_zoom_factor, zoom_denominator);
+//	SATAN_DEBUG("zoom_denominator: %d, lpb: %d\n",
+//		    zoom_denominator, lpb);
+//	SATAN_DEBUG("sequence_lines_per_minor: %d, width: %f\n",
+//		    sequence_lines_per_minor, zoomed_sequence_line_width);
 	auto sequence_lines_per_major = sequence_lines_per_minor * minors_per_major;
 
 	// calculate line offset
-	line_offset_d = line_offset / zoomed_sequence_line_width;
+	line_offset_d = current_zoom->line_offset / zoomed_sequence_line_width;
 	int line_offset_i = line_offset_d; // we need the pure integer version too
 
 	{ // Move loop markers
@@ -572,8 +579,8 @@ void TimeLines::on_render() {
 		auto major = majors.begin();
 		auto minor = minors.begin();
 
-		SATAN_DEBUG("graphics_offset: %f, line_offset_i: %d, spacing: %f\n",
-			    graphics_offset, line_offset_i, minor_spacing);
+//		SATAN_DEBUG("graphics_offset: %f, line_offset_i: %d, spacing: %f\n",
+//			    graphics_offset, line_offset_i, minor_spacing);
 		for(;
 		    graphics_offset < max_graphics_offset;
 		    graphics_offset += zoomed_sequence_line_width, line_number++) {
@@ -617,6 +624,9 @@ void TimeLines::on_render() {
 TimeLines::TimeLines(KammoGUI::GnuVGCanvas* cnvs)
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/timeLines.svg"), cnvs) {
 	sgd = new KammoGUI::ScaleGestureDetector(this);
+	default_zoom = std::make_shared<ZoomContext>();
+	default_zoom->horizontal_zoom_factor = 0.25;
+	current_zoom = default_zoom;
 }
 
 TimeLines::~TimeLines() {
