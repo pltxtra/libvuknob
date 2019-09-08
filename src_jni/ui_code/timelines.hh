@@ -49,6 +49,11 @@ private:
 	// fling detector
 	KammoGUI::FlingGestureDetector fling_detector;
 
+	// Drag-caused scrolling (external scroll events)
+	KammoGUI::SimpleAnimation *scroll_animation;
+	double scroll_speed;
+	float last_scroll_time;
+
 	KammoGUI::GnuVGCanvas::ElementReference *timeline_container = 0;
 	KammoGUI::GnuVGCanvas::ElementReference *time_index_container = 0;
 
@@ -117,7 +122,7 @@ public:
 
 	void use_zoom_context(std::shared_ptr<ZoomContext> context);
 	void scroll_pixels(double pxl_count);
-
+	void process_external_scroll_event(const KammoGUI::MotionEvent &event);
 	void add_scroll_callback(std::function<void(double, double, int, int)>);
 	void call_scroll_callbacks();
 

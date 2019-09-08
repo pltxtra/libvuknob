@@ -35,6 +35,8 @@
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
+static constexpr double const MAXIMUM_SCROLL_SPEED = 4.0;
+
 void TimeLines::create_timelines() {
 	KammoGUI::GnuVGCanvas::ElementReference root_element(this, "timeline_group");
 
@@ -443,6 +445,52 @@ void TimeLines::use_zoom_context(std::shared_ptr<TimeLines::ZoomContext> other_c
 void TimeLines::scroll_pixels(double pxl_count) {
 	SATAN_ERROR("TimeLines::scroll_pixels(%f)\n", pxl_count);
 	scrolled_horizontal((float)pxl_count);
+}
+
+void TimeLines::process_external_scroll_event(const KammoGUI::MotionEvent &event) {
+	auto event_current_x = event.get_x();
+
+	auto quarter_canvas_w = canvas_w / 4.0;
+	if(event_current_x < quarter_canvas_w)
+		scroll_speed = 1.0 - (event_current_x / quarter_canvas_w);
+	else if(event_current_x > (canvas_w - quarter_canvas_w))
+		scroll_speed = -(event_current_x - (canvas_w - quarter_canvas_w)) / quarter_canvas_w;
+	else
+		scroll_speed = 0.0;
+	SATAN_ERROR("Pre-scaled scroll_speed: %f\n", scroll_speed);
+	scroll_speed *= MAXIMUM_SCROLL_SPEED;
+
+	switch(event.get_action()) {
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		break;
+	case KammoGUI::MotionEvent::ACTION_DOWN:
+		last_scroll_time = 0.0f;
+		scroll_animation = new KammoGUI::SimpleAnimation(
+		0.0,
+		[this](float progress) mutable {
+			SATAN_DEBUG("Scrolling progress %f seconds... (speed: %f)\n", progress, scroll_speed);
+			auto scroll_diff = progress - last_scroll_time;
+			if(scroll_speed != 0.0) {
+				auto pxls_to_scroll = scroll_speed * (double)scroll_diff;
+				SATAN_DEBUG("Scroll would be %f\n", pxls_to_scroll);
+				scroll_pixels(pxls_to_scroll);
+			}
+		}
+		);
+		SATAN_DEBUG("Starting scroll animation...\n");
+		start_animation(scroll_animation);
+	case KammoGUI::MotionEvent::ACTION_MOVE:
+		break;
+	case KammoGUI::MotionEvent::ACTION_UP:
+		SATAN_DEBUG("Stopping scroll animation...\n");
+		scroll_animation->stop();
+		scroll_animation = nullptr;
+		break;
+	}
+
 }
 
 void TimeLines::add_scroll_callback(std::function<void(double, double, int, int)> _cb) {

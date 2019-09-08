@@ -42,8 +42,6 @@
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
-static constexpr double const MAXIMUM_SCROLL_SPEED = 4.0;
-
 static std::shared_ptr<TimeLines> timelines;
 static std::shared_ptr<Sequencer> sequencer;
 static std::shared_ptr<GnuVGCornerButton> plus_button;
@@ -88,18 +86,13 @@ Sequencer::PatternInstance::PatternInstance(
 
 void Sequencer::PatternInstance::on_instance_event(std::shared_ptr<RISequence> ri_seq,
 						   const KammoGUI::MotionEvent &event) {
+	timelines->process_external_scroll_event(event);
 	auto last_moving_offset = moving_offset;
 	moving_offset = 0;
 
 	if(tap_detector.analyze_events(event)) {
 		KammoGUI::GnuVGCanvas::SVGRect r;
 		svg_reference.get_boundingbox(r);
-
-		scroll_speed = 0.0;
-		if(scroll_animation) {
-			scroll_animation->stop();
-			scroll_animation = nullptr;
-		}
 
 		InstanceEvent e;
 		e.type = InstanceEventType::tapped;
@@ -111,16 +104,6 @@ void Sequencer::PatternInstance::on_instance_event(std::shared_ptr<RISequence> r
 
 	auto event_current_x = event.get_x();
 	auto current_sequence_position = timelines->get_sequence_line_position_at(event_current_x);
-
-	auto quarter_canvas_w = sequencer->canvas_w / 4.0;
-	if(event_current_x < quarter_canvas_w)
-		scroll_speed = 1.0 - (event_current_x / quarter_canvas_w);
-	else if(event_current_x > (sequencer->canvas_w - quarter_canvas_w))
-		scroll_speed = -(event_current_x - (sequencer->canvas_w - quarter_canvas_w)) / quarter_canvas_w;
-	else
-		scroll_speed = 0.0;
-	SATAN_ERROR("Pre-scaled scroll_speed: %f\n", scroll_speed);
-	scroll_speed *= MAXIMUM_SCROLL_SPEED;
 
 	switch(event.get_action()) {
 	case KammoGUI::MotionEvent::ACTION_CANCEL:
@@ -134,21 +117,6 @@ void Sequencer::PatternInstance::on_instance_event(std::shared_ptr<RISequence> r
 		e.type = InstanceEventType::finger_on;
 		event_callback(e);
 	}
-		last_scroll_time = 0.0f;
-		scroll_animation = new KammoGUI::SimpleAnimation(
-		0.0,
-		[this](float progress) mutable {
-			SATAN_DEBUG("Scrolling progress %f seconds... (speed: %f)\n", progress, scroll_speed);
-			auto scroll_diff = progress - last_scroll_time;
-			if(scroll_speed != 0.0) {
-				auto pxls_to_scroll = scroll_speed * (double)scroll_diff;
-				SATAN_DEBUG("Scroll would be %f\n", pxls_to_scroll);
-				timelines->scroll_pixels(pxls_to_scroll);
-			}
-		}
-		);
-		SATAN_DEBUG("Starting scroll animation...\n");
-		sequencer->start_animation(scroll_animation);
 		start_at_sequence_position = current_sequence_position;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
 		moving_offset = current_sequence_position - start_at_sequence_position;
@@ -157,9 +125,6 @@ void Sequencer::PatternInstance::on_instance_event(std::shared_ptr<RISequence> r
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
 	{
-		SATAN_DEBUG("Stopping scroll animation...\n");
-		scroll_animation->stop();
-		scroll_animation = nullptr;
 		InstanceEvent e;
 		e.type = InstanceEventType::moved;
 		e.moving_offset = last_moving_offset;
@@ -310,6 +275,8 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 }
 
 void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) {
+	timelines->process_external_scroll_event(event);
+
 	auto evt_x = event.get_x();
 	auto evt_y = event.get_y();
 	switch(event.get_action()) {
