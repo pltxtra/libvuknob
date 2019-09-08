@@ -169,6 +169,7 @@ private:
 	KammoGUI::GnuVGCanvas::ElementReference root, sequencer_container;
 	KammoGUI::GnuVGCanvas::ElementReference sequence_graphic_template;
 	KammoGUI::GnuVGCanvas::ElementReference trashcan_icon, notes_icon, tapped_instance, sequencer_shade;
+	KammoGUI::GnuVGCanvas::ElementReference loop_icon, length_icon;
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
 	KammoGUI::FlingGestureDetector fling_detector;
 	double scroll_start_y, sequencer_vertical_offset = 0.0;

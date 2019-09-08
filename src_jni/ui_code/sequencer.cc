@@ -583,6 +583,8 @@ Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 	sequence_graphic_template = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerMachineTemplate");
 	trashcan_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "trashcanIcon");
 	notes_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "notesIcon");
+	loop_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "loopIcon");
+	length_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "lengthIcon");
 	sequencer_shade = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerShade");
 	tapped_instance = KammoGUI::GnuVGCanvas::ElementReference(this, "tappedInstance");
 	root = KammoGUI::GnuVGCanvas::ElementReference(this);
@@ -590,6 +592,8 @@ Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 	sequence_graphic_template.set_display("none");
 	trashcan_icon.set_display("none");
 	notes_icon.set_display("none");
+	loop_icon.set_display("none");
+	length_icon.set_display("none");
 	sequencer_shade.set_display("none");
 
 	timelines->add_scroll_callback(
@@ -626,6 +630,10 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 	trashcan_icon.set_style("opacity:0.0");
 	notes_icon.set_display(show_icons ? "inline" : "none");
 	notes_icon.set_style("opacity:0.0");
+	loop_icon.set_display(show_icons ? "inline" : "none");
+	loop_icon.set_style("opacity:0.0");
+	length_icon.set_display(show_icons ? "inline" : "none");
+	length_icon.set_style("opacity:0.0");
 
 	sequencer_shade.set_event_handler(
 		[](SVGDocument *source,
@@ -642,13 +650,27 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 
 	if(auto instance = tapped_instance_w.lock()) {
 		auto instance_data = instance->data();
+		auto pixels_per_line = timelines->get_horizontal_pixels_per_line();
+		auto instance_length = (instance_data.stop_at - instance_data.start_at);
 		tapped_instance.set_display("inline");
 		tapped_instance.set_style("opacity:0.0");
 		tapped_instance.set_rect_coords(
 			icon_anchor_x, icon_anchor_y,
-			timelines->get_horizontal_pixels_per_line() * (instance_data.stop_at - instance_data.start_at),
+			pixels_per_line * instance_length,
 			finger_height
 			);
+
+		SATAN_DEBUG("Loop length: %d\n", instance_data.loop_length);
+		double loop_translation = (double)instance_data.loop_length;
+		if(instance_data.loop_length < 0) {
+			loop_translation = 0.0;
+		}
+		transform_t.init_identity();
+		transform_t.translate(icon_anchor_x + pixels_per_line * loop_translation, icon_anchor_y);
+		loop_icon.set_transform(transform_t);
+		transform_t.init_identity();
+		transform_t.translate(icon_anchor_x + pixels_per_line * instance_length, icon_anchor_y + 0.5 * finger_height);
+		length_icon.set_transform(transform_t);
 	}
 
 	auto on_completion = [this, ri_seq_w, tapped_instance_w]() {
@@ -722,6 +744,8 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 				opacity << "opacity:" << progress;
 				trashcan_icon.set_style(opacity.str());
 				notes_icon.set_style(opacity.str());
+				loop_icon.set_style(opacity.str());
+				length_icon.set_style(opacity.str());
 				tapped_instance.set_style(opacity.str());
 			}
 			{
@@ -743,6 +767,8 @@ void Sequencer::show_sequencers() {
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	trashcan_icon.set_style("opacity:1.0");
 	notes_icon.set_style("opacity:1.0");
+	loop_icon.set_style("opacity:1.0");
+	length_icon.set_style("opacity:1.0");
 
 	{
 		sequencer_shade.set_event_handler(
@@ -767,6 +793,8 @@ void Sequencer::show_sequencers() {
 				opacity << "opacity:" << (reverse_progress);
 				trashcan_icon.set_style(opacity.str());
 				notes_icon.set_style(opacity.str());
+				loop_icon.set_style(opacity.str());
+				length_icon.set_style(opacity.str());
 				tapped_instance.set_style(opacity.str());
 			}
 			{
@@ -780,6 +808,8 @@ void Sequencer::show_sequencers() {
 				SATAN_DEBUG("show transmission complete...\n");
 				trashcan_icon.set_display("none");
 				notes_icon.set_display("none");
+				loop_icon.set_display("none");
+				length_icon.set_display("none");
 				sequencer_shade.set_display("none");
 				tapped_instance.set_display("none");
 			}
