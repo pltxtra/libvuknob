@@ -75,7 +75,8 @@ private:
 			KammoGUI::GnuVGCanvas::ElementReference &elref,
 			const RIPatternInstance &instance_data,
 			std::shared_ptr<RISequence> ri_seq,
-			std::function<void(const InstanceEvent &e)> event_callback
+			std::function<void(const InstanceEvent &e)> event_callback,
+			std::shared_ptr<TimeLines::ZoomContext> zoom_context
 			);
 
 		virtual ~PatternInstance() {
@@ -91,7 +92,8 @@ private:
 			KammoGUI::GnuVGCanvas::ElementReference &parent,
 			int line_width, double height,
 			std::shared_ptr<RISequence> ri_seq,
-			std::function<void(const InstanceEvent &e)> event_callback
+			std::function<void(const InstanceEvent &e)> event_callback,
+			std::shared_ptr<TimeLines::ZoomContext> zoom_context
 			);
 
 		void calculate_visibility(double line_width,
@@ -135,6 +137,8 @@ private:
 
 		double line_width, line_offset;
 		int minimum_visible_line, maximum_visible_line;
+
+		std::map<uint32_t, std::shared_ptr<TimeLines::ZoomContext> > pattern_zoom_contexts;
 
 	public:
 		virtual void pattern_added(const std::string &name, uint32_t id);

@@ -62,16 +62,16 @@ Sequencer::PatternInstance::PatternInstance(
 	KammoGUI::GnuVGCanvas::ElementReference &elref,
 	const RIPatternInstance &_instance_data,
 	std::shared_ptr<RISequence> ri_seq,
-	std::function<void(const InstanceEvent &)> _event_callback
+	std::function<void(const InstanceEvent &)> _event_callback,
+	std::shared_ptr<TimeLines::ZoomContext> _zoom_context
 	)
 	: svg_reference(elref)
 	, instance_data(_instance_data)
 	, event_callback(_event_callback)
+	, zoom_context(_zoom_context)
 {
 	instance_graphic = svg_reference.find_child_by_class("instance_graphic");
 	pattern_id_graphic = svg_reference.find_child_by_class("id_graphic");
-
-	zoom_context = std::make_shared<TimeLines::ZoomContext>();
 
 	std::stringstream ss;
 	ss << instance_data.pattern_id;
@@ -202,7 +202,8 @@ std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_n
 	KammoGUI::GnuVGCanvas::ElementReference &parent,
 	int sequence_line_width, double height,
 	std::shared_ptr<RISequence> ri_seq,
-	std::function<void(const InstanceEvent &e)> event_callback
+	std::function<void(const InstanceEvent &e)> event_callback,
+	std::shared_ptr<TimeLines::ZoomContext> _zoom_context
 	)
 {
 	std::stringstream ss_new_id;
@@ -238,7 +239,7 @@ std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_n
 
 	KammoGUI::GnuVGCanvas::ElementReference elref(&parent, ss_new_id.str());
 
-	auto rval = std::make_shared<PatternInstance>(elref, _instance_data, ri_seq, event_callback);
+	auto rval = std::make_shared<PatternInstance>(elref, _instance_data, ri_seq, event_callback, _zoom_context);
 
 	return rval;
 }
@@ -391,6 +392,7 @@ void Sequencer::Sequence::pattern_added(const std::string &name, uint32_t id) {
 			active_pattern_id = id;
 
 			patterns[id] = name;
+			pattern_zoom_contexts[id] = std::make_shared<TimeLines::ZoomContext>();
 
 			if(pending_add) {
 				SATAN_DEBUG("::pattern_added(%s, %d) --> insert\n", name.c_str(), id);
@@ -409,6 +411,9 @@ void Sequencer::Sequence::pattern_deleted(uint32_t id) {
 	KammoGUI::run_on_GUI_thread(
 		[this, id]() {
 			SATAN_DEBUG("::pattern_deleted()\n");
+
+			if(pattern_zoom_contexts.erase(id) != 1)
+				SATAN_ERROR("There was a missing zoom context for pattern %d\n", id);
 
 			auto pattern_to_erase = patterns.find(id);
 			if(pattern_to_erase != patterns.end())
@@ -450,6 +455,8 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 				}
 			};
 
+			auto found_zoom_context = pattern_zoom_contexts[instance.pattern_id];
+
 			SATAN_DEBUG("Instance was added for machine...(%d)\n", instance.pattern_id);
 
 			auto instanceContainer = find_child_by_class("instanceContainer");
@@ -459,7 +466,8 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 				timelines->get_horizontal_pixels_per_line(),
 				height,
 				ri_seq,
-				event_callback
+				event_callback,
+				found_zoom_context
 				);
 			instances[instance.start_at] = i;
 			timelines->call_scroll_callbacks();
