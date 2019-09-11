@@ -339,13 +339,13 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 	newPieceIndicator.set_display(display_action ? "inline" : "none");
 	if(display_action) {
 		float b_x, e_x;
-
-		if(event_current_x < event_start_x) {
+		float start_x = timelines->get_pixel_value_for_sequence_line_position(start_at_sequence_position);
+		if(event_current_x < start_x) {
 			b_x = event_current_x;
-			e_x = event_start_x - event_current_x;
+			e_x = start_x - event_current_x;
 		} else {
-			b_x = event_start_x;
-			e_x = event_current_x - event_start_x;
+			b_x = start_x;
+			e_x = event_current_x - start_x;
 		}
 		SATAN_DEBUG("b_x: %f, e_x: %f\n", b_x, e_x);
 		newPieceIndicator.set_rect_coords(b_x, 0, e_x, height);

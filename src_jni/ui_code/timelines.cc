@@ -442,11 +442,6 @@ void TimeLines::use_zoom_context(std::shared_ptr<TimeLines::ZoomContext> other_c
 	call_scroll_callbacks();
 }
 
-void TimeLines::scroll_pixels(double pxl_count) {
-	SATAN_ERROR("TimeLines::scroll_pixels(%f)\n", pxl_count);
-	scrolled_horizontal((float)pxl_count);
-}
-
 void TimeLines::process_external_scroll_event(const KammoGUI::MotionEvent &event) {
 	auto event_current_x = event.get_x();
 
@@ -476,7 +471,7 @@ void TimeLines::process_external_scroll_event(const KammoGUI::MotionEvent &event
 			if(scroll_speed != 0.0) {
 				auto pxls_to_scroll = scroll_speed * (double)scroll_diff;
 				SATAN_DEBUG("Scroll would be %f\n", pxls_to_scroll);
-				scroll_pixels(pxls_to_scroll);
+				scrolled_horizontal((float)pxls_to_scroll);
 			}
 		}
 		);
@@ -542,6 +537,11 @@ int TimeLines::get_sequence_line_position_at(int horizontal_pixel_value) {
 	int line = (int)line_d;
 	line *= sequence_lines_per_minor;
 	return line;
+}
+
+int TimeLines::get_pixel_value_for_sequence_line_position(int sequence_line_position) {
+	SATAN_ERROR("Hello there!\n");
+	return ((double)sequence_line_position + line_offset_d) * ((double)zoomed_sequence_line_width);
 }
 
 void TimeLines::set_prefix_string(const std::string &_prefix) {

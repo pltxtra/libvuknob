@@ -121,7 +121,6 @@ public:
 	~TimeLines();
 
 	void use_zoom_context(std::shared_ptr<ZoomContext> context);
-	void scroll_pixels(double pxl_count);
 	void process_external_scroll_event(const KammoGUI::MotionEvent &event);
 	void add_scroll_callback(std::function<void(double, double, int, int)>);
 	void call_scroll_callbacks();
@@ -132,6 +131,7 @@ public:
 	double get_graphics_horizontal_offset();
 	double get_horizontal_pixels_per_line();
 	int get_sequence_line_position_at(int horizontal_pixel_value);
+	int get_pixel_value_for_sequence_line_position(int sequence_line_position);
 
 	void set_prefix_string(const std::string &prefix);
 
