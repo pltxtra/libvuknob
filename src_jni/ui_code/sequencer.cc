@@ -551,6 +551,8 @@ Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 	trashcan_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "trashcanIcon");
 	notes_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "notesIcon");
 	loop_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "loopIcon");
+	loop_enabled_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "loopEnabled");
+	loop_disabled_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "loopDisabled");
 	length_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "lengthIcon");
 	sequencer_shade = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerShade");
 	tapped_instance = KammoGUI::GnuVGCanvas::ElementReference(this, "tappedInstance");
@@ -615,6 +617,7 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 	sequencer_shade.set_rect_coords(0, 0, canvas_w, canvas_h);
 	sequencer_shade_hiding_opacity = hiding_opacity;
 
+	bool loop_enabled = true;
 	if(auto instance = tapped_instance_w.lock()) {
 		auto instance_data = instance->data();
 		auto pixels_per_line = timelines->get_horizontal_pixels_per_line();
@@ -630,6 +633,7 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 		SATAN_DEBUG("Loop length: %d\n", instance_data.loop_length);
 		double loop_translation = (double)instance_data.loop_length;
 		if(instance_data.loop_length < 0) {
+			loop_enabled = false;
 			loop_translation = 0.0;
 		}
 		transform_t.init_identity();
@@ -639,6 +643,8 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 		transform_t.translate(icon_anchor_x + pixels_per_line * instance_length, icon_anchor_y + 0.5 * finger_height);
 		length_icon.set_transform(transform_t);
 	}
+	loop_enabled_icon.set_display(loop_enabled ? "inline" : "none");
+	loop_disabled_icon.set_display(loop_enabled ? "none" : "inline");
 
 	auto on_completion = [this, ri_seq_w, tapped_instance_w]() {
 		SATAN_DEBUG("  completed hiding - injecting new event handlers for icons...\n");
