@@ -184,6 +184,7 @@ private:
 	void drag_length_icon(const KammoGUI::MotionEvent &event, // returns true when drag is completed.
 			      double icon_anchor_x, double icon_anchor_y,
 			      double pixels_per_line,
+			      double instance_start,
 			      int instance_length,
 			      std::function<void(int)> drag_length_completed_callback
 		);

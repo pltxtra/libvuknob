@@ -621,11 +621,14 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 	if(auto instance = tapped_instance_w.lock()) {
 		auto instance_data = instance->data();
 		auto pixels_per_line = timelines->get_horizontal_pixels_per_line();
-		auto instance_length = (instance_data.stop_at - instance_data.start_at);
+		auto instance_stop = instance_data.stop_at;
+		auto instance_start = instance_data.start_at;
+		auto instance_length = instance_stop - instance_start;
+		auto instance_start_pixel = timelines->get_pixel_value_for_sequence_line_position(instance_start);
 		tapped_instance.set_display("inline");
 		tapped_instance.set_style("opacity:0.0");
 		tapped_instance.set_rect_coords(
-			icon_anchor_x, icon_anchor_y,
+			instance_start_pixel, icon_anchor_y,
 			pixels_per_line * instance_length,
 			finger_height
 			);
@@ -637,10 +640,10 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 			loop_translation = 0.0;
 		}
 		transform_t.init_identity();
-		transform_t.translate(icon_anchor_x + pixels_per_line * loop_translation, icon_anchor_y);
+		transform_t.translate(instance_start_pixel + pixels_per_line * loop_translation, icon_anchor_y);
 		loop_icon.set_transform(transform_t);
 		transform_t.init_identity();
-		transform_t.translate(icon_anchor_x + pixels_per_line * instance_length, icon_anchor_y + 0.5 * finger_height);
+		transform_t.translate(instance_start_pixel + pixels_per_line * instance_length , icon_anchor_y + 0.5 * finger_height);
 		length_icon.set_transform(transform_t);
 		SATAN_ERROR("INITIAL %f, %f, %f, %d, %f\n",
 			    icon_anchor_x,
@@ -675,7 +678,7 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 
 		auto icon_anchor_x_line_position = timelines->get_sequence_line_position_at(icon_anchor_x);
 		length_icon.set_event_handler(
-			[this, ri_seq_w, tapped_instance_w, pixels_per_line, instance_length,
+			[this, ri_seq_w, tapped_instance_w, pixels_per_line, instance_start,instance_length,
 			 icon_anchor_x_line_position, icon_anchor_y, length_drag_completed_callback](
 				SVGDocument *source,
 				KammoGUI::GnuVGCanvas::ElementReference *e,
@@ -683,7 +686,9 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 				) {
 				drag_length_icon(event,
 						 icon_anchor_x_line_position, icon_anchor_y,
-						 pixels_per_line, instance_length,
+						 pixels_per_line,
+						 (double)instance_start,
+						 instance_length,
 						 length_drag_completed_callback);
 			}
 			);
@@ -844,11 +849,13 @@ void Sequencer::drag_length_icon(const KammoGUI::MotionEvent &event,
 				 double icon_anchor_x_line_position,
 				 double icon_anchor_y,
 				 double pixels_per_line,
+				 double instance_start,
 				 int instance_length,
 				 std::function<void(int)> drag_length_completed_callback) {
 	timelines->process_external_scroll_event(event);
 
 	auto icon_anchor_x = timelines->get_pixel_value_for_sequence_line_position(icon_anchor_x_line_position);
+	auto instance_start_pixel = timelines->get_pixel_value_for_sequence_line_position(instance_start);
 	auto current_line_position = timelines->get_sequence_line_position_at(event.get_x());
 	auto drag_offset = current_line_position - drag_event_start_line;
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
@@ -863,17 +870,17 @@ void Sequencer::drag_length_icon(const KammoGUI::MotionEvent &event,
 		drag_event_start_line = current_line_position;
 		break;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
-		SATAN_ERROR("CURRENT %f, %f, %f, %d, %f\n",
+		SATAN_ERROR("CURRENT %d, %f, %f, %d, %f\n",
 			    icon_anchor_x,
 			    icon_anchor_y,
 			    pixels_per_line,
 			    instance_length,
 			    finger_height);
 		transform_t.init_identity();
-		transform_t.translate(icon_anchor_x + pixels_per_line * (instance_length + drag_offset), icon_anchor_y + 0.5 * finger_height);
+		transform_t.translate(instance_start_pixel + pixels_per_line * (instance_length + drag_offset), icon_anchor_y + 0.5 * finger_height);
 		length_icon.set_transform(transform_t);
 		tapped_instance.set_rect_coords(
-			icon_anchor_x, icon_anchor_y,
+			instance_start_pixel, icon_anchor_y,
 			pixels_per_line * (instance_length + drag_offset),
 			finger_height
 			);
