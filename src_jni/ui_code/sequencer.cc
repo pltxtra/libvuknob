@@ -849,8 +849,7 @@ void Sequencer::drag_length_icon(const KammoGUI::MotionEvent &event,
 	timelines->process_external_scroll_event(event);
 
 	auto icon_anchor_x = timelines->get_pixel_value_for_sequence_line_position(icon_anchor_x_line_position);
-	auto evt_x = event.get_x();
-	auto current_line_position = timelines->get_sequence_line_position_at(evt_x);
+	auto current_line_position = timelines->get_sequence_line_position_at(event.get_x());
 	auto drag_offset = current_line_position - drag_event_start_line;
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 
@@ -861,7 +860,7 @@ void Sequencer::drag_length_icon(const KammoGUI::MotionEvent &event,
 	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 		break;
 	case KammoGUI::MotionEvent::ACTION_DOWN:
-		drag_event_start_line = timelines->get_sequence_line_position_at(evt_x);
+		drag_event_start_line = current_line_position;
 		break;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
 		SATAN_ERROR("CURRENT %f, %f, %f, %d, %f\n",
