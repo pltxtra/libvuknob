@@ -179,7 +179,7 @@ private:
 	int canvas_w, canvas_h; // sizes in pixels
 
 	float sequencer_shade_hiding_opacity;
-	double drag_event_start_x;
+	double drag_event_start_line;
 
 	void drag_length_icon(const KammoGUI::MotionEvent &event, // returns true when drag is completed.
 			      double icon_anchor_x, double icon_anchor_y,

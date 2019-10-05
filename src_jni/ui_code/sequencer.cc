@@ -673,14 +673,16 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 			plus_button->show();
 		};
 
+		auto icon_anchor_x_line_position = timelines->get_sequence_line_position_at(icon_anchor_x);
 		length_icon.set_event_handler(
-			[this, ri_seq_w, tapped_instance_w, pixels_per_line, instance_length, icon_anchor_x, icon_anchor_y, length_drag_completed_callback](
+			[this, ri_seq_w, tapped_instance_w, pixels_per_line, instance_length,
+			 icon_anchor_x_line_position, icon_anchor_y, length_drag_completed_callback](
 				SVGDocument *source,
 				KammoGUI::GnuVGCanvas::ElementReference *e,
 				const KammoGUI::MotionEvent &event
 				) {
 				drag_length_icon(event,
-						 icon_anchor_x, icon_anchor_y,
+						 icon_anchor_x_line_position, icon_anchor_y,
 						 pixels_per_line, instance_length,
 						 length_drag_completed_callback);
 			}
@@ -839,13 +841,17 @@ void Sequencer::show_sequencers() {
 }
 
 void Sequencer::drag_length_icon(const KammoGUI::MotionEvent &event,
-				 double icon_anchor_x,
+				 double icon_anchor_x_line_position,
 				 double icon_anchor_y,
 				 double pixels_per_line,
 				 int instance_length,
 				 std::function<void(int)> drag_length_completed_callback) {
+	timelines->process_external_scroll_event(event);
+
+	auto icon_anchor_x = timelines->get_pixel_value_for_sequence_line_position(icon_anchor_x_line_position);
 	auto evt_x = event.get_x();
-	auto drag_offset = evt_x - drag_event_start_x;
+	auto current_line_position = timelines->get_sequence_line_position_at(evt_x);
+	auto drag_offset = current_line_position - drag_event_start_line;
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 
 	switch(event.get_action()) {
@@ -855,7 +861,7 @@ void Sequencer::drag_length_icon(const KammoGUI::MotionEvent &event,
 	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
 		break;
 	case KammoGUI::MotionEvent::ACTION_DOWN:
-		drag_event_start_x = evt_x;
+		drag_event_start_line = timelines->get_sequence_line_position_at(evt_x);
 		break;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
 		SATAN_ERROR("CURRENT %f, %f, %f, %d, %f\n",
@@ -865,17 +871,16 @@ void Sequencer::drag_length_icon(const KammoGUI::MotionEvent &event,
 			    instance_length,
 			    finger_height);
 		transform_t.init_identity();
-		transform_t.translate(icon_anchor_x + pixels_per_line * instance_length + drag_offset, icon_anchor_y + 0.5 * finger_height);
+		transform_t.translate(icon_anchor_x + pixels_per_line * (instance_length + drag_offset), icon_anchor_y + 0.5 * finger_height);
+		length_icon.set_transform(transform_t);
 		tapped_instance.set_rect_coords(
 			icon_anchor_x, icon_anchor_y,
-			pixels_per_line * instance_length + drag_offset,
+			pixels_per_line * (instance_length + drag_offset),
 			finger_height
 			);
-		length_icon.set_transform(transform_t);
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
-		auto lines_offset = drag_offset / pixels_per_line;
-		drag_length_completed_callback(lines_offset);
+		drag_length_completed_callback(drag_offset);
 		break;
 	}
 }
