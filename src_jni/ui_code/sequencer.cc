@@ -671,7 +671,7 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 				}
 			}
 
-			sequencer->show_sequencers({});
+			sequencer->show_sequencers({&length_icon, &tapped_instance});
 			loop_settings->show();
 			plus_button->show();
 		};
@@ -684,6 +684,9 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 				KammoGUI::GnuVGCanvas::ElementReference *e,
 				const KammoGUI::MotionEvent &event
 				) {
+				if(event.get_action() == KammoGUI::MotionEvent::ACTION_DOWN) {
+					sequencer->hide_elements({&trashcan_icon, &notes_icon, &loop_icon});
+				}
 				drag_length_icon(event,
 						 icon_anchor_x_line_position, icon_anchor_y,
 						 pixels_per_line,
