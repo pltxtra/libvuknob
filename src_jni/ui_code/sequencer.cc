@@ -671,7 +671,7 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 				}
 			}
 
-			sequencer->show_sequencers();
+			sequencer->show_sequencers({});
 			loop_settings->show();
 			plus_button->show();
 		};
@@ -715,7 +715,7 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 				};
 
 				if(tap_detector.analyze_events(event)) {
-					sequencer->show_sequencers();
+					sequencer->show_sequencers({});
 					auto instance = tapped_instance_w.lock();
 					auto ri_seq = ri_seq_w.lock();
 					if(instance && ri_seq) {
@@ -743,7 +743,7 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 						ri_seq->delete_pattern_from_sequence(instance->data());
 					}
 
-					sequencer->show_sequencers();
+					sequencer->show_sequencers({});
 					loop_settings->show();
 					plus_button->show();
 				}
@@ -755,7 +755,7 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 			       KammoGUI::GnuVGCanvas::ElementReference *e,
 			       const KammoGUI::MotionEvent &event) {
 				if(tap_detector.analyze_events(event)) {
-					sequencer->show_sequencers();
+					sequencer->show_sequencers({});
 					loop_settings->show();
 					plus_button->show();
 				}
@@ -790,12 +790,11 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 	sequencer->start_animation(shade_transition);
 }
 
-void Sequencer::show_sequencers() {
-	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
-	trashcan_icon.set_style("opacity:1.0");
-	notes_icon.set_style("opacity:1.0");
-	loop_icon.set_style("opacity:1.0");
-	length_icon.set_style("opacity:1.0");
+void Sequencer::show_sequencers(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide) {
+	if(elements_to_hide.size() == 0) {
+		elements_to_hide = {&trashcan_icon, &notes_icon, &loop_icon, &length_icon, &tapped_instance};
+	}
+	hide_elements(elements_to_hide);
 
 	{
 		sequencer_shade.set_event_handler(
@@ -815,30 +814,14 @@ void Sequencer::show_sequencers() {
 		TRANSITION_TIME,
 		[this](float progress) mutable {
 			auto reverse_progress = 1.0f - progress;
-			{
-				std::stringstream opacity;
-				opacity << "opacity:" << (reverse_progress);
-				trashcan_icon.set_style(opacity.str());
-				notes_icon.set_style(opacity.str());
-				loop_icon.set_style(opacity.str());
-				length_icon.set_style(opacity.str());
-				tapped_instance.set_style(opacity.str());
-			}
-			{
-				std::stringstream opacity;
-				opacity << "opacity:" << (reverse_progress - sequencer_shade_hiding_opacity * reverse_progress);
-				sequencer_shade.set_style(opacity.str());
-			}
+			std::stringstream opacity;
+			opacity << "opacity:" << (reverse_progress - sequencer_shade_hiding_opacity * reverse_progress);
+			sequencer_shade.set_style(opacity.str());
 
 			SATAN_DEBUG("show transition animation %f...\n", progress);
 			if(progress >= 1.0f) {
 				SATAN_DEBUG("show transmission complete...\n");
-				trashcan_icon.set_display("none");
-				notes_icon.set_display("none");
-				loop_icon.set_display("none");
-				length_icon.set_display("none");
 				sequencer_shade.set_display("none");
-				tapped_instance.set_display("none");
 			}
 		}
 		);
@@ -905,6 +888,33 @@ void Sequencer::scrolled_vertical(double pixels_changed) {
 	transform_t.init_identity();
 	transform_t.translate(0.0, sequencer_vertical_offset);
 	sequencer_container.set_transform(transform_t);
+}
+
+void Sequencer::hide_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide) {
+	for(auto element : elements_to_hide) {
+		element->set_style("opacity:1.0");
+	}
+
+	auto shade_transition = new KammoGUI::SimpleAnimation(
+		TRANSITION_TIME,
+		[elements_to_hide](float progress) mutable {
+			auto reverse_progress = 1.0f - progress;
+			std::stringstream opacity;
+			opacity << "opacity:" << (reverse_progress);
+			for(auto element : elements_to_hide) {
+				element->set_style(opacity.str());
+			}
+
+			SATAN_DEBUG("hide elements transition animation %f...\n", progress);
+			if(progress >= 1.0f) {
+				SATAN_DEBUG("hide elements transmission complete...\n");
+				for(auto element : elements_to_hide) {
+					element->set_display("none");
+				}
+			}
+		}
+		);
+	sequencer->start_animation(shade_transition);
 }
 
 void Sequencer::vertical_scroll_event(const KammoGUI::MotionEvent &event) {

@@ -189,6 +189,8 @@ private:
 			      std::function<void(int)> drag_length_completed_callback
 		);
 	void scrolled_vertical(double pixels_changed);
+	void hide_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
+	void show_sequencers(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
 
 public:
 
@@ -199,7 +201,6 @@ public:
 			     std::weak_ptr<RISequence>ri_seq,
 			     std::weak_ptr<PatternInstance>instance
 		);
-	void show_sequencers();
 
 	void vertical_scroll_event(const KammoGUI::MotionEvent &event);
 
