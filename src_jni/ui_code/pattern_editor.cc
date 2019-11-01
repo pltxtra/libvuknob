@@ -30,10 +30,13 @@
 #include "common.hh"
 #include "fling_animation.hh"
 
+#include "tap_detector.hh"
+
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 PatternEditor* PatternEditor::singleton = nullptr;
+static TapDetector tap_detector;
 
 void PatternEditor::note_on(int index) {
 	char midi_data[] = {
@@ -228,6 +231,13 @@ void PatternEditor::on_timelines_scroll(double minor_spacing, double horizontal_
 void PatternEditor::on_single_note_event(RINote selected_note,
 					 KammoGUI::GnuVGCanvas::ElementReference *e_ref,
 					 const KammoGUI::MotionEvent &event) {
+	bool not_tapped = true;
+	if(tap_detector.analyze_events(event)) {
+		SATAN_DEBUG("   TAP TAP TAP...\n");
+		note_graphics[selected_note].selected = !(note_graphics[selected_note].selected);
+		e_ref->set_style(note_graphics[selected_note].selected ? "fill:#ffff00" : "fill:#ff00ff");
+		not_tapped = false;
+	}
 	event_current_x = event.get_x();
 	event_current_y = event.get_y() - finger_height / 2.0;
 
@@ -247,7 +257,6 @@ void PatternEditor::on_single_note_event(RINote selected_note,
 		event_start_x = event_current_x;
 		event_start_y = event_current_y;
 		new_tone = current_tone;
-		note_on(new_tone);
 		break;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
 		SATAN_DEBUG("event_current_x: %f\n", event_current_x);
@@ -262,7 +271,7 @@ void PatternEditor::on_single_note_event(RINote selected_note,
 		note_off(new_tone);
 		SATAN_DEBUG("new_tone: %d (%f -> %f)\n", new_tone, event_left_x, event_right_x);
 
-		if(start_at_sequence_position != stop_at_sequence_position) {
+		if(not_tapped && (start_at_sequence_position != stop_at_sequence_position)) {
 			ri_seq->delete_note(
 				pattern_id,
 				selected_note
@@ -355,6 +364,7 @@ void PatternEditor::create_note_graphic(const RINote &new_note) {
 	note_graphics[new_note] = NoteGraphic {
 		.id = new_id,
 		.note = new_note,
+		.selected = false,
 		.graphic_reference = elref
 	};
 
@@ -362,6 +372,7 @@ void PatternEditor::create_note_graphic(const RINote &new_note) {
 		[this, new_note](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
 		       KammoGUI::GnuVGCanvas::ElementReference *e_ref,
 		       const KammoGUI::MotionEvent &event) {
+			SATAN_DEBUG("Note graphic event...\n");
 			on_single_note_event(new_note, e_ref, event);
 		}
 		);

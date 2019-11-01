@@ -34,6 +34,7 @@ typedef RemoteInterface::ClientSpace::Sequence::Note RINote;
 struct NoteGraphic {
 	uint32_t id;
 	RINote note;
+	bool selected;
 	KammoGUI::GnuVGCanvas::ElementReference graphic_reference;
 };
 
