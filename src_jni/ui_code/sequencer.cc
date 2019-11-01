@@ -624,6 +624,7 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 		auto instance_stop = instance_data.stop_at;
 		auto instance_start = instance_data.start_at;
 		auto instance_length = instance_stop - instance_start;
+		auto instance_loop_length = instance_data.loop_length;
 		auto instance_start_pixel = timelines->get_pixel_value_for_sequence_line_position(instance_start);
 		tapped_instance.set_display("inline");
 		tapped_instance.set_style("opacity:0.0");
@@ -651,6 +652,51 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 			    pixels_per_line,
 			    instance_length,
 			    finger_height);
+		auto icon_anchor_x_line_position = timelines->get_sequence_line_position_at(icon_anchor_x);
+
+		auto loop_drag_completed_callback =
+			[this, ri_seq_w, tapped_instance_w](int new_loop_length) {
+			auto instance = tapped_instance_w.lock();
+			auto ri_seq = ri_seq_w.lock();
+			if(instance && ri_seq) {
+				auto instance_data = instance->data();
+				SATAN_ERROR("new loop length: %d\n", new_loop_length);
+
+				auto old_loop_length = instance_data.loop_length;
+				if(new_loop_length != old_loop_length) {
+					if(new_loop_length <= 0)
+						new_loop_length = -1;
+					ri_seq->delete_pattern_from_sequence(instance_data);
+					ri_seq->insert_pattern_in_sequence(
+						instance_data.pattern_id,
+						instance_data.start_at, new_loop_length,
+						instance_data.stop_at);
+				}
+			}
+
+			sequencer->show_sequencers({&loop_icon, &tapped_instance});
+			loop_settings->show();
+			plus_button->show();
+		};
+		loop_icon.set_event_handler(
+			[this, ri_seq_w, tapped_instance_w, pixels_per_line, instance_start, instance_length, instance_loop_length,
+			 icon_anchor_x_line_position, icon_anchor_y, loop_drag_completed_callback](
+				SVGDocument *source,
+				KammoGUI::GnuVGCanvas::ElementReference *e,
+				const KammoGUI::MotionEvent &event
+				) {
+				if(event.get_action() == KammoGUI::MotionEvent::ACTION_DOWN) {
+					sequencer->hide_elements({&trashcan_icon, &notes_icon, &length_icon});
+				}
+				drag_loop_icon(event,
+					       icon_anchor_x_line_position, icon_anchor_y,
+					       pixels_per_line,
+					       instance_start,
+					       instance_length,
+					       loop_drag_completed_callback);
+			}
+			);
+
 		auto length_drag_completed_callback =
 			[this, ri_seq_w, tapped_instance_w](int drag_offset_in_lines) {
 			auto instance = tapped_instance_w.lock();
@@ -675,8 +721,6 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 			loop_settings->show();
 			plus_button->show();
 		};
-
-		auto icon_anchor_x_line_position = timelines->get_sequence_line_position_at(icon_anchor_x);
 		length_icon.set_event_handler(
 			[this, ri_seq_w, tapped_instance_w, pixels_per_line, instance_start,instance_length,
 			 icon_anchor_x_line_position, icon_anchor_y, length_drag_completed_callback](
@@ -690,12 +734,11 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 				drag_length_icon(event,
 						 icon_anchor_x_line_position, icon_anchor_y,
 						 pixels_per_line,
-						 (double)instance_start,
+						 instance_start,
 						 instance_length,
 						 length_drag_completed_callback);
 			}
 			);
-
 	}
 	loop_enabled_icon.set_display(loop_enabled ? "inline" : "none");
 	loop_disabled_icon.set_display(loop_enabled ? "none" : "inline");
@@ -835,7 +878,7 @@ void Sequencer::drag_length_icon(const KammoGUI::MotionEvent &event,
 				 double icon_anchor_x_line_position,
 				 double icon_anchor_y,
 				 double pixels_per_line,
-				 double instance_start,
+				 int instance_start,
 				 int instance_length,
 				 std::function<void(int)> drag_length_completed_callback) {
 	timelines->process_external_scroll_event(event);
@@ -873,6 +916,64 @@ void Sequencer::drag_length_icon(const KammoGUI::MotionEvent &event,
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
 		drag_length_completed_callback(drag_offset);
+		break;
+	}
+}
+
+void Sequencer::drag_loop_icon(const KammoGUI::MotionEvent &event,
+			       double icon_anchor_x_line_position,
+			       double icon_anchor_y,
+			       double pixels_per_line,
+			       int instance_start,
+			       int instance_length,
+			       std::function<void(int)> drag_loop_completed_callback) {
+	timelines->process_external_scroll_event(event);
+
+	auto icon_anchor_x = timelines->get_pixel_value_for_sequence_line_position(icon_anchor_x_line_position);
+	auto instance_start_pixel = timelines->get_pixel_value_for_sequence_line_position(instance_start);
+	auto current_line_position = timelines->get_sequence_line_position_at(event.get_x());
+	auto drag_offset = current_line_position - drag_event_start_line;
+	auto new_loop_length = instance_start + drag_offset;
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
+
+	if(new_loop_length > instance_length) {
+		new_loop_length = instance_length;
+	}
+	if(new_loop_length < 0) {
+		new_loop_length = 0;
+	}
+	double loop_translation = (double)new_loop_length;
+	bool loop_enabled = loop_translation <= 0.0 ? false : true;
+	loop_enabled_icon.set_display(loop_enabled ? "inline" : "none");
+	loop_disabled_icon.set_display(loop_enabled ? "none" : "inline");
+
+	switch(event.get_action()) {
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+		break;
+	case KammoGUI::MotionEvent::ACTION_DOWN:
+		drag_event_start_line = current_line_position;
+		break;
+	case KammoGUI::MotionEvent::ACTION_MOVE:
+		SATAN_ERROR("CURRENT %d, %f, %f, %d, %f\n",
+			    icon_anchor_x,
+			    icon_anchor_y,
+			    pixels_per_line,
+			    instance_length,
+			    finger_height);
+		transform_t.init_identity();
+		transform_t.translate(instance_start_pixel + pixels_per_line * loop_translation, icon_anchor_y);
+		loop_icon.set_transform(transform_t);
+		tapped_instance.set_rect_coords(
+			instance_start_pixel, icon_anchor_y,
+			pixels_per_line * instance_length,
+			finger_height
+			);
+		break;
+	case KammoGUI::MotionEvent::ACTION_UP:
+		drag_loop_completed_callback(new_loop_length);
 		break;
 	}
 }

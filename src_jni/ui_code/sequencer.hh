@@ -179,14 +179,21 @@ private:
 	int canvas_w, canvas_h; // sizes in pixels
 
 	float sequencer_shade_hiding_opacity;
-	double drag_event_start_line;
+	int drag_event_start_line;
 
 	void drag_length_icon(const KammoGUI::MotionEvent &event, // returns true when drag is completed.
 			      double icon_anchor_x, double icon_anchor_y,
 			      double pixels_per_line,
-			      double instance_start,
+			      int instance_start,
 			      int instance_length,
 			      std::function<void(int)> drag_length_completed_callback
+		);
+	void drag_loop_icon(const KammoGUI::MotionEvent &event, // returns true when drag is completed.
+			    double icon_anchor_x, double icon_anchor_y,
+			    double pixels_per_line,
+			    int instance_start,
+			    int instance_length,
+			    std::function<void(int)> drag_length_completed_callback
 		);
 	void scrolled_vertical(double pixels_changed);
 	void hide_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
