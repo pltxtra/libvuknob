@@ -87,6 +87,12 @@ SERVER_CODE(
 		int loop_length = std::stoi(msg.get_value("loop_length"));
 		int stop_at = std::stoi(msg.get_value("stop_at"));
 		bool operation_successfull = false;
+		auto length = (stop_at - start_at);
+
+		if(start_at >= stop_at)
+			return; // incorrect values
+		if(loop_length > length)
+			loop_length = length;
 
 		Machine::machine_operation_enqueue(
 			[this, &operation_successfull,
