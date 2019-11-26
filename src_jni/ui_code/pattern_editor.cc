@@ -37,6 +37,65 @@
 
 PatternEditor* PatternEditor::singleton = nullptr;
 static TapDetector tap_detector;
+static PatternEditorMenu* pattern_editor_menu = nullptr;
+
+/*******************************************************************************
+ *
+ *      PatternEditorMenu
+ *
+ *******************************************************************************/
+
+PatternEditorMenu::PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs)
+	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/testTextABC.svg"), cnvs)
+{
+	root = KammoGUI::GnuVGCanvas::ElementReference(this);
+}
+
+PatternEditorMenu::~PatternEditorMenu() {
+}
+
+void PatternEditorMenu::on_render() {
+}
+
+void PatternEditorMenu::on_resize() {
+	auto canvas = get_canvas();
+	canvas->get_size_pixels(canvas_w, canvas_h);
+	canvas->get_size_inches(canvas_w_inches, canvas_h_inches);
+
+	double tmp;
+
+	tmp = canvas_w_inches / INCHES_PER_FINGER;
+	canvas_width_fingers = (int)tmp;
+	tmp = canvas_h_inches / INCHES_PER_FINGER;
+	canvas_height_fingers = (int)tmp;
+
+	tmp = canvas_w / ((double)canvas_width_fingers);
+	finger_width = tmp;
+	tmp = canvas_h / ((double)canvas_height_fingers);
+	finger_height = tmp;
+
+	// get data
+	root.get_viewport(document_size);
+	scaling = (3.0 * finger_height) / document_size.height;
+
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
+	transform_t.init_identity();
+	transform_t.translate((canvas_width_fingers - 3) * finger_width, (canvas_height_fingers - 6) * finger_height);
+	root.set_transform(transform_t);
+
+}
+
+void PatternEditorMenu::prepare_menu(KammoGUI::GnuVGCanvas* cnvs) {
+	if(pattern_editor_menu) return;
+
+	pattern_editor_menu = new PatternEditorMenu(cnvs);
+}
+
+/*******************************************************************************
+ *
+ *      PatternEditor
+ *
+ *******************************************************************************/
 
 void PatternEditor::note_on(int index) {
 	char midi_data[] = {
@@ -434,6 +493,12 @@ PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
 
 PatternEditor::~PatternEditor() {
 	singleton = nullptr;
+}
+
+std::shared_ptr<PatternEditor> PatternEditor::get_pattern_editor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines) {
+	PatternEditorMenu::prepare_menu(cnvs);
+	if(singleton) return singleton->shared_from_this();
+	return std::shared_ptr<PatternEditor>(new PatternEditor(cnvs, timelines));
 }
 
 void PatternEditor::refresh_note_graphics() {

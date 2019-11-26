@@ -38,6 +38,29 @@ struct NoteGraphic {
 	KammoGUI::GnuVGCanvas::ElementReference graphic_reference;
 };
 
+class PatternEditorMenu
+	: public KammoGUI::GnuVGCanvas::SVGDocument
+{
+private:
+	PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs);
+	~PatternEditorMenu();
+
+	KammoGUI::GnuVGCanvas::ElementReference root;
+	KammoGUI::GnuVGCanvas::SVGRect document_size;
+	double scaling; // graphical scaling factor
+	double finger_width = 10.0, finger_height = 10.0; // sizes in pixels
+	int canvas_width_fingers = 8, canvas_height_fingers = 8; // sizes in "fingers"
+	float canvas_w_inches, canvas_h_inches; // sizes in inches
+	int canvas_w, canvas_h; // sizes in pixels
+
+public:
+
+	virtual void on_resize() override;
+	virtual void on_render() override;
+
+	static void prepare_menu(KammoGUI::GnuVGCanvas* cnvs);
+};
+
 class PatternEditor
 	: public KammoGUI::GnuVGCanvas::SVGDocument
 	, public RISequence::PatternListener
@@ -94,9 +117,11 @@ private:
 				  KammoGUI::GnuVGCanvas::ElementReference *e_ref,
 				  const KammoGUI::MotionEvent &event);
 
-public:
 	PatternEditor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
+public:
 	~PatternEditor();
+
+	static std::shared_ptr<PatternEditor> get_pattern_editor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
 
 	virtual void on_resize() override;
 	virtual void on_render() override;

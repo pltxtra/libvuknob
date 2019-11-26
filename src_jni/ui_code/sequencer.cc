@@ -1196,7 +1196,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 			cnvs,
 			std::string(SVGLoader::get_svg_directory() + "/plusButton.svg"),
 			GnuVGCornerButton::bottom_right);
-		pattern_editor = std::make_shared<PatternEditor>(cnvs, timelines);
+		pattern_editor = PatternEditor::get_pattern_editor(cnvs, timelines);
 		return_button = std::make_shared<GnuVGCornerButton>(
 			cnvs,
 			std::string(SVGLoader::get_svg_directory() + "/leftArrow.svg"),
