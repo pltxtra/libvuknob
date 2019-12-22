@@ -46,7 +46,7 @@ static PatternEditorMenu* pattern_editor_menu = nullptr;
  *******************************************************************************/
 
 PatternEditorMenu::PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs)
-	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/testTextABC.svg"), cnvs)
+	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/patternEditorMenu.svg"), cnvs)
 {
 	root = KammoGUI::GnuVGCanvas::ElementReference(this);
 }
@@ -80,7 +80,7 @@ void PatternEditorMenu::on_resize() {
 
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	transform_t.init_identity();
-	transform_t.translate((canvas_width_fingers - 3) * finger_width, (canvas_height_fingers - 6) * finger_height);
+	transform_t.translate((canvas_width_fingers - 3) * finger_width, (canvas_height_fingers - 3.5) * finger_height);
 	root.set_transform(transform_t);
 
 }
@@ -89,6 +89,14 @@ void PatternEditorMenu::prepare_menu(KammoGUI::GnuVGCanvas* cnvs) {
 	if(pattern_editor_menu) return;
 
 	pattern_editor_menu = new PatternEditorMenu(cnvs);
+}
+
+void PatternEditorMenu::show() {
+	pattern_editor_menu->root.set_display("inline");
+}
+
+void PatternEditorMenu::hide() {
+	pattern_editor_menu->root.set_display("none");
 }
 
 /*******************************************************************************
@@ -496,9 +504,10 @@ PatternEditor::~PatternEditor() {
 }
 
 std::shared_ptr<PatternEditor> PatternEditor::get_pattern_editor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines) {
-	PatternEditorMenu::prepare_menu(cnvs);
 	if(singleton) return singleton->shared_from_this();
-	return std::shared_ptr<PatternEditor>(new PatternEditor(cnvs, timelines));
+	auto  response = std::shared_ptr<PatternEditor>(new PatternEditor(cnvs, timelines));
+	PatternEditorMenu::prepare_menu(cnvs);
+	return response;
 }
 
 void PatternEditor::refresh_note_graphics() {
@@ -592,6 +601,7 @@ void PatternEditor::on_render() {
 
 void PatternEditor::hide() {
 	if(singleton) {
+		PatternEditorMenu::hide();
 		if(singleton->ri_seq) {
 			singleton->ri_seq->drop_pattern_listener(singleton->shared_from_this());
 			singleton->ri_seq.reset();
@@ -608,6 +618,7 @@ void PatternEditor::show(std::function<void()> _on_exit_pattern_editor,
 			 std::shared_ptr<RISequence> ri_seq,
 			 uint32_t pattern_id) {
 	if(singleton && ri_seq) {
+		PatternEditorMenu::show();
 		singleton->on_exit_pattern_editor = _on_exit_pattern_editor;
 		auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(singleton, "layer1");
 		layer1.set_display("inline");

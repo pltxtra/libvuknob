@@ -59,6 +59,8 @@ public:
 	virtual void on_render() override;
 
 	static void prepare_menu(KammoGUI::GnuVGCanvas* cnvs);
+	static void show();
+	static void hide();
 };
 
 class PatternEditor
