@@ -93,6 +93,14 @@ void PatternEditorMenu::prepare_menu(KammoGUI::GnuVGCanvas* cnvs) {
 
 void PatternEditorMenu::show() {
 	pattern_editor_menu->root.set_display("inline");
+
+	auto gridops = KammoGUI::GnuVGCanvas::ElementReference(pattern_editor_menu, "gridOperationsContainer");
+	auto patops = KammoGUI::GnuVGCanvas::ElementReference(pattern_editor_menu, "patternIdOperationsContainer");
+	auto memops = KammoGUI::GnuVGCanvas::ElementReference(pattern_editor_menu, "memoryOperationsContainer");
+
+	gridops.set_display("none");
+	patops.set_display("none");
+	memops.set_display("none");
 }
 
 void PatternEditorMenu::hide() {
