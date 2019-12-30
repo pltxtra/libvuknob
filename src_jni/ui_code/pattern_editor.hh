@@ -42,8 +42,23 @@ class PatternEditorMenu
 	: public KammoGUI::GnuVGCanvas::SVGDocument
 {
 private:
+	enum MenuMode {
+		no_mode,
+		gridops_mode,
+		patops_mode,
+		memops_mode
+	};
+	MenuMode current_menu_mode = no_mode;
+
 	PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs);
 	~PatternEditorMenu();
+
+	KammoGUI::GnuVGCanvas::ElementReference gridops_container, patops_container, memops_container;
+	KammoGUI::GnuVGCanvas::ElementReference deselect_button, gridops_button, patops_button, memops_button;
+	KammoGUI::GnuVGCanvas::ElementReference pattern_id_plus_button, pattern_id_minus_button;
+	KammoGUI::GnuVGCanvas::ElementReference shift_one_up_button, shift_octave_up_button_, shift_one_left_button;
+	KammoGUI::GnuVGCanvas::ElementReference shift_one_down_button, shift_octave_down_button_, shift_one_right_button;
+	KammoGUI::GnuVGCanvas::ElementReference pattern_id_plus_button, pattern_id_minus_button;
 
 	KammoGUI::GnuVGCanvas::ElementReference root;
 	KammoGUI::GnuVGCanvas::SVGRect document_size;

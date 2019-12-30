@@ -49,6 +49,91 @@ PatternEditorMenu::PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs)
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/patternEditorMenu.svg"), cnvs)
 {
 	root = KammoGUI::GnuVGCanvas::ElementReference(this);
+
+	gridops_container = KammoGUI::GnuVGCanvas::ElementReference(this, "gridOperationsContainer");
+	patops_container = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdOperationsContainer");
+	memops_container = KammoGUI::GnuVGCanvas::ElementReference(this, "memoryOperationsContainer");
+
+	gridops_container.set_display("none");
+	patops_container.set_display("none");
+	memops_container.set_display("none");
+
+	deselect_button = KammoGUI::GnuVGCanvas::ElementReference(this, "deselectButton");
+	deselect_button.set_display("none");
+
+	gridops_button = KammoGUI::GnuVGCanvas::ElementReference(this, "gridOperationsButton");
+	patops_button = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdButton");
+	memops_button = KammoGUI::GnuVGCanvas::ElementReference(this, "memoryOperationsButton");
+
+	gridops_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			SATAN_DEBUG("gridops_button pressed...\n");
+			if(tap_detector.analyze_events(event)) {
+				gridops_container.set_display("none");
+				patops_container.set_display("none");
+				memops_container.set_display("none");
+				if(current_menu_mode != gridops_mode) {
+					current_menu_mode = gridops_mode;
+					gridops_container.set_display("inline");
+				} else {
+					current_menu_mode = no_mode;
+				}
+			}
+		}
+		);
+	patops_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			SATAN_DEBUG("patops_button pressed...\n");
+			if(tap_detector.analyze_events(event)) {
+				gridops_container.set_display("none");
+				patops_container.set_display("none");
+				memops_container.set_display("none");
+				if(current_menu_mode != patops_mode) {
+					current_menu_mode = patops_mode;
+					patops_container.set_display("inline");
+				} else {
+					current_menu_mode = no_mode;
+				}
+			}
+		}
+		);
+	memops_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			SATAN_DEBUG("gridops_button pressed...\n");
+			if(tap_detector.analyze_events(event)) {
+				gridops_container.set_display("none");
+				patops_container.set_display("none");
+				memops_container.set_display("none");
+				if(current_menu_mode != memops_mode) {
+					current_menu_mode = memops_mode;
+					memops_container.set_display("inline");
+				} else {
+					current_menu_mode = no_mode;
+				}
+			}
+		}
+		);
+
+	shift_one_up_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOneUp");
+	shift_octave_up_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOctaveUp");
+	shift_one_left_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOneLeft");
+	shift_one_down_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOneDown");
+	shift_octave_down_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOctaveDown");
+	shift_one_right_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOneRight");
+
+	copy_button = KammoGUI::GnuVGCanvas::ElementReference(this, "copyButton");
+	paste_button = KammoGUI::GnuVGCanvas::ElementReference(this, "pasteButton");
+	delete_button = KammoGUI::GnuVGCanvas::ElementReference(this, "deleteBUtton");
+
+	pattern_id_plus_button = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdPlusButton");
+	pattern_id_minus_button = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdMiusButton");
+
 }
 
 PatternEditorMenu::~PatternEditorMenu() {
@@ -94,13 +179,10 @@ void PatternEditorMenu::prepare_menu(KammoGUI::GnuVGCanvas* cnvs) {
 void PatternEditorMenu::show() {
 	pattern_editor_menu->root.set_display("inline");
 
-	auto gridops = KammoGUI::GnuVGCanvas::ElementReference(pattern_editor_menu, "gridOperationsContainer");
-	auto patops = KammoGUI::GnuVGCanvas::ElementReference(pattern_editor_menu, "patternIdOperationsContainer");
-	auto memops = KammoGUI::GnuVGCanvas::ElementReference(pattern_editor_menu, "memoryOperationsContainer");
-
-	gridops.set_display("none");
-	patops.set_display("none");
-	memops.set_display("none");
+	pattern_editor_menu->gridops_container.set_display("none");
+	pattern_editor_menu->patops_container.set_display("none");
+	pattern_editor_menu->memops_container.set_display("none");
+	pattern_editor_menu->current_menu_mode = no_mode;
 }
 
 void PatternEditorMenu::hide() {
