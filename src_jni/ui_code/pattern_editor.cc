@@ -60,6 +60,7 @@ PatternEditorMenu::PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs)
 
 	deselect_button = KammoGUI::GnuVGCanvas::ElementReference(this, "deselectButton");
 	deselect_button.set_display("none");
+	deselect_text = KammoGUI::GnuVGCanvas::ElementReference(this, "deselectText");
 
 	gridops_button = KammoGUI::GnuVGCanvas::ElementReference(this, "gridOperationsButton");
 	patops_button = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdButton");
@@ -191,7 +192,10 @@ void PatternEditorMenu::hide() {
 
 void PatternEditorMenu::set_deselectable_count(int selected_notes_counter) {
 	if(selected_notes_counter > 0) {
+		std::ostringstream stream;
+		stream << "Deselect " << selected_notes_counter;
 		pattern_editor_menu->deselect_button.set_display("inline");
+		pattern_editor_menu->deselect_text.set_text_content(stream.str());
 	} else {
 		pattern_editor_menu->deselect_button.set_display("none");
 	}
