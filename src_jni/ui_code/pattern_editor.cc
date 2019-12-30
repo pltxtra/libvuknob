@@ -129,10 +129,10 @@ PatternEditorMenu::PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs)
 
 	copy_button = KammoGUI::GnuVGCanvas::ElementReference(this, "copyButton");
 	paste_button = KammoGUI::GnuVGCanvas::ElementReference(this, "pasteButton");
-	delete_button = KammoGUI::GnuVGCanvas::ElementReference(this, "deleteBUtton");
+	delete_button = KammoGUI::GnuVGCanvas::ElementReference(this, "deleteButton");
 
 	pattern_id_plus_button = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdPlusButton");
-	pattern_id_minus_button = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdMiusButton");
+	pattern_id_minus_button = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdMinusButton");
 
 }
 
@@ -189,11 +189,28 @@ void PatternEditorMenu::hide() {
 	pattern_editor_menu->root.set_display("none");
 }
 
+void PatternEditorMenu::set_deselectable_count(int selected_notes_counter) {
+	if(selected_notes_counter > 0) {
+		pattern_editor_menu->deselect_button.set_display("inline");
+	} else {
+		pattern_editor_menu->deselect_button.set_display("none");
+	}
+}
+
 /*******************************************************************************
  *
  *      PatternEditor
  *
  *******************************************************************************/
+
+void PatternEditor::update_selected_notes_counter() {
+	int selected_notes_counter = 0;
+	for(auto ngph : note_graphics) {
+		if(ngph.second.selected)
+			++selected_notes_counter;
+	}
+	PatternEditorMenu::set_deselectable_count(selected_notes_counter);
+}
 
 void PatternEditor::note_on(int index) {
 	char midi_data[] = {
@@ -394,6 +411,8 @@ void PatternEditor::on_single_note_event(RINote selected_note,
 		note_graphics[selected_note].selected = !(note_graphics[selected_note].selected);
 		e_ref->set_style(note_graphics[selected_note].selected ? "fill:#ffff00" : "fill:#ff00ff");
 		not_tapped = false;
+
+		update_selected_notes_counter();
 	}
 	event_current_x = event.get_x();
 	event_current_y = event.get_y() - finger_height / 2.0;
@@ -550,6 +569,7 @@ void PatternEditor::delete_note_graphic(const RINote &note) {
 		v.graphic_reference.drop_element();
 		note_graphics.erase(found_element);
 	}
+	update_selected_notes_counter();
 }
 
 PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
@@ -635,6 +655,7 @@ void PatternEditor::clear_note_graphics() {
 		n_grph.second.graphic_reference.drop_element();
 	}
 	note_graphics.clear();
+	PatternEditorMenu::set_deselectable_count(0);
 }
 
 void PatternEditor::on_resize() {

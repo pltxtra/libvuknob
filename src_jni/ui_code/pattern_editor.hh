@@ -55,9 +55,9 @@ private:
 
 	KammoGUI::GnuVGCanvas::ElementReference gridops_container, patops_container, memops_container;
 	KammoGUI::GnuVGCanvas::ElementReference deselect_button, gridops_button, patops_button, memops_button;
-	KammoGUI::GnuVGCanvas::ElementReference pattern_id_plus_button, pattern_id_minus_button;
-	KammoGUI::GnuVGCanvas::ElementReference shift_one_up_button, shift_octave_up_button_, shift_one_left_button;
-	KammoGUI::GnuVGCanvas::ElementReference shift_one_down_button, shift_octave_down_button_, shift_one_right_button;
+	KammoGUI::GnuVGCanvas::ElementReference shift_one_up_button, shift_octave_up_button, shift_one_left_button;
+	KammoGUI::GnuVGCanvas::ElementReference shift_one_down_button, shift_octave_down_button, shift_one_right_button;
+	KammoGUI::GnuVGCanvas::ElementReference copy_button, paste_button, delete_button;
 	KammoGUI::GnuVGCanvas::ElementReference pattern_id_plus_button, pattern_id_minus_button;
 
 	KammoGUI::GnuVGCanvas::ElementReference root;
@@ -76,6 +76,7 @@ public:
 	static void prepare_menu(KammoGUI::GnuVGCanvas* cnvs);
 	static void show();
 	static void hide();
+	static void set_deselectable_count(int k);
 };
 
 class PatternEditor
@@ -115,6 +116,8 @@ private:
 
 	IDAllocator note_graphics_id_allocator;
 	std::map<RINote, NoteGraphic> note_graphics;
+
+	void update_selected_notes_counter();
 
 	void note_on(int index);
 	void note_off(int index);
