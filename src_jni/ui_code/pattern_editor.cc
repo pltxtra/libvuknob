@@ -144,6 +144,16 @@ PatternEditorMenu::PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs)
 	pattern_id_plus_button = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdPlusButton");
 	pattern_id_minus_button = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdMinusButton");
 
+
+	delete_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				PatternEditor::perform_operation(PatternEditor::delete_notes);
+			}
+		}
+		);
 }
 
 PatternEditorMenu::~PatternEditorMenu() {
@@ -231,6 +241,33 @@ void PatternEditor::deselect_all() {
 			deselect(ngph.second);
 	}
 	update_selected_notes_counter();
+}
+
+void PatternEditor::delete_selected_notes() {
+	auto selection = get_selection(true);
+	if(selection.size() == note_graphics.size()) {
+		SATAN_DEBUG("Deleting ALL notes...\n");
+	}
+	for(auto selected_note : selection) {
+		ri_seq->delete_note(
+			pattern_id,
+			selected_note
+			);
+	}
+}
+
+std::set<RINote> PatternEditor::get_selection(bool all_if_selection_is_empty = false) {
+	std::set<RINote> selection;
+	for(auto ngph : note_graphics) {
+		if(ngph.second->selected)
+			selection.insert(ngph.second->note);
+	}
+	if(all_if_selection_is_empty && selection.size() == 0) {
+		for(auto ngph : note_graphics) {
+			selection.insert(ngph.second->note);
+		}
+	}
+	return selection;
 }
 
 void PatternEditor::select(NoteGraphic &ngph) {
@@ -671,6 +708,7 @@ void PatternEditor::internal_perform_operation(PatternEditor::PatternEditorOpera
 	case paste_notes:
 		break;
 	case delete_notes:
+		delete_selected_notes();
 		break;
 	case pattern_id_plus:
 		break;

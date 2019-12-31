@@ -130,7 +130,12 @@ private:
 	std::map<RINote, NoteGraphic> note_graphics;
 
 	void update_selected_notes_counter();
+
+	// Operations
 	void deselect_all();
+	void delete_selected_notes();
+
+	std::set<RINote> get_selection(bool all_if_selection_is_empty);
 
 	void select(NoteGraphic &ngph);
 	void deselect(NoteGraphic &ngph);
