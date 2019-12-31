@@ -60,6 +60,13 @@ PatternEditorMenu::PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs)
 
 	deselect_button = KammoGUI::GnuVGCanvas::ElementReference(this, "deselectButton");
 	deselect_button.set_display("none");
+	deselect_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			PatternEditor::perform_operation(PatternEditor::deselect_all_notes);
+		}
+		);
 	deselect_text = KammoGUI::GnuVGCanvas::ElementReference(this, "deselectText");
 
 	gridops_button = KammoGUI::GnuVGCanvas::ElementReference(this, "gridOperationsButton");
@@ -214,6 +221,24 @@ void PatternEditor::update_selected_notes_counter() {
 			++selected_notes_counter;
 	}
 	PatternEditorMenu::set_deselectable_count(selected_notes_counter);
+}
+
+void PatternEditor::deselect_all() {
+	for(auto ngph : note_graphics) {
+		if(ngph.second.selected)
+			deselect(ngph.second);
+	}
+	update_selected_notes_counter();
+}
+
+void PatternEditor::select(NoteGraphic &ngph) {
+	ngph.selected = true;
+	ngph.graphic_reference.set_style("fill:#ffff00");
+}
+
+void PatternEditor::deselect(NoteGraphic &ngph) {
+	ngph.selected = false;
+	ngph.graphic_reference.set_style("fill:#ff00ff");
 }
 
 void PatternEditor::note_on(int index) {
@@ -412,8 +437,10 @@ void PatternEditor::on_single_note_event(RINote selected_note,
 	bool not_tapped = true;
 	if(tap_detector.analyze_events(event)) {
 		SATAN_DEBUG("   TAP TAP TAP...\n");
-		note_graphics[selected_note].selected = !(note_graphics[selected_note].selected);
-		e_ref->set_style(note_graphics[selected_note].selected ? "fill:#ffff00" : "fill:#ff00ff");
+		if(note_graphics[selected_note].selected)
+			deselect(note_graphics[selected_note]);
+		else
+			select(note_graphics[selected_note]);
 		not_tapped = false;
 
 		update_selected_notes_counter();
@@ -615,6 +642,41 @@ PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
 
 PatternEditor::~PatternEditor() {
 	singleton = nullptr;
+}
+
+void PatternEditor::internal_perform_operation(PatternEditor::PatternEditorOperation p_operation) {
+	switch(p_operation) {
+	case deselect_all_notes:
+		deselect_all();
+		break;
+	case shift_one_up:
+		break;
+	case shift_octave_up:
+		break;
+	case shift_one_left:
+		break;
+	case shift_one_down:
+		break;
+	case shift_octave_down:
+		break;
+	case shift_one_right:
+		break;
+	case copy_notes:
+		break;
+	case paste_notes:
+		break;
+	case delete_notes:
+		break;
+	case pattern_id_plus:
+		break;
+	case pattern_id_minus:
+		break;
+	}
+}
+
+void PatternEditor::perform_operation(PatternEditorOperation p_operation) {
+	if(singleton)
+		singleton->internal_perform_operation(p_operation);
 }
 
 std::shared_ptr<PatternEditor> PatternEditor::get_pattern_editor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines) {

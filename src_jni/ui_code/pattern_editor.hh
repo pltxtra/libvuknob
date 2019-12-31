@@ -85,6 +85,15 @@ class PatternEditor
 	, public RISequence::PatternListener
 	, public std::enable_shared_from_this<PatternEditor>
 {
+public:
+	enum PatternEditorOperation {
+		deselect_all_notes,
+		shift_one_up, shift_octave_up, shift_one_left,
+		shift_one_down, shift_octave_down, shift_one_right,
+		copy_notes, paste_notes, delete_notes,
+		pattern_id_plus,
+		pattern_id_minus
+	};
 private:
 	static PatternEditor *singleton;
 
@@ -119,6 +128,10 @@ private:
 	std::map<RINote, NoteGraphic> note_graphics;
 
 	void update_selected_notes_counter();
+	void deselect_all();
+
+	void select(NoteGraphic &ngph);
+	void deselect(NoteGraphic &ngph);
 
 	void note_on(int index);
 	void note_off(int index);
@@ -138,14 +151,18 @@ private:
 				  KammoGUI::GnuVGCanvas::ElementReference *e_ref,
 				  const KammoGUI::MotionEvent &event);
 
+	void internal_perform_operation(PatternEditorOperation p_operation);
+
 	PatternEditor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
 public:
 	~PatternEditor();
 
-	static std::shared_ptr<PatternEditor> get_pattern_editor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
-
 	virtual void on_resize() override;
 	virtual void on_render() override;
+
+	static void perform_operation(PatternEditorOperation p_operation);
+
+	static std::shared_ptr<PatternEditor> get_pattern_editor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
 
 	static void hide();
 	static void show(std::function<void()> on_exit_pattern_editor,
