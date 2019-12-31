@@ -31,12 +31,14 @@
 typedef RemoteInterface::ClientSpace::Sequence RISequence;
 typedef RemoteInterface::ClientSpace::Sequence::Note RINote;
 
-struct NoteGraphic {
+struct NoteGraphic_s {
 	uint32_t id;
 	RINote note;
 	bool selected;
 	KammoGUI::GnuVGCanvas::ElementReference graphic_reference;
 };
+
+typedef std::shared_ptr<NoteGraphic_s> NoteGraphic;
 
 class PatternEditorMenu
 	: public KammoGUI::GnuVGCanvas::SVGDocument

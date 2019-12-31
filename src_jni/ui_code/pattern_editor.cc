@@ -64,7 +64,9 @@ PatternEditorMenu::PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs)
 		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
 		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
 		       const KammoGUI::MotionEvent &event) {
-			PatternEditor::perform_operation(PatternEditor::deselect_all_notes);
+			if(tap_detector.analyze_events(event)) {
+				PatternEditor::perform_operation(PatternEditor::deselect_all_notes);
+			}
 		}
 		);
 	deselect_text = KammoGUI::GnuVGCanvas::ElementReference(this, "deselectText");
@@ -217,7 +219,7 @@ void PatternEditorMenu::set_deselectable_count(int selected_notes_counter) {
 void PatternEditor::update_selected_notes_counter() {
 	int selected_notes_counter = 0;
 	for(auto ngph : note_graphics) {
-		if(ngph.second.selected)
+		if(ngph.second->selected)
 			++selected_notes_counter;
 	}
 	PatternEditorMenu::set_deselectable_count(selected_notes_counter);
@@ -225,20 +227,22 @@ void PatternEditor::update_selected_notes_counter() {
 
 void PatternEditor::deselect_all() {
 	for(auto ngph : note_graphics) {
-		if(ngph.second.selected)
+		if(ngph.second->selected)
 			deselect(ngph.second);
 	}
 	update_selected_notes_counter();
 }
 
 void PatternEditor::select(NoteGraphic &ngph) {
-	ngph.selected = true;
-	ngph.graphic_reference.set_style("fill:#ffff00");
+	SATAN_DEBUG("select() on %p\n", &ngph);
+	ngph->selected = true;
+	ngph->graphic_reference.set_style("fill:#ffff00");
 }
 
 void PatternEditor::deselect(NoteGraphic &ngph) {
-	ngph.selected = false;
-	ngph.graphic_reference.set_style("fill:#ff00ff");
+	SATAN_DEBUG("deselect() on %p\n", &ngph);
+	ngph->selected = false;
+	ngph->graphic_reference.set_style("fill:#ff00ff");
 }
 
 void PatternEditor::note_on(int index) {
@@ -437,7 +441,7 @@ void PatternEditor::on_single_note_event(RINote selected_note,
 	bool not_tapped = true;
 	if(tap_detector.analyze_events(event)) {
 		SATAN_DEBUG("   TAP TAP TAP...\n");
-		if(note_graphics[selected_note].selected)
+		if(note_graphics[selected_note]->selected)
 			deselect(note_graphics[selected_note]);
 		else
 			select(note_graphics[selected_note]);
@@ -568,14 +572,13 @@ void PatternEditor::create_note_graphic(const RINote &new_note) {
 	SATAN_DEBUG("Graphic inserted: %s", ss.str().c_str());
 	KammoGUI::GnuVGCanvas::ElementReference elref(&note_container, ss_new_id.str());
 
-	note_graphics[new_note] = NoteGraphic {
-		.id = new_id,
-		.note = new_note,
-		.selected = false,
-		.graphic_reference = elref
-	};
+	auto ngph = std::make_shared<NoteGraphic_s>();
+	ngph->id = new_id;
+	ngph->note = new_note;
+	ngph->selected = false;
+	ngph->graphic_reference = std::move(elref);
 
-	note_graphics[new_note].graphic_reference.set_event_handler(
+	ngph->graphic_reference.set_event_handler(
 		[this, new_note](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
 		       KammoGUI::GnuVGCanvas::ElementReference *e_ref,
 		       const KammoGUI::MotionEvent &event) {
@@ -583,6 +586,8 @@ void PatternEditor::create_note_graphic(const RINote &new_note) {
 			on_single_note_event(new_note, e_ref, event);
 		}
 		);
+
+	note_graphics[new_note] = ngph;
 
 	refresh_note_graphics();
 }
@@ -594,10 +599,10 @@ void PatternEditor::delete_note_graphic(const RINote &note) {
 	if(found_element != note_graphics.end()) {
 		auto v = found_element->second;
 		SATAN_DEBUG("Will delete note graphic for: %d (%d -> %d)\n",
-			    v.note.note,
-			    v.note.on_at,
-			    v.note.length);
-		v.graphic_reference.drop_element();
+			    v->note.note,
+			    v->note.on_at,
+			    v->note.length);
+		v->graphic_reference.drop_element();
 		note_graphics.erase(found_element);
 	}
 	update_selected_notes_counter();
@@ -698,7 +703,7 @@ void PatternEditor::refresh_note_graphics() {
 
 	for(auto n_grph : note_graphics) {
 		auto n = n_grph.first;
-		auto g = n_grph.second.graphic_reference;
+		auto g = n_grph.second->graphic_reference;
 		if(lowest_note <= n.note && n.note < highest_note &&
 		   earliest_visible_note < (n.on_at + n.length) && n.on_at < last_visible_note) {
 			g.set_display("inline");
@@ -718,7 +723,7 @@ void PatternEditor::refresh_note_graphics() {
 
 void PatternEditor::clear_note_graphics() {
 	for(auto n_grph : note_graphics) {
-		n_grph.second.graphic_reference.drop_element();
+		n_grph.second->graphic_reference.drop_element();
 	}
 	note_graphics.clear();
 	PatternEditorMenu::set_deselectable_count(0);
