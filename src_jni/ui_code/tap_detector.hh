@@ -20,6 +20,7 @@
 #ifndef VUKNOB_TAP_DETECTOR
 #define VUKNOB_TAP_DETECTOR
 
+#include <math.h>
 #include <gnuVGcanvas.hh>
 #include "time_measure.hh"
 

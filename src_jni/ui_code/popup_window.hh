@@ -32,7 +32,10 @@ private:
 	float canvas_w_inches, canvas_h_inches;
 	double finger_width = 10.0, finger_height = 10.0, scaling = 1.0;
 
-	KammoGUI::GnuVGCanvas::ElementReference backdrop, yes_button, no_button;
+	KammoGUI::GnuVGCanvas::ElementReference root, container, backdrop, yes_button, no_button;
+
+	void hide();
+	void show();
 
 public:
 	enum UserResponse {
