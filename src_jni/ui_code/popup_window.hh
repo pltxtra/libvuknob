@@ -25,6 +25,11 @@
 class PopupWindow
 	: public KammoGUI::GnuVGCanvas::SVGDocument
 {
+public:
+	enum UserResponse {
+		yes, no
+	};
+
 private:
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
 	int canvas_w, canvas_h;
@@ -33,22 +38,27 @@ private:
 	double finger_width = 10.0, finger_height = 10.0, scaling = 1.0;
 
 	KammoGUI::GnuVGCanvas::ElementReference root, container, backdrop, yes_button, no_button;
+	std::function<void(UserResponse response)> response_callback;
 
 	void hide();
 	void show();
 
-public:
-	enum UserResponse {
-		yes, no
-	};
-
+	static PopupWindow *singleton;
 	PopupWindow(KammoGUI::GnuVGCanvas* cnvs);
+
+public:
 	~PopupWindow();
 
 	virtual void on_resize() override;
 	virtual void on_render() override;
 
-	static void ask_yes_or_no(std::function<void(UserResponse response)> response_callback);
+	static void prepare(KammoGUI::GnuVGCanvas* cnvs);
+	static void ask_yes_or_no(
+		std::string row1,
+		std::string row2,
+		std::string row3,
+		std::function<void(UserResponse response)> response_callback
+		);
 };
 
 #endif

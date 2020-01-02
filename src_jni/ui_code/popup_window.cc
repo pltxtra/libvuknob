@@ -32,6 +32,7 @@
 #include "satan_debug.hh"
 
 static TapDetector tap_detector;
+PopupWindow* PopupWindow::singleton = nullptr;
 
 void PopupWindow::hide() {
 	auto fade_out = new KammoGUI::SimpleAnimation(
@@ -65,6 +66,8 @@ void PopupWindow::show() {
 
 PopupWindow::PopupWindow(KammoGUI::GnuVGCanvas* cnvs)
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/popupWindow.svg"), cnvs) {
+	root = KammoGUI::GnuVGCanvas::ElementReference(this);
+	root.set_display("none");
 }
 
 PopupWindow::~PopupWindow() {
@@ -88,7 +91,6 @@ void PopupWindow::on_resize() {
 	finger_height = tmp;
 
 	// scale document
-	root = KammoGUI::GnuVGCanvas::ElementReference(this);
 	container = KammoGUI::GnuVGCanvas::ElementReference(this, "container");
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	transform_t.init_identity();
@@ -123,6 +125,7 @@ void PopupWindow::on_resize() {
 			SATAN_DEBUG("Yes pressed\n");
 			if(tap_detector.analyze_events(event)) {
 				hide();
+				response_callback(yes);
 			}
 		}
 		);
@@ -133,6 +136,7 @@ void PopupWindow::on_resize() {
 			SATAN_DEBUG("No pressed\n");
 			if(tap_detector.analyze_events(event)) {
 				hide();
+				response_callback(no);
 			}
 		}
 		);
@@ -141,5 +145,32 @@ void PopupWindow::on_resize() {
 void PopupWindow::on_render() {
 }
 
-void PopupWindow::ask_yes_or_no(std::function<void(UserResponse response)> response_callback) {
+void PopupWindow::prepare(KammoGUI::GnuVGCanvas* cnvs) {
+	SATAN_DEBUG("PopupWindow::prepare() 1\n");
+	if(singleton) return;
+	SATAN_DEBUG("PopupWindow::prepare() 2\n");
+	singleton = new PopupWindow(cnvs);
+	SATAN_DEBUG("PopupWindow::prepare() 3\n");
+}
+
+void PopupWindow::ask_yes_or_no(
+	std::string row1,
+	std::string row2,
+	std::string row3,
+	std::function<void(UserResponse response)> _response_callback
+	) {
+	if(!singleton) {
+		SATAN_ERROR("PopupWindow class not prepared. (row 1 is %s)\n", row1.c_str());
+		return;
+	}
+	singleton->response_callback = _response_callback;
+
+	auto text_row_1 = KammoGUI::GnuVGCanvas::ElementReference(singleton, "textRow1");
+	auto text_row_2 = KammoGUI::GnuVGCanvas::ElementReference(singleton, "textRow2");
+	auto text_row_3 = KammoGUI::GnuVGCanvas::ElementReference(singleton, "textRow3");
+	text_row_1.set_text_content(row1);
+	text_row_2.set_text_content(row2);
+	text_row_3.set_text_content(row3);
+
+	singleton->show();
 }

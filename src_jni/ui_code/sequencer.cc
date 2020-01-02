@@ -49,7 +49,6 @@ static std::shared_ptr<GnuVGCornerButton> plus_button;
 static std::shared_ptr<GnuVGCornerButton> return_button;
 static std::shared_ptr<PatternEditor> pattern_editor;
 static std::shared_ptr<LoopSettings> loop_settings;
-static std::shared_ptr<PopupWindow> popup_window;
 static TapDetector tap_detector;
 
 /***************************
@@ -1231,7 +1230,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		RemoteInterface::ClientSpace::Client::register_object_set_listener<GCO>(timelines);
 		RemoteInterface::ClientSpace::Client::register_object_set_listener<GCO>(loop_settings);
 
-		popup_window = std::make_shared<PopupWindow>(cnvs);
+		PopupWindow::prepare(cnvs);
 	}
 }
 

@@ -29,6 +29,7 @@
 #include "svg_loader.hh"
 #include "common.hh"
 #include "fling_animation.hh"
+#include "popup_window.hh"
 
 #include "tap_detector.hh"
 
@@ -245,14 +246,26 @@ void PatternEditor::deselect_all() {
 
 void PatternEditor::delete_selected_notes() {
 	auto selection = get_selection(true);
-	if(selection.size() == note_graphics.size()) {
-		SATAN_DEBUG("Deleting ALL notes...\n");
+	if(selection.size() == 0) {
+		SATAN_DEBUG("PatternEditor::delete_selected_notes() on empty selection.\n");
+		return;
 	}
-	for(auto selected_note : selection) {
-		ri_seq->delete_note(
-			pattern_id,
-			selected_note
-			);
+
+	auto delete_on_yes = [this, selection](PopupWindow::UserResponse response) {
+		if(response == PopupWindow::yes) {
+			for(auto selected_note : selection) {
+				ri_seq->delete_note(
+					pattern_id,
+					selected_note
+					);
+			}
+		}
+	};
+
+	if(selection.size() == note_graphics.size()) {
+		PopupWindow::ask_yes_or_no("Do you want", "to delete", "all notes?", delete_on_yes);
+	} else {
+		delete_on_yes(PopupWindow::yes);
 	}
 }
 
