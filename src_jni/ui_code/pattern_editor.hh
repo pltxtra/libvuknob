@@ -160,6 +160,9 @@ private:
 
 	void internal_perform_operation(PatternEditorOperation p_operation);
 
+	void cleanup_pattern_listening();
+	void use_sequence_and_pattern(std::shared_ptr<RISequence> ri_seq, uint32_t pattern_id);
+
 	PatternEditor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
 public:
 	~PatternEditor();

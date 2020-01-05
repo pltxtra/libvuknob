@@ -834,16 +834,28 @@ void PatternEditor::on_render() {
 void PatternEditor::hide() {
 	if(singleton) {
 		PatternEditorMenu::hide();
-		if(singleton->ri_seq) {
-			singleton->ri_seq->drop_pattern_listener(singleton->shared_from_this());
-			singleton->ri_seq.reset();
-		}
+		singleton->cleanup_pattern_listening();
 		auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(singleton, "layer1");
 		layer1.set_display("none");
 
 		if(singleton->on_exit_pattern_editor)
 			singleton->on_exit_pattern_editor();
 	}
+}
+
+void PatternEditor::cleanup_pattern_listening() {
+	if(ri_seq) {
+		ri_seq->drop_pattern_listener(shared_from_this());
+		ri_seq.reset();
+	}
+}
+
+void PatternEditor::use_sequence_and_pattern(std::shared_ptr<RISequence> _ri_seq, uint32_t _pattern_id) {
+	cleanup_pattern_listening();
+	clear_note_graphics();
+	ri_seq = _ri_seq;
+	pattern_id = _pattern_id;
+	ri_seq->add_pattern_listener(pattern_id, shared_from_this());
 }
 
 void PatternEditor::show(std::function<void()> _on_exit_pattern_editor,
@@ -855,11 +867,7 @@ void PatternEditor::show(std::function<void()> _on_exit_pattern_editor,
 		auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(singleton, "layer1");
 		layer1.set_display("inline");
 
-		singleton->ri_seq = ri_seq;
-		singleton->pattern_id = pattern_id;
-		singleton->clear_note_graphics();
-
-		ri_seq->add_pattern_listener(pattern_id, singleton->shared_from_this());
+		singleton->use_sequence_and_pattern(ri_seq, pattern_id);
 
 		auto pianoroll_transition = new KammoGUI::SimpleAnimation(
 			TRANSITION_TIME,
