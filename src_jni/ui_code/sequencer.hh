@@ -103,14 +103,6 @@ private:
 		, public std::enable_shared_from_this<Sequence>
 	{
 	private:
-		struct PendingAdd {
-			int start_at, stop_at;
-
-			PendingAdd(int strt, int stop) : start_at(strt), stop_at(stop) {}
-		};
-
-		std::shared_ptr<PendingAdd> pending_add;
-
 		KammoGUI::GnuVGCanvas::ElementReference sequence_background, button_background,
 			controlls_button, mute_button, envelope_button;
 		double inverse_scaling_factor;
@@ -123,11 +115,9 @@ private:
 		std::shared_ptr<RISequence> ri_seq;
 		int offset;
 
-		std::map<uint32_t, std::string> patterns;
 		std::map<int, std::shared_ptr<PatternInstance> > instances;
 
-		static constexpr uint32_t NO_ACTIVE_PATTERN = IDAllocator::NO_ID_AVAILABLE;
-		uint32_t active_pattern_id = NO_ACTIVE_PATTERN;
+		uint32_t active_pattern_id = 0;
 
 		void on_sequence_event(const KammoGUI::MotionEvent &event);
 
@@ -135,10 +125,9 @@ private:
 		int minimum_visible_line, maximum_visible_line;
 
 		std::map<uint32_t, std::shared_ptr<TimeLines::ZoomContext> > pattern_zoom_contexts;
+		std::shared_ptr<TimeLines::ZoomContext> require_zoom_context(uint32_t pattern_id);
 
 	public:
-		virtual void pattern_added(const std::string &name, uint32_t id);
-		virtual void pattern_deleted(uint32_t id);
 		virtual void instance_added(const RIPatternInstance& instance);
 		virtual void instance_deleted(const RIPatternInstance& instance);
 

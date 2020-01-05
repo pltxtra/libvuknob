@@ -47,10 +47,6 @@ namespace RemoteInterface {
 		ON_SERVER(, public Machine)
 		{
 		public:
-			ON_SERVER(
-				IDAllocator pattern_id_allocator;
-				);
-
 			static constexpr const char* FACTORY_NAME		= "Sequence";
 
 			struct PatternInstance {
@@ -132,8 +128,6 @@ namespace RemoteInterface {
 			ON_CLIENT(
 				class SequenceListener {
 				public:
-					virtual void pattern_added(const std::string &name, uint32_t id) = 0;
-					virtual void pattern_deleted(uint32_t id) = 0;
 					virtual void instance_added(const PatternInstance& instance) = 0;
 					virtual void instance_deleted(const PatternInstance& instance) = 0;
 				};
@@ -144,10 +138,6 @@ namespace RemoteInterface {
 					virtual void note_deleted(uint32_t pattern_id, const Note &note) = 0;
 					virtual void pattern_deleted(uint32_t pattern_id) = 0;
 				};
-
-				void add_pattern(const std::string& name);
-				void get_pattern_ids(std::list<uint32_t> &storage);
-				void delete_pattern(uint32_t pattern_id);
 
 				void insert_pattern_in_sequence(uint32_t pattern_id,
 								int start_at,
@@ -258,6 +248,7 @@ namespace RemoteInterface {
 				void get_notes(uint32_t pattern_id, std::list<Note> &storage);
 				);
 			ON_SERVER(
+
 				uint32_t get_pattern_starting_at(int sequence_position);
 				void start_to_play_pattern(Pattern *pattern_to_play);
 				bool activate_note(Pattern *p, Note *note);
@@ -277,9 +268,10 @@ namespace RemoteInterface {
 //				std::map<std::string, ControllerEnvelope *> controller_envelope; // a map of controller names to their envelopes
 				);
 
+			// This function makes sure that a required pattern exists
+			Pattern* require_pattern(uint32_t pattern_id);
+
 			/* internal processing of commands - on both the server & client */
-			void process_add_pattern(const std::string& new_name, uint32_t new_id);
-			bool process_del_pattern(uint32_t pattern_id);
 			bool process_add_pattern_instance(uint32_t pattern_id,
 							  int start_at,
 							  int loop_length,
@@ -293,32 +285,24 @@ namespace RemoteInterface {
 			/* REQ means the client request the server to perform an operation */
 			/* CMD means the server commands the client to perform an operation */
 
-			SERVER_SIDE_HANDLER(req_add_pattern, "req_add_ptrn");
-			SERVER_SIDE_HANDLER(req_del_pattern, "req_del_ptrn");
 			SERVER_SIDE_HANDLER(req_add_pattern_instance, "req_add_ptrn_inst");
 			SERVER_SIDE_HANDLER(req_del_pattern_instance, "req_del_ptrn_inst");
 			SERVER_SIDE_HANDLER(req_add_note, "req_add_note");
 			SERVER_SIDE_HANDLER(req_del_note, "req_del_note");
 			SERVER_SIDE_HANDLER(req_enqueue_midi_data, "req_enqueue_midi_data");
 
-			CLIENT_SIDE_HANDLER(cmd_add_pattern, "cmd_add_ptrn");
-			CLIENT_SIDE_HANDLER(cmd_del_pattern, "cmd_del_ptrn");
 			CLIENT_SIDE_HANDLER(cmd_add_pattern_instance, "cmd_add_ptrn_inst");
 			CLIENT_SIDE_HANDLER(cmd_del_pattern_instance, "cmd_del_ptrn_inst");
 			CLIENT_SIDE_HANDLER(cmd_add_note, "cmd_add_note");
 			CLIENT_SIDE_HANDLER(cmd_del_note, "cmd_del_note");
 
 			void register_handlers() {
-				SERVER_REG_HANDLER(Sequence,req_add_pattern);
-				SERVER_REG_HANDLER(Sequence,req_del_pattern);
 				SERVER_REG_HANDLER(Sequence,req_add_pattern_instance);
 				SERVER_REG_HANDLER(Sequence,req_del_pattern_instance);
 				SERVER_REG_HANDLER(Sequence,req_add_note);
 				SERVER_REG_HANDLER(Sequence,req_del_note);
 				SERVER_REG_HANDLER(Sequence,req_enqueue_midi_data);
 
-				CLIENT_REG_HANDLER(Sequence,cmd_add_pattern);
-				CLIENT_REG_HANDLER(Sequence,cmd_del_pattern);
 				CLIENT_REG_HANDLER(Sequence,cmd_add_pattern_instance);
 				CLIENT_REG_HANDLER(Sequence,cmd_del_pattern_instance);
 				CLIENT_REG_HANDLER(Sequence,cmd_add_note);

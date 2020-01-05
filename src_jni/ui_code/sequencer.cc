@@ -313,22 +313,11 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 				stop_at_sequence_position = t;
 			}
 			if(start_at_sequence_position != stop_at_sequence_position) {
-				pending_add = std::make_shared<PendingAdd>(
-					start_at_sequence_position,
-					stop_at_sequence_position
-					);
-			}
-
-			if(active_pattern_id == NO_ACTIVE_PATTERN) {
-				SATAN_DEBUG("Adding new pattern for machine...\n");
-				ri_seq->add_pattern("New pattern");
-			} else if(pending_add != nullptr) {
 				SATAN_DEBUG("Directly adding pattern instance for machine...(%d)\n", active_pattern_id);
 				ri_seq->insert_pattern_in_sequence(
 					active_pattern_id,
-					pending_add->start_at, -1,
-					pending_add->stop_at);
-				pending_add.reset();
+					start_at_sequence_position, -1,
+					stop_at_sequence_position);
 			}
 		}
 		display_action = false;
@@ -353,41 +342,12 @@ void Sequencer::Sequence::on_sequence_event(const KammoGUI::MotionEvent &event) 
 	}
 }
 
-void Sequencer::Sequence::pattern_added(const std::string &name, uint32_t id) {
-	KammoGUI::run_on_GUI_thread(
-		[this, name, id]() {
-			SATAN_DEBUG("::pattern_added(%s, %d)\n", name.c_str(), id);
-			active_pattern_id = id;
+std::shared_ptr<TimeLines::ZoomContext> Sequencer::Sequence::require_zoom_context(uint32_t pattern_id) {
+	auto zoom_context = pattern_zoom_contexts.find(pattern_id);
+	if(zoom_context == pattern_zoom_contexts.end())
+		pattern_zoom_contexts[pattern_id] = std::make_shared<TimeLines::ZoomContext>();
 
-			patterns[id] = name;
-			pattern_zoom_contexts[id] = std::make_shared<TimeLines::ZoomContext>();
-
-			if(pending_add) {
-				SATAN_DEBUG("::pattern_added(%s, %d) --> insert\n", name.c_str(), id);
-				ri_seq->insert_pattern_in_sequence(
-					id,
-					pending_add->start_at, -1,
-					pending_add->stop_at);
-				pending_add.reset();
-				SATAN_DEBUG("::pattern_added(%s, %d) insert <--\n", name.c_str(), id);
-			}
-		}
-		);
-}
-
-void Sequencer::Sequence::pattern_deleted(uint32_t id) {
-	KammoGUI::run_on_GUI_thread(
-		[this, id]() {
-			SATAN_DEBUG("::pattern_deleted()\n");
-
-			if(pattern_zoom_contexts.erase(id) != 1)
-				SATAN_ERROR("There was a missing zoom context for pattern %d\n", id);
-
-			auto pattern_to_erase = patterns.find(id);
-			if(pattern_to_erase != patterns.end())
-				patterns.erase(pattern_to_erase);
-		}
-		);
+	return pattern_zoom_contexts[pattern_id];
 }
 
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
@@ -423,7 +383,7 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 				}
 			};
 
-			auto found_zoom_context = pattern_zoom_contexts[instance.pattern_id];
+			auto found_zoom_context = require_zoom_context(instance.pattern_id);
 
 			SATAN_DEBUG("Instance was added for machine...(%d)\n", instance.pattern_id);
 
