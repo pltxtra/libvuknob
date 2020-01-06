@@ -144,7 +144,26 @@ PatternEditorMenu::PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs)
 
 	pattern_id_plus_button = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdPlusButton");
 	pattern_id_minus_button = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdMinusButton");
+	pattern_id_text = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdText");
 
+	pattern_id_plus_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				PatternEditor::perform_operation(PatternEditor::pattern_id_plus);
+			}
+		}
+		);
+	pattern_id_minus_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				PatternEditor::perform_operation(PatternEditor::pattern_id_minus);
+			}
+		}
+		);
 	delete_button.set_event_handler(
 		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
 		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
@@ -218,6 +237,12 @@ void PatternEditorMenu::set_deselectable_count(int selected_notes_counter) {
 	} else {
 		pattern_editor_menu->deselect_button.set_display("none");
 	}
+}
+
+void PatternEditorMenu::set_pattern_id(uint32_t pattern_id) {
+	char bfr[32];
+	snprintf(bfr, 24, "%02d", pattern_id);
+	pattern_editor_menu->pattern_id_text.set_text_content(bfr);
 }
 
 /*******************************************************************************
@@ -723,8 +748,12 @@ void PatternEditor::internal_perform_operation(PatternEditor::PatternEditorOpera
 		delete_selected_notes();
 		break;
 	case pattern_id_plus:
+		if(pattern_id < (IDAllocator::NO_ID_AVAILABLE - 1))
+			use_sequence_and_pattern(ri_seq, pattern_id + 1);
 		break;
 	case pattern_id_minus:
+		if(pattern_id > 0)
+			use_sequence_and_pattern(ri_seq, pattern_id - 1);
 		break;
 	}
 }
@@ -856,6 +885,7 @@ void PatternEditor::use_sequence_and_pattern(std::shared_ptr<RISequence> _ri_seq
 	ri_seq = _ri_seq;
 	pattern_id = _pattern_id;
 	ri_seq->add_pattern_listener(pattern_id, shared_from_this());
+	PatternEditorMenu::set_pattern_id(pattern_id);
 }
 
 void PatternEditor::show(std::function<void()> _on_exit_pattern_editor,

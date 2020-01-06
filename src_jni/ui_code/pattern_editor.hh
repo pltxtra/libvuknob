@@ -61,7 +61,7 @@ private:
 	KammoGUI::GnuVGCanvas::ElementReference shift_one_down_button, shift_octave_down_button, shift_one_right_button;
 	KammoGUI::GnuVGCanvas::ElementReference copy_button, paste_button, delete_button;
 	KammoGUI::GnuVGCanvas::ElementReference pattern_id_plus_button, pattern_id_minus_button;
-	KammoGUI::GnuVGCanvas::ElementReference deselect_text;
+	KammoGUI::GnuVGCanvas::ElementReference deselect_text, pattern_id_text;
 
 	KammoGUI::GnuVGCanvas::ElementReference root;
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
@@ -80,6 +80,7 @@ public:
 	static void show();
 	static void hide();
 	static void set_deselectable_count(int k);
+	static void set_pattern_id(uint32_t pattern_id);
 };
 
 class PatternEditor
