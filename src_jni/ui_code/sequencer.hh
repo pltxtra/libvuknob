@@ -153,6 +153,7 @@ private:
 
 	KammoGUI::GnuVGCanvas::ElementReference root, sequencer_container;
 	KammoGUI::GnuVGCanvas::ElementReference sequence_graphic_template;
+	KammoGUI::GnuVGCanvas::ElementReference pattern_id_container, pattern_id_plus, pattern_id_minus, pattern_id_text;
 	KammoGUI::GnuVGCanvas::ElementReference trashcan_icon, notes_icon, tapped_instance, sequencer_shade;
 	KammoGUI::GnuVGCanvas::ElementReference loop_icon, loop_enabled_icon, loop_disabled_icon, length_icon;
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
@@ -185,6 +186,7 @@ private:
 			    std::function<void(int)> drag_length_completed_callback
 		);
 	void scrolled_vertical(double pixels_changed);
+	void set_pattern_id_text(uint32_t pattern_id);
 	void hide_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
 	void show_sequencers(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
 
