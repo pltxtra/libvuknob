@@ -702,10 +702,10 @@ void Sequencer::focus_on_pattern_instance(double _icon_anchor_x, double _icon_an
 		auto ri_seq = ri_seq_w.lock();
 		if(instance && ri_seq) {
 			auto instance_data = instance->data();
-			SATAN_ERROR("drag_offset_in_lines: %d\n", drag_offset_in_lines);
+			SATAN_DEBUG("drag_offset_in_lines: %d\n", drag_offset_in_lines);
 
 			auto new_start_at = instance_data.start_at;
-			auto old_length = instance_data.stop_at + instance_data.start_at;
+			auto old_length = instance_data.stop_at - instance_data.start_at;
 			auto new_length = old_length + drag_offset_in_lines;
 			if(new_length > 0 && new_length != old_length) {
 				ri_seq->delete_pattern_from_sequence(instance_data);
