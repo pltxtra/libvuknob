@@ -375,7 +375,7 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 					auto found = instances.find(instance.start_at);
 					if(found != instances.end()) {
 						sequencer->hide_sequencers(
-							true, e.x, e.y,
+							e.x, e.y,
 							ri_seq,
 							found->second);
 					}
@@ -545,7 +545,7 @@ Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 		);
 }
 
-void Sequencer::hide_sequencers(bool show_icons, double icon_anchor_x, double icon_anchor_y,
+void Sequencer::hide_sequencers(double icon_anchor_x, double icon_anchor_y,
 				std::weak_ptr<RISequence>ri_seq_w,
 				std::weak_ptr<PatternInstance>tapped_instance_w
 	) {
@@ -562,16 +562,9 @@ void Sequencer::hide_sequencers(bool show_icons, double icon_anchor_x, double ic
 	transform_t.translate(icon_anchor_x, icon_anchor_y + 2.0 * finger_height);
 	pattern_id_container.set_transform(transform_t);
 
-	trashcan_icon.set_display(show_icons ? "inline" : "none");
-	trashcan_icon.set_style("opacity:0.0");
-	notes_icon.set_display(show_icons ? "inline" : "none");
-	notes_icon.set_style("opacity:0.0");
-	loop_icon.set_display(show_icons ? "inline" : "none");
-	loop_icon.set_style("opacity:0.0");
-	length_icon.set_display(show_icons ? "inline" : "none");
-	length_icon.set_style("opacity:0.0");
-	pattern_id_container.set_display(show_icons ? "inline" : "none");
-	pattern_id_container.set_style("opacity:0.0");
+	show_elements({&trashcan_icon, &notes_icon, &loop_icon, &sequencer_shade,
+				&length_icon, &tapped_instance, &pattern_id_container
+				});
 
 	sequencer_shade.set_event_handler(
 		[](SVGDocument *source,
@@ -642,7 +635,7 @@ void Sequencer::hide_sequencers(bool show_icons, double icon_anchor_x, double ic
 				}
 			}
 
-			sequencer->show_sequencers({&loop_icon, &tapped_instance});
+			sequencer->show_sequencers({&loop_icon, &tapped_instance, &sequencer_shade, &pattern_id_container});
 			loop_settings->show();
 			plus_button->show();
 		};
@@ -685,7 +678,7 @@ void Sequencer::hide_sequencers(bool show_icons, double icon_anchor_x, double ic
 				}
 			}
 
-			sequencer->show_sequencers({&length_icon, &tapped_instance});
+			sequencer->show_sequencers({&length_icon, &tapped_instance, &sequencer_shade, &pattern_id_container});
 			loop_settings->show();
 			plus_button->show();
 		};
@@ -840,22 +833,6 @@ void Sequencer::hide_sequencers(bool show_icons, double icon_anchor_x, double ic
 	auto shade_transition = new KammoGUI::SimpleAnimation(
 		TRANSITION_TIME,
 		[this, on_completion](float progress) mutable {
-			{
-				std::stringstream opacity;
-				opacity << "opacity:" << progress;
-				trashcan_icon.set_style(opacity.str());
-				notes_icon.set_style(opacity.str());
-				loop_icon.set_style(opacity.str());
-				length_icon.set_style(opacity.str());
-				tapped_instance.set_style(opacity.str());
-				pattern_id_container.set_style(opacity.str());
-			}
-			{
-				std::stringstream opacity;
-				opacity << "opacity:" << (progress);
-				sequencer_shade.set_style(opacity.str());
-			}
-
 			SATAN_DEBUG("hide transition animation %f...\n", progress);
 			if(progress >= 1.0f) {
 				on_completion();

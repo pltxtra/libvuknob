@@ -194,7 +194,7 @@ public:
 
 	Sequencer(KammoGUI::GnuVGCanvas* cnvs);
 
-	void hide_sequencers(bool show_icons, double icon_anchor_x, double icon_anchor_y,
+	void hide_sequencers(double icon_anchor_x, double icon_anchor_y,
 			     std::weak_ptr<RISequence>ri_seq,
 			     std::weak_ptr<PatternInstance>instance
 		);
