@@ -350,6 +350,15 @@ std::shared_ptr<TimeLines::ZoomContext> Sequencer::Sequence::require_zoom_contex
 	return pattern_zoom_contexts[pattern_id];
 }
 
+std::shared_ptr<Sequencer::PatternInstance> Sequencer::Sequence::get_pattern_instance(int start_at) {
+	std::shared_ptr<PatternInstance> pi;
+	auto found = instances.find(start_at);
+	if(found != instances.end()) {
+		pi = found->second;
+	}
+	return pi;
+}
+
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 	KammoGUI::run_on_GUI_thread(
 		[this, instance]() {
@@ -374,10 +383,10 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 				{
 					auto found = instances.find(instance.start_at);
 					if(found != instances.end()) {
-						sequencer->hide_sequencers(
+						sequencer->focus_on_pattern_instance(
 							e.x, e.y,
 							ri_seq,
-							found->second);
+							instance.start_at);
 					}
 				}
 				}
@@ -545,12 +554,24 @@ Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 		);
 }
 
-void Sequencer::hide_sequencers(double icon_anchor_x, double icon_anchor_y,
-				std::weak_ptr<RISequence>ri_seq_w,
-				std::weak_ptr<PatternInstance>tapped_instance_w
+std::shared_ptr<Sequencer::PatternInstance> Sequencer::get_tapped_pattern_instance(std::weak_ptr<RISequence> ri_seq_w) {
+	std::shared_ptr<PatternInstance> ri_pi;
+	if(auto ri_seq = ri_seq_w.lock()) {
+		auto found = machine2sequence.find(ri_seq);
+		if(found != machine2sequence.end()) {
+			ri_pi = found->second->get_pattern_instance(tapped_instance_start_at);
+		}
+	}
+	return ri_pi;
+}
+
+void Sequencer::focus_on_pattern_instance(double icon_anchor_x, double icon_anchor_y,
+					  std::weak_ptr<RISequence>ri_seq_w,
+					  int instance_start_at
 	) {
 	loop_settings->hide();
 	plus_button->hide();
+	tapped_instance_start_at = instance_start_at;
 
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	transform_t.init_identity();
@@ -579,7 +600,7 @@ void Sequencer::hide_sequencers(double icon_anchor_x, double icon_anchor_y,
 	sequencer_shade.set_rect_coords(0, 0, canvas_w, canvas_h);
 
 	bool loop_enabled = true;
-	if(auto instance = tapped_instance_w.lock()) {
+	if(auto instance = get_tapped_pattern_instance(ri_seq_w)) {
 		auto instance_data = instance->data();
 		auto pixels_per_line = timelines->get_horizontal_pixels_per_line();
 		auto instance_stop = instance_data.stop_at;
@@ -616,8 +637,8 @@ void Sequencer::hide_sequencers(double icon_anchor_x, double icon_anchor_y,
 		auto icon_anchor_x_line_position = timelines->get_sequence_line_position_at(icon_anchor_x);
 
 		auto loop_drag_completed_callback =
-			[this, ri_seq_w, tapped_instance_w](int new_loop_length) {
-			auto instance = tapped_instance_w.lock();
+			[this, ri_seq_w](int new_loop_length) {
+			auto instance = get_tapped_pattern_instance(ri_seq_w);
 			auto ri_seq = ri_seq_w.lock();
 			if(instance && ri_seq) {
 				auto instance_data = instance->data();
@@ -640,7 +661,7 @@ void Sequencer::hide_sequencers(double icon_anchor_x, double icon_anchor_y,
 			plus_button->show();
 		};
 		loop_icon.set_event_handler(
-			[this, ri_seq_w, tapped_instance_w, pixels_per_line, instance_start, instance_length, instance_loop_length,
+			[this, ri_seq_w, pixels_per_line, instance_start, instance_length, instance_loop_length,
 			 icon_anchor_x_line_position, icon_anchor_y, loop_drag_completed_callback](
 				SVGDocument *source,
 				KammoGUI::GnuVGCanvas::ElementReference *e,
@@ -659,8 +680,8 @@ void Sequencer::hide_sequencers(double icon_anchor_x, double icon_anchor_y,
 			);
 
 		auto length_drag_completed_callback =
-			[this, ri_seq_w, tapped_instance_w](int drag_offset_in_lines) {
-			auto instance = tapped_instance_w.lock();
+			[this, ri_seq_w](int drag_offset_in_lines) {
+			auto instance = get_tapped_pattern_instance(ri_seq_w);
 			auto ri_seq = ri_seq_w.lock();
 			if(instance && ri_seq) {
 				auto instance_data = instance->data();
@@ -683,7 +704,7 @@ void Sequencer::hide_sequencers(double icon_anchor_x, double icon_anchor_y,
 			plus_button->show();
 		};
 		length_icon.set_event_handler(
-			[this, ri_seq_w, tapped_instance_w, pixels_per_line, instance_start,instance_length,
+			[this, ri_seq_w, pixels_per_line, instance_start,instance_length,
 			 icon_anchor_x_line_position, icon_anchor_y, length_drag_completed_callback](
 				SVGDocument *source,
 				KammoGUI::GnuVGCanvas::ElementReference *e,
@@ -704,11 +725,11 @@ void Sequencer::hide_sequencers(double icon_anchor_x, double icon_anchor_y,
 	loop_enabled_icon.set_display(loop_enabled ? "inline" : "none");
 	loop_disabled_icon.set_display(loop_enabled ? "none" : "inline");
 
-	auto on_completion = [this, ri_seq_w, tapped_instance_w]() {
+	auto on_completion = [this, ri_seq_w]() {
 		SATAN_DEBUG("  completed hiding - injecting new event handlers for icons...\n");
 
 		notes_icon.set_event_handler(
-			[this, ri_seq_w, tapped_instance_w](
+			[this, ri_seq_w](
 				SVGDocument *source,
 				KammoGUI::GnuVGCanvas::ElementReference *e,
 				const KammoGUI::MotionEvent &event
@@ -723,7 +744,7 @@ void Sequencer::hide_sequencers(double icon_anchor_x, double icon_anchor_y,
 
 				if(tap_detector.analyze_events(event)) {
 					sequencer->show_sequencers({});
-					auto instance = tapped_instance_w.lock();
+					auto instance = get_tapped_pattern_instance(ri_seq_w);
 					auto ri_seq = ri_seq_w.lock();
 					if(instance && ri_seq) {
 						timelines->use_zoom_context(instance->zoom_context);
@@ -740,11 +761,11 @@ void Sequencer::hide_sequencers(double icon_anchor_x, double icon_anchor_y,
 			);
 
 		trashcan_icon.set_event_handler(
-			[this, ri_seq_w, tapped_instance_w](SVGDocument *source,
+			[this, ri_seq_w](SVGDocument *source,
 			       KammoGUI::GnuVGCanvas::ElementReference *e,
 			       const KammoGUI::MotionEvent &event) {
 				if(tap_detector.analyze_events(event)) {
-					auto instance = tapped_instance_w.lock();
+					auto instance = get_tapped_pattern_instance(ri_seq_w);
 					auto ri_seq = ri_seq_w.lock();
 					if(instance && ri_seq) {
 						ri_seq->delete_pattern_from_sequence(instance->data());
@@ -770,12 +791,12 @@ void Sequencer::hide_sequencers(double icon_anchor_x, double icon_anchor_y,
 			);
 
 		pattern_id_plus.set_event_handler(
-			[this, ri_seq_w, tapped_instance_w](SVGDocument *source,
+			[this, ri_seq_w](SVGDocument *source,
 			       KammoGUI::GnuVGCanvas::ElementReference *e,
 			       const KammoGUI::MotionEvent &event) {
 				if(tap_detector.analyze_events(event)) {
 					SATAN_DEBUG("Pattern id plus!\n");
-					auto instance = tapped_instance_w.lock();
+					auto instance = get_tapped_pattern_instance(ri_seq_w);
 					auto ri_seq = ri_seq_w.lock();
 					if(instance && ri_seq) {
 						SATAN_DEBUG("Pattern id plus - 1!\n");
@@ -800,12 +821,12 @@ void Sequencer::hide_sequencers(double icon_anchor_x, double icon_anchor_y,
 			);
 
 		pattern_id_minus.set_event_handler(
-			[this, ri_seq_w, tapped_instance_w](SVGDocument *source,
+			[this, ri_seq_w](SVGDocument *source,
 			       KammoGUI::GnuVGCanvas::ElementReference *e,
 			       const KammoGUI::MotionEvent &event) {
 				if(tap_detector.analyze_events(event)) {
 					SATAN_DEBUG("Pattern id minus!\n");
-					auto instance = tapped_instance_w.lock();
+					auto instance = get_tapped_pattern_instance(ri_seq_w);
 					auto ri_seq = ri_seq_w.lock();
 					if(instance && ri_seq) {
 						SATAN_DEBUG("Pattern id minus - 1!\n");
