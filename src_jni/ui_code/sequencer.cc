@@ -375,7 +375,7 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 					auto found = instances.find(instance.start_at);
 					if(found != instances.end()) {
 						sequencer->hide_sequencers(
-							0.2, true, e.x, e.y,
+							true, e.x, e.y,
 							ri_seq,
 							found->second);
 					}
@@ -545,8 +545,7 @@ Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 		);
 }
 
-void Sequencer::hide_sequencers(float hiding_opacity,
-				bool show_icons, double icon_anchor_x, double icon_anchor_y,
+void Sequencer::hide_sequencers(bool show_icons, double icon_anchor_x, double icon_anchor_y,
 				std::weak_ptr<RISequence>ri_seq_w,
 				std::weak_ptr<PatternInstance>tapped_instance_w
 	) {
@@ -585,7 +584,6 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 	sequencer_shade.set_display("inline");
 	sequencer_shade.set_style("opacity:1.0");
 	sequencer_shade.set_rect_coords(0, 0, canvas_w, canvas_h);
-	sequencer_shade_hiding_opacity = hiding_opacity;
 
 	bool loop_enabled = true;
 	if(auto instance = tapped_instance_w.lock()) {
@@ -841,7 +839,7 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 
 	auto shade_transition = new KammoGUI::SimpleAnimation(
 		TRANSITION_TIME,
-		[this, on_completion, hiding_opacity](float progress) mutable {
+		[this, on_completion](float progress) mutable {
 			{
 				std::stringstream opacity;
 				opacity << "opacity:" << progress;
@@ -854,7 +852,7 @@ void Sequencer::hide_sequencers(float hiding_opacity,
 			}
 			{
 				std::stringstream opacity;
-				opacity << "opacity:" << (progress - hiding_opacity * progress);
+				opacity << "opacity:" << (progress);
 				sequencer_shade.set_style(opacity.str());
 			}
 
@@ -883,7 +881,7 @@ void Sequencer::show_sequencers(std::vector<KammoGUI::GnuVGCanvas::ElementRefere
 			}
 			);
 		std::stringstream opacity;
-		opacity << "opacity:" << (1.0f - sequencer_shade_hiding_opacity);
+		opacity << "opacity:" << (1.0f);
 		sequencer_shade.set_style(opacity.str());
 	}
 
@@ -892,7 +890,7 @@ void Sequencer::show_sequencers(std::vector<KammoGUI::GnuVGCanvas::ElementRefere
 		[this](float progress) mutable {
 			auto reverse_progress = 1.0f - progress;
 			std::stringstream opacity;
-			opacity << "opacity:" << (reverse_progress - sequencer_shade_hiding_opacity * reverse_progress);
+			opacity << "opacity:" << (reverse_progress);
 			sequencer_shade.set_style(opacity.str());
 
 			SATAN_DEBUG("show transition animation %f...\n", progress);
@@ -1052,6 +1050,30 @@ void Sequencer::hide_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReferenc
 				for(auto element : elements_to_hide) {
 					element->set_display("none");
 				}
+			}
+		}
+		);
+	sequencer->start_animation(shade_transition);
+}
+
+void Sequencer::show_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide) {
+	for(auto element : elements_to_hide) {
+		element->set_style("opacity:0.0");
+		element->set_display("inline");
+	}
+
+	auto shade_transition = new KammoGUI::SimpleAnimation(
+		TRANSITION_TIME,
+		[elements_to_hide](float progress) mutable {
+			std::stringstream opacity;
+			opacity << "opacity:" << (progress);
+			for(auto element : elements_to_hide) {
+				element->set_style(opacity.str());
+			}
+
+			SATAN_DEBUG("show elements transition animation %f...\n", progress);
+			if(progress >= 1.0f) {
+				SATAN_DEBUG("show elements transmission complete...\n");
 			}
 		}
 		);

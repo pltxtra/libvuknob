@@ -168,7 +168,6 @@ private:
 	float canvas_w_inches, canvas_h_inches; // sizes in inches
 	int canvas_w, canvas_h; // sizes in pixels
 
-	float sequencer_shade_hiding_opacity;
 	int drag_event_start_line;
 
 	void drag_length_icon(const KammoGUI::MotionEvent &event, // returns true when drag is completed.
@@ -188,14 +187,14 @@ private:
 	void scrolled_vertical(double pixels_changed);
 	void set_pattern_id_text(uint32_t pattern_id);
 	void hide_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
+	void show_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
 	void show_sequencers(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
 
 public:
 
 	Sequencer(KammoGUI::GnuVGCanvas* cnvs);
 
-	void hide_sequencers(float hiding_opacity,
-			     bool show_icons, double icon_anchor_x, double icon_anchor_y,
+	void hide_sequencers(bool show_icons, double icon_anchor_x, double icon_anchor_y,
 			     std::weak_ptr<RISequence>ri_seq,
 			     std::weak_ptr<PatternInstance>instance
 		);
