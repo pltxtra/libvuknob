@@ -171,7 +171,9 @@ private:
 	int canvas_w, canvas_h; // sizes in pixels
 
 	int drag_event_start_line;
-	int tapped_instance_start_at;
+	int tapped_instance_start_at, icon_anchor_x_line_position;
+	double icon_anchor_x, icon_anchor_y, pixels_per_line;
+	std::weak_ptr<RISequence>tapped_sequence_w;
 
 	std::shared_ptr<PatternInstance> get_tapped_pattern_instance(std::weak_ptr<RISequence> ri_seq_w);
 	void drag_length_icon(const KammoGUI::MotionEvent &event, // returns true when drag is completed.
@@ -193,8 +195,9 @@ private:
 	void hide_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
 	void show_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
 	void show_sequencers(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
+	void refresh_focus();
 	void focus_on_pattern_instance(double icon_anchor_x, double icon_anchor_y,
-				       std::weak_ptr<RISequence>ri_seq,
+				       std::weak_ptr<RISequence>ri_seq_w,
 				       int instance_start_at
 		);
 
