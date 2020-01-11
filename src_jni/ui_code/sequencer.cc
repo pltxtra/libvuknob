@@ -411,6 +411,8 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 			i->calculate_visibility(
 				line_width, minimum_visible_line, maximum_visible_line
 				);
+
+			sequencer->refresh_focus(ri_seq, instance.start_at);
 		}
 		);
 }
@@ -565,7 +567,11 @@ std::shared_ptr<Sequencer::PatternInstance> Sequencer::get_tapped_pattern_instan
 	return ri_pi;
 }
 
-void Sequencer::refresh_focus() {
+void Sequencer::refresh_focus(std::weak_ptr<RISequence>ri_seq_w, int instance_start_at) {
+	auto ri_seq_A = ri_seq_w.lock();
+	auto ri_seq_B = tapped_sequence_w.lock();
+	if(!(ri_seq_A == ri_seq_B && instance_start_at == tapped_instance_start_at))
+		return;
 	if(auto instance = get_tapped_pattern_instance(tapped_sequence_w)) {
 		auto instance_data = instance->data();
 		auto instance_length = instance_data.stop_at - instance_data.start_at;
@@ -642,7 +648,7 @@ void Sequencer::focus_on_pattern_instance(double _icon_anchor_x, double _icon_an
 	sequencer_shade.set_style("opacity:1.0");
 	sequencer_shade.set_rect_coords(0, 0, canvas_w, canvas_h);
 
-	refresh_focus();
+	refresh_focus(tapped_sequence_w, tapped_instance_start_at);
 
 	auto loop_drag_completed_callback =
 		[this, ri_seq_w](int new_loop_length) {

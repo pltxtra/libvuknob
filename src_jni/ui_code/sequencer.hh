@@ -195,7 +195,7 @@ private:
 	void hide_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
 	void show_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
 	void show_sequencers(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
-	void refresh_focus();
+	void refresh_focus(std::weak_ptr<RISequence>ri_seq_w, int instance_start_at);
 	void focus_on_pattern_instance(double icon_anchor_x, double icon_anchor_y,
 				       std::weak_ptr<RISequence>ri_seq_w,
 				       int instance_start_at
@@ -204,7 +204,6 @@ private:
 public:
 
 	Sequencer(KammoGUI::GnuVGCanvas* cnvs);
-
 
 	void vertical_scroll_event(const KammoGUI::MotionEvent &event);
 
