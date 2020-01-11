@@ -867,40 +867,19 @@ void Sequencer::hide_sequencers(bool show_icons, double icon_anchor_x, double ic
 
 void Sequencer::show_sequencers(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide) {
 	if(elements_to_hide.size() == 0) {
-		elements_to_hide = {&trashcan_icon, &notes_icon, &loop_icon, &length_icon, &tapped_instance, &pattern_id_container};
+		elements_to_hide = {&trashcan_icon, &notes_icon, &loop_icon, &sequencer_shade,
+				    &length_icon, &tapped_instance, &pattern_id_container};
 	}
 	hide_elements(elements_to_hide);
 
-	{
-		sequencer_shade.set_event_handler(
-			[](SVGDocument *source,
-			   KammoGUI::GnuVGCanvas::ElementReference *e,
-			   const KammoGUI::MotionEvent &event) {
-				/* ignored during transition */
-				SATAN_DEBUG("ignoring event handler during show...\n");
-			}
-			);
-		std::stringstream opacity;
-		opacity << "opacity:" << (1.0f);
-		sequencer_shade.set_style(opacity.str());
-	}
-
-	auto shade_transition = new KammoGUI::SimpleAnimation(
-		TRANSITION_TIME,
-		[this](float progress) mutable {
-			auto reverse_progress = 1.0f - progress;
-			std::stringstream opacity;
-			opacity << "opacity:" << (reverse_progress);
-			sequencer_shade.set_style(opacity.str());
-
-			SATAN_DEBUG("show transition animation %f...\n", progress);
-			if(progress >= 1.0f) {
-				SATAN_DEBUG("show transmission complete...\n");
-				sequencer_shade.set_display("none");
-			}
+	sequencer_shade.set_event_handler(
+		[](SVGDocument *source,
+		   KammoGUI::GnuVGCanvas::ElementReference *e,
+		   const KammoGUI::MotionEvent &event) {
+			/* ignored during transition */
+			SATAN_DEBUG("ignoring event handler during show...\n");
 		}
 		);
-	sequencer->start_animation(shade_transition);
 }
 
 void Sequencer::drag_length_icon(const KammoGUI::MotionEvent &event,
