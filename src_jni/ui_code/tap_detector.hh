@@ -30,33 +30,7 @@ private:
 	mutable double event_start_x, event_start_y;
 
 public:
-	bool analyze_events(const KammoGUI::MotionEvent &event) const {
-		auto event_current_x = event.get_x();
-		auto event_current_y = event.get_y();
-		switch(event.get_action()) {
-		case KammoGUI::MotionEvent::ACTION_CANCEL:
-		case KammoGUI::MotionEvent::ACTION_OUTSIDE:
-		case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
-		case KammoGUI::MotionEvent::ACTION_POINTER_UP:
-		case KammoGUI::MotionEvent::ACTION_MOVE:
-			break;
-		case KammoGUI::MotionEvent::ACTION_DOWN:
-			event_start_x = event_current_x;
-			event_start_y = event_current_y;
-			timer.reset();
-			break;
-		case KammoGUI::MotionEvent::ACTION_UP:
-			auto event_delta_x = event_current_x - event_start_x;
-			auto event_delta_y = event_current_y - event_start_y;
-			auto event_delta = sqrt(event_delta_x * event_delta_x + event_delta_y * event_delta_y);
-
-			if(event_delta < 5.0 && timer.seconds_since_start() < 0.5) {
-				return true;
-			}
-			break;
-		}
-		return false;
-	}
+	bool analyze_events(const KammoGUI::MotionEvent &event) const;
 };
 
 #endif

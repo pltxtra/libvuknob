@@ -149,6 +149,7 @@ ui_code/pncsequencer.cc ui_code/pncsequencer.hh \
 ui_code/midi_export_gui.cc \
 ui_code/file_request_ui.cc \
 ui_code/advanced_file_request_ui.cc \
+ui_code/tap_detector.cc ui_code/tap_detector.hh \
 ui_code/fling_animation.cc ui_code/fling_animation.hh \
 ui_code/corner_button.cc ui_code/corner_button.hh \
 ui_code/simple_button.cc ui_code/simple_button.hh \
