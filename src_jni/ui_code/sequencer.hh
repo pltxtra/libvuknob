@@ -128,6 +128,7 @@ private:
 		std::shared_ptr<TimeLines::ZoomContext> require_zoom_context(uint32_t pattern_id);
 
 	public:
+		void set_active_pattern_id(uint32_t pattern_id);
 		std::shared_ptr<PatternInstance> get_pattern_instance(int start_at);
 
 		virtual void instance_added(const RIPatternInstance& instance);
@@ -175,7 +176,6 @@ private:
 	double icon_anchor_x, icon_anchor_y, pixels_per_line;
 	std::weak_ptr<RISequence>tapped_sequence_w;
 
-	std::shared_ptr<PatternInstance> get_tapped_pattern_instance(std::weak_ptr<RISequence> ri_seq_w);
 	void drag_length_icon(const KammoGUI::MotionEvent &event, // returns true when drag is completed.
 			      double icon_anchor_x, double icon_anchor_y,
 			      double pixels_per_line,
@@ -195,6 +195,8 @@ private:
 	void hide_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
 	void show_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
 	void show_sequencers(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide);
+	void set_active_pattern_id(std::weak_ptr<RISequence> ri_seq_w, uint32_t pattern_id);
+	std::shared_ptr<PatternInstance> get_tapped_pattern_instance(std::weak_ptr<RISequence> ri_seq_w);
 	void refresh_focus(std::weak_ptr<RISequence>ri_seq_w, int instance_start_at);
 	void focus_on_pattern_instance(double icon_anchor_x, double icon_anchor_y,
 				       std::weak_ptr<RISequence>ri_seq_w,

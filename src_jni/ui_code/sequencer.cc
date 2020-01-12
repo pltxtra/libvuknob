@@ -350,6 +350,10 @@ std::shared_ptr<TimeLines::ZoomContext> Sequencer::Sequence::require_zoom_contex
 	return pattern_zoom_contexts[pattern_id];
 }
 
+void Sequencer::Sequence::set_active_pattern_id(uint32_t pattern_id) {
+	active_pattern_id = pattern_id;
+}
+
 std::shared_ptr<Sequencer::PatternInstance> Sequencer::Sequence::get_pattern_instance(int start_at) {
 	std::shared_ptr<PatternInstance> pi;
 	auto found = instances.find(start_at);
@@ -556,6 +560,16 @@ Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 		);
 }
 
+void Sequencer::set_active_pattern_id(std::weak_ptr<RISequence> ri_seq_w, uint32_t pattern_id) {
+	std::shared_ptr<PatternInstance> ri_pi;
+	if(auto ri_seq = ri_seq_w.lock()) {
+		auto found = machine2sequence.find(ri_seq);
+		if(found != machine2sequence.end()) {
+			found->second->set_active_pattern_id(pattern_id);
+		}
+	}
+}
+
 std::shared_ptr<Sequencer::PatternInstance> Sequencer::get_tapped_pattern_instance(std::weak_ptr<RISequence> ri_seq_w) {
 	std::shared_ptr<PatternInstance> ri_pi;
 	if(auto ri_seq = ri_seq_w.lock()) {
@@ -576,6 +590,7 @@ void Sequencer::refresh_focus(std::weak_ptr<RISequence>ri_seq_w, int instance_st
 		auto instance_data = instance->data();
 		auto instance_length = instance_data.stop_at - instance_data.start_at;
 		auto instance_start_pixel = timelines->get_pixel_value_for_sequence_line_position(instance_data.start_at);
+		set_active_pattern_id(tapped_sequence_w, instance_data.pattern_id);
 		tapped_instance.set_rect_coords(
 			instance_start_pixel, icon_anchor_y,
 			pixels_per_line * instance_length,
