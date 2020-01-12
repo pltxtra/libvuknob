@@ -131,16 +131,81 @@ PatternEditorMenu::PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs)
 		}
 		);
 
-	shift_one_up_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOneUp");
-	shift_octave_up_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOctaveUp");
-	shift_one_left_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOneLeft");
-	shift_one_down_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOneDown");
-	shift_octave_down_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOctaveDown");
-	shift_one_right_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOneRight");
+	transpose_one_up_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOneUp");
+	transpose_octave_up_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOctaveUp");
+	transpose_one_left_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOneLeft");
+	transpose_one_down_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOneDown");
+	transpose_octave_down_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOctaveDown");
+	transpose_one_right_button = KammoGUI::GnuVGCanvas::ElementReference(this, "shiftOneRight");
+
+	transpose_one_up_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				PatternEditor::perform_operation(PatternEditor::transpose_one_up);
+			}
+		}
+		);
+	transpose_octave_up_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				PatternEditor::perform_operation(PatternEditor::transpose_octave_up);
+			}
+		}
+		);
+	transpose_one_left_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				PatternEditor::perform_operation(PatternEditor::transpose_one_left);
+			}
+		}
+		);
+	transpose_one_down_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				PatternEditor::perform_operation(PatternEditor::transpose_one_down);
+			}
+		}
+		);
+	transpose_octave_down_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				PatternEditor::perform_operation(PatternEditor::transpose_octave_down);
+			}
+		}
+		);
+	transpose_one_right_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				PatternEditor::perform_operation(PatternEditor::transpose_one_right);
+			}
+		}
+		);
 
 	copy_button = KammoGUI::GnuVGCanvas::ElementReference(this, "copyButton");
 	paste_button = KammoGUI::GnuVGCanvas::ElementReference(this, "pasteButton");
 	delete_button = KammoGUI::GnuVGCanvas::ElementReference(this, "deleteButton");
+
+	delete_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				PatternEditor::perform_operation(PatternEditor::delete_notes);
+			}
+		}
+		);
 
 	pattern_id_plus_button = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdPlusButton");
 	pattern_id_minus_button = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdMinusButton");
@@ -161,15 +226,6 @@ PatternEditorMenu::PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs)
 		       const KammoGUI::MotionEvent &event) {
 			if(tap_detector.analyze_events(event)) {
 				PatternEditor::perform_operation(PatternEditor::pattern_id_minus);
-			}
-		}
-		);
-	delete_button.set_event_handler(
-		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
-		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
-		       const KammoGUI::MotionEvent &event) {
-			if(tap_detector.analyze_events(event)) {
-				PatternEditor::perform_operation(PatternEditor::delete_notes);
 			}
 		}
 		);
@@ -266,6 +322,76 @@ void PatternEditor::deselect_all() {
 			deselect(ngph.second);
 	}
 	update_selected_notes_counter();
+}
+
+void PatternEditor::transpose_selected_notes(PatternEditorOperation p_operation) {
+	SATAN_DEBUG("transpose_selected_notes()..\n");
+	auto selection = get_selection(true);
+	if(selection.size() == 0) {
+		SATAN_DEBUG("PatternEditor::transpose_selected_notes() on empty selection.\n");
+		return;
+	}
+
+	int transpose_x = 0, transpose_y = 0;
+	int one_grid_step = MACHINE_TICKS_PER_LINE * timelines->get_sequence_lines_per_minor();
+	switch(p_operation) {
+	case transpose_one_up:
+		SATAN_DEBUG("transpose_selected_notes(): one up\n");
+		transpose_y = 1;
+		break;
+	case transpose_octave_up:
+		SATAN_DEBUG("transpose_selected_notes(): octave up\n");
+		transpose_y = 8;
+		break;
+	case transpose_one_left:
+		SATAN_DEBUG("transpose_selected_notes(): one left - %d\n", -one_grid_step);
+		transpose_x = -one_grid_step;
+		break;
+	case transpose_one_down:
+		SATAN_DEBUG("transpose_selected_notes(): one down\n");
+		transpose_y = -1;
+		break;
+	case transpose_octave_down:
+		SATAN_DEBUG("transpose_selected_notes(): octave down\n");
+		transpose_y = -8;
+		break;
+	case transpose_one_right:
+		SATAN_DEBUG("transpose_selected_notes(): one right - %d\n", one_grid_step);
+		transpose_x = one_grid_step;
+		break;
+
+	case deselect_all_notes:
+	case copy_notes:
+	case paste_notes:
+	case delete_notes:
+	case pattern_id_plus:
+	case pattern_id_minus:
+	default:
+		SATAN_DEBUG("transpose_selected_notes(): ignored\n");
+		// ignore
+		break;
+	}
+
+	for(auto selected_note : selection) {
+		ri_seq->delete_note(
+			pattern_id,
+			selected_note
+			);
+	}
+	for(auto selected_note : selection) {
+		auto note = selected_note.note;
+		auto on_at = selected_note.on_at;
+		if(on_at + transpose_x >= 0) on_at += transpose_x;
+		if(((note + transpose_y) & (~0x7f)) == 0x0) note += transpose_y;
+		SATAN_DEBUG(" transpose y: (%x + %x) & %x => %d\n", note, transpose_y, ~0x7f, (note + transpose_y) & (~0x7f));
+		ri_seq->add_note(
+			pattern_id,
+			selected_note.channel, selected_note.program, selected_note.velocity,
+			note,
+			on_at,
+			selected_note.length
+			);
+	}
 }
 
 void PatternEditor::delete_selected_notes() {
@@ -728,17 +854,13 @@ void PatternEditor::internal_perform_operation(PatternEditor::PatternEditorOpera
 	case deselect_all_notes:
 		deselect_all();
 		break;
-	case shift_one_up:
-		break;
-	case shift_octave_up:
-		break;
-	case shift_one_left:
-		break;
-	case shift_one_down:
-		break;
-	case shift_octave_down:
-		break;
-	case shift_one_right:
+	case transpose_one_up:
+	case transpose_octave_up:
+	case transpose_one_left:
+	case transpose_one_down:
+	case transpose_octave_down:
+	case transpose_one_right:
+		transpose_selected_notes(p_operation);
 		break;
 	case copy_notes:
 		break;

@@ -544,6 +544,10 @@ int TimeLines::get_pixel_value_for_sequence_line_position(int sequence_line_posi
 	return ((double)sequence_line_position + line_offset_d) * ((double)zoomed_sequence_line_width);
 }
 
+int TimeLines::get_sequence_lines_per_minor() {
+	return sequence_lines_per_minor;
+}
+
 void TimeLines::set_prefix_string(const std::string &_prefix) {
 	prefix_string = _prefix;
 }
@@ -612,7 +616,6 @@ void TimeLines::on_render() {
 		auto fhh = finger_height / 2.0;
 		loop_marker.set_rect_coords(loop_start_offset, fhh, loop_stop_offset - loop_start_offset, fhh);
 	}
-
 	{ // select visible minors, and translate time line graphics
 		double graphics_offset = (line_offset_d - (double)line_offset_i - 1) * zoomed_sequence_line_width;
 

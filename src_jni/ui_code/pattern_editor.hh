@@ -57,8 +57,8 @@ private:
 
 	KammoGUI::GnuVGCanvas::ElementReference gridops_container, patops_container, memops_container;
 	KammoGUI::GnuVGCanvas::ElementReference deselect_button, gridops_button, patops_button, memops_button;
-	KammoGUI::GnuVGCanvas::ElementReference shift_one_up_button, shift_octave_up_button, shift_one_left_button;
-	KammoGUI::GnuVGCanvas::ElementReference shift_one_down_button, shift_octave_down_button, shift_one_right_button;
+	KammoGUI::GnuVGCanvas::ElementReference transpose_one_up_button, transpose_octave_up_button, transpose_one_left_button;
+	KammoGUI::GnuVGCanvas::ElementReference transpose_one_down_button, transpose_octave_down_button, transpose_one_right_button;
 	KammoGUI::GnuVGCanvas::ElementReference copy_button, paste_button, delete_button;
 	KammoGUI::GnuVGCanvas::ElementReference pattern_id_plus_button, pattern_id_minus_button;
 	KammoGUI::GnuVGCanvas::ElementReference deselect_text, pattern_id_text;
@@ -91,8 +91,8 @@ class PatternEditor
 public:
 	enum PatternEditorOperation {
 		deselect_all_notes,
-		shift_one_up, shift_octave_up, shift_one_left,
-		shift_one_down, shift_octave_down, shift_one_right,
+		transpose_one_up, transpose_octave_up, transpose_one_left,
+		transpose_one_down, transpose_octave_down, transpose_one_right,
 		copy_notes, paste_notes, delete_notes,
 		pattern_id_plus,
 		pattern_id_minus
@@ -134,6 +134,7 @@ private:
 
 	// Operations
 	void deselect_all();
+	void transpose_selected_notes(PatternEditorOperation p_operation);
 	void delete_selected_notes();
 
 	std::set<RINote> get_selection(bool all_if_selection_is_empty);
