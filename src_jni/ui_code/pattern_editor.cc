@@ -197,6 +197,24 @@ PatternEditorMenu::PatternEditorMenu(KammoGUI::GnuVGCanvas* cnvs)
 	paste_button = KammoGUI::GnuVGCanvas::ElementReference(this, "pasteButton");
 	delete_button = KammoGUI::GnuVGCanvas::ElementReference(this, "deleteButton");
 
+	copy_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				PatternEditor::perform_operation(PatternEditor::copy_notes);
+			}
+		}
+		);
+	paste_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				PatternEditor::perform_operation(PatternEditor::paste_notes);
+			}
+		}
+		);
 	delete_button.set_event_handler(
 		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
 		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
@@ -390,6 +408,24 @@ void PatternEditor::transpose_selected_notes(PatternEditorOperation p_operation)
 			note,
 			on_at,
 			selected_note.length
+			);
+	}
+}
+
+void PatternEditor::copy_selected_notes_to_clipboard() {
+	auto selection = get_selection(true);
+	if(selection.size() > 0)
+		clipboard = selection;
+}
+
+void PatternEditor::paste_notes_from_clipboard() {
+	for(auto source_note : clipboard) {
+		ri_seq->add_note(
+			pattern_id,
+			source_note.channel, source_note.program, source_note.velocity,
+			source_note.note,
+			source_note.on_at,
+			source_note.length
 			);
 	}
 }
@@ -863,8 +899,10 @@ void PatternEditor::internal_perform_operation(PatternEditor::PatternEditorOpera
 		transpose_selected_notes(p_operation);
 		break;
 	case copy_notes:
+		copy_selected_notes_to_clipboard();
 		break;
 	case paste_notes:
+		paste_notes_from_clipboard();
 		break;
 	case delete_notes:
 		delete_selected_notes();

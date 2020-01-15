@@ -697,10 +697,8 @@ CLIENT_CODE(
 			ptrn.second->pattern_listeners.erase(pal);
 		}
 
-		// if the requested pattern does not exist, quietly return
-		if(patterns.find(pattern_id) == patterns.end()) return;
-
-		patterns[pattern_id]->pattern_listeners.insert(pal);
+		auto ptrn = require_pattern(pattern_id);
+		ptrn->pattern_listeners.insert(pal);
 
 		std::list<Note> note_storage;
 		get_notes(pattern_id, note_storage);

@@ -129,12 +129,15 @@ private:
 
 	IDAllocator note_graphics_id_allocator;
 	std::map<RINote, NoteGraphic> note_graphics;
+	std::set<RINote> clipboard;
 
 	void update_selected_notes_counter();
 
 	// Operations
 	void deselect_all();
 	void transpose_selected_notes(PatternEditorOperation p_operation);
+	void copy_selected_notes_to_clipboard();
+	void paste_notes_from_clipboard();
 	void delete_selected_notes();
 
 	std::set<RINote> get_selection(bool all_if_selection_is_empty);
