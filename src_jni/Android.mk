@@ -135,6 +135,7 @@ ui_code/whistle_ui.cc \
 ui_code/svg_loader.cc ui_code/svg_loader.hh \
 ui_code/tracker.cc ui_code/tracker.hh \
 ui_code/scale_slider.cc ui_code/scale_slider.hh \
+ui_code/scale_slide.cc ui_code/scale_slide.hh \
 ui_code/listview.cc ui_code/listview.hh \
 ui_code/share_ui.cc ui_code/share_ui.hh \
 ui_code/samples_editor_ng.cc \

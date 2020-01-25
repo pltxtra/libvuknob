@@ -29,6 +29,7 @@
 #include "svg_loader.hh"
 #include "common.hh"
 #include "fling_animation.hh"
+#include "scale_slide.hh"
 #include "popup_window.hh"
 
 #include "tap_detector.hh"
@@ -39,6 +40,7 @@
 PatternEditor* PatternEditor::singleton = nullptr;
 static TapDetector tap_detector;
 static PatternEditorMenu* pattern_editor_menu = nullptr;
+static std::shared_ptr<ScaleSlide> scale_slider;
 
 /*******************************************************************************
  *
@@ -927,6 +929,7 @@ std::shared_ptr<PatternEditor> PatternEditor::get_pattern_editor(KammoGUI::GnuVG
 	if(singleton) return singleton->shared_from_this();
 	auto  response = std::shared_ptr<PatternEditor>(new PatternEditor(cnvs, timelines));
 	PatternEditorMenu::prepare_menu(cnvs);
+	scale_slider = std::make_shared<ScaleSlide>(cnvs);
 	return response;
 }
 
