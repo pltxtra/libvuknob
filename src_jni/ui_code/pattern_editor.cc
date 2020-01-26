@@ -475,12 +475,35 @@ void PatternEditor::select(NoteGraphic &ngph) {
 	SATAN_DEBUG("select() on %p\n", &ngph);
 	ngph->selected = true;
 	ngph->graphic_reference.set_style("fill:#ffff00");
+
+	KammoGUI::GnuVGCanvas::SVGRect rect;
+	ngph->graphic_reference.get_boundingbox(rect);
+
+	scale_slider->show(
+		rect.x, rect.y,
+		rect.width, rect.height,
+
+		finger_width * (double)(canvas_width_fingers - 3),
+		finger_height * (double)(1),
+		finger_width * 3.0,
+		finger_height * 6.0
+		);
+//	scale_slider->set_listener(this);
+	scale_slider->set_label("Velocity");
+	scale_slider->set_value(((double)ngph->note.velocity) / 127.0);
 }
 
 void PatternEditor::deselect(NoteGraphic &ngph) {
 	SATAN_DEBUG("deselect() on %p\n", &ngph);
 	ngph->selected = false;
 	ngph->graphic_reference.set_style("fill:#ff00ff");
+
+	KammoGUI::GnuVGCanvas::SVGRect rect;
+	ngph->graphic_reference.get_boundingbox(rect);
+	scale_slider->hide(
+		rect.x, rect.y,
+		rect.width, rect.height
+		);
 }
 
 void PatternEditor::note_on(int index) {
