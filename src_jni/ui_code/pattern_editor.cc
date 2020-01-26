@@ -337,6 +337,7 @@ void PatternEditor::update_selected_notes_counter() {
 }
 
 void PatternEditor::deselect_all() {
+	expected_new_selection.clear();
 	for(auto ngph : note_graphics) {
 		if(ngph.second->selected)
 			deselect(ngph.second);
@@ -392,6 +393,9 @@ void PatternEditor::transpose_selected_notes(PatternEditorOperation p_operation)
 		break;
 	}
 
+	// If the user is working on a selection of notes (not all), then select the transposed notes.
+	bool select_new_note = !(selection.size() == note_graphics.size());
+
 	for(auto selected_note : selection) {
 		ri_seq->delete_note(
 			pattern_id,
@@ -411,6 +415,17 @@ void PatternEditor::transpose_selected_notes(PatternEditorOperation p_operation)
 			on_at,
 			selected_note.length
 			);
+		if(select_new_note) {
+			RINote expected_note = {
+				.channel = selected_note.channel,
+				.program = selected_note.program,
+				.velocity = selected_note.velocity,
+				.note = note,
+				.on_at = on_at,
+				.length = selected_note.length
+			};
+			expected_new_selection.insert(expected_note);
+		}
 	}
 }
 
@@ -867,6 +882,10 @@ void PatternEditor::create_note_graphic(const RINote &new_note) {
 	note_graphics[new_note] = ngph;
 
 	refresh_note_graphics();
+
+	if(expected_new_selection.find(new_note) != expected_new_selection.end()) {
+		select(ngph);
+	}
 }
 
 void PatternEditor::delete_note_graphic(const RINote &note) {
@@ -928,6 +947,7 @@ PatternEditor::~PatternEditor() {
 
 void PatternEditor::internal_perform_operation(PatternEditor::PatternEditorOperation p_operation) {
 	velocity_slider->hide();
+	expected_new_selection.clear();
 	switch(p_operation) {
 	case deselect_all_notes:
 		deselect_all();
@@ -1089,6 +1109,7 @@ void PatternEditor::use_sequence_and_pattern(std::shared_ptr<RISequence> _ri_seq
 	pattern_id = _pattern_id;
 	ri_seq->add_pattern_listener(pattern_id, shared_from_this());
 	PatternEditorMenu::set_pattern_id(pattern_id);
+	expected_new_selection.clear();
 }
 
 void PatternEditor::show(std::function<void()> _on_exit_pattern_editor,

@@ -130,6 +130,7 @@ private:
 	IDAllocator note_graphics_id_allocator;
 	std::map<RINote, NoteGraphic> note_graphics;
 	std::set<RINote> clipboard;
+	std::set<RINote> expected_new_selection;
 
 	void update_selected_notes_counter();
 
