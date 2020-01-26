@@ -145,6 +145,8 @@ private:
 	void select(NoteGraphic &ngph);
 	void deselect(NoteGraphic &ngph);
 
+	void show_velocity_slider(NoteGraphic &ngph);
+
 	void note_on(int index);
 	void note_off(int index);
 

@@ -40,7 +40,7 @@
 PatternEditor* PatternEditor::singleton = nullptr;
 static TapDetector tap_detector;
 static PatternEditorMenu* pattern_editor_menu = nullptr;
-static std::shared_ptr<ScaleSlide> scale_slider;
+static std::shared_ptr<ScaleSlide> velocity_slider;
 
 /*******************************************************************************
  *
@@ -475,14 +475,26 @@ void PatternEditor::select(NoteGraphic &ngph) {
 	SATAN_DEBUG("select() on %p\n", &ngph);
 	ngph->selected = true;
 	ngph->graphic_reference.set_style("fill:#ffff00");
+}
 
+void PatternEditor::deselect(NoteGraphic &ngph) {
+	SATAN_DEBUG("deselect() on %p\n", &ngph);
+	ngph->selected = false;
+	ngph->graphic_reference.set_style("fill:#ff00ff");
+
+	KammoGUI::GnuVGCanvas::SVGRect rect;
+	ngph->graphic_reference.get_boundingbox(rect);
+	velocity_slider->hide();
+}
+
+void PatternEditor::show_velocity_slider(NoteGraphic &ngph) {
 	KammoGUI::GnuVGCanvas::SVGRect rect;
 	ngph->graphic_reference.get_boundingbox(rect);
 
 	auto selected_note = ngph->note;
 
 	SATAN_DEBUG("Show slider for initial value %d\n", ngph->note.velocity);
-	scale_slider->show(
+	velocity_slider->show(
 		"Velocity",
 		((double)ngph->note.velocity) / 127.0,
 		rect.x, rect.y,
@@ -506,16 +518,6 @@ void PatternEditor::select(NoteGraphic &ngph) {
 			);
 		}
 		);
-}
-
-void PatternEditor::deselect(NoteGraphic &ngph) {
-	SATAN_DEBUG("deselect() on %p\n", &ngph);
-	ngph->selected = false;
-	ngph->graphic_reference.set_style("fill:#ff00ff");
-
-	KammoGUI::GnuVGCanvas::SVGRect rect;
-	ngph->graphic_reference.get_boundingbox(rect);
-	scale_slider->hide();
 }
 
 void PatternEditor::note_on(int index) {
@@ -716,8 +718,10 @@ void PatternEditor::on_single_note_event(RINote selected_note,
 		SATAN_DEBUG("   TAP TAP TAP...\n");
 		if(note_graphics[selected_note]->selected)
 			deselect(note_graphics[selected_note]);
-		else
+		else {
 			select(note_graphics[selected_note]);
+			show_velocity_slider(note_graphics[selected_note]);
+		}
 		not_tapped = false;
 
 		update_selected_notes_counter();
@@ -923,6 +927,7 @@ PatternEditor::~PatternEditor() {
 }
 
 void PatternEditor::internal_perform_operation(PatternEditor::PatternEditorOperation p_operation) {
+	velocity_slider->hide();
 	switch(p_operation) {
 	case deselect_all_notes:
 		deselect_all();
@@ -964,7 +969,7 @@ std::shared_ptr<PatternEditor> PatternEditor::get_pattern_editor(KammoGUI::GnuVG
 	if(singleton) return singleton->shared_from_this();
 	auto  response = std::shared_ptr<PatternEditor>(new PatternEditor(cnvs, timelines));
 	PatternEditorMenu::prepare_menu(cnvs);
-	scale_slider = std::make_shared<ScaleSlide>(cnvs);
+	velocity_slider = std::make_shared<ScaleSlide>(cnvs);
 	return response;
 }
 
