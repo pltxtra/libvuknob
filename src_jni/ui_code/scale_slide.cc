@@ -122,28 +122,29 @@ void ScaleSlide::on_event(KammoGUI::GnuVGCanvas::SVGDocument *source,
 		ctx->last_y = now_y;
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
-		if(ctx->listener) {
-			ctx->listener->on_scale_slide_changed(ctx, ctx->value);
+		if(ctx->callback) {
+			ctx->callback(ctx->value);
+			ctx->hide();
 		}
 		break;
 	}
 }
 
-void ScaleSlide::interpolate(double value) {
+void ScaleSlide::interpolate(double progress) {
 	if(!transition_to_active_state) {
-		if(value >= 1.0) {
+		if(progress >= 1.0) {
 			KammoGUI::GnuVGCanvas::ElementReference root(this);
 			root.set_display("none"); // disable the view for this, until show is called
 		}
-		value = 1.0 - value;
+		progress = 1.0 - progress;
 	}
 
 	double ix, iy, iw, ih;
 
-	ix = (x - initial_x) * value + initial_x;
-	iy = (y - initial_y) * value + initial_y;
-	iw = (width - initial_width) * value + initial_width;
-	ih = (height - initial_height) * value + initial_height;
+	ix = (x - initial_x) * progress + initial_x;
+	iy = (y - initial_y) * progress + initial_y;
+	iw = (width - initial_width) * progress + initial_width;
+	ih = (height - initial_height) * progress + initial_height;
 
 	double scale_w = iw / document_size.width;
 	double scale_h = ih / document_size.height;
@@ -159,13 +160,21 @@ void ScaleSlide::transition_progressed(ScaleSlide *sc, float progress) {
 }
 
 void ScaleSlide::show(
+	const std::string &new_label,
+	double initial_value,
 	double _initial_x, double _initial_y,
 	double _initial_width, double _initial_height,
-	double _x, double _y, double _width, double _height) {
+	double _x, double _y, double _width, double _height,
+	std::function<void(double new_value)> _callback) {
 
 	KammoGUI::GnuVGCanvas::ElementReference root(this);
 	root.set_display("inline"); // time to show this
 
+	callback = _callback;
+	front_label.set_text_content(new_label);
+	shade_label.set_text_content(new_label);
+
+	value = initial_value;
 	initial_x = _initial_x;
 	initial_y = _initial_y;
 	initial_width = _initial_width;
@@ -185,12 +194,7 @@ void ScaleSlide::show(
 	}
 }
 
-void ScaleSlide::hide(double final_x, double final_y, double final_width, double final_height) {
-	initial_x = final_x;
-	initial_y = final_y;
-	initial_width = final_width;
-	initial_height = final_height;
-
+void ScaleSlide::hide() {
 	transition_to_active_state = false;
 	Transition *transition = new Transition(this, transition_progressed);
 	if(transition) {
@@ -200,27 +204,9 @@ void ScaleSlide::hide(double final_x, double final_y, double final_width, double
 		KammoGUI::GnuVGCanvas::ElementReference root(this);
 		root.set_display("none"); // disable the view for this, until show is called
 	}
-	listener = NULL;
 }
 
-void ScaleSlide::set_label(const std::string &new_label) {
-	front_label.set_text_content(new_label);
-	shade_label.set_text_content(new_label);
-}
-
-void ScaleSlide::set_value(double val) {
-	value = val;
-}
-
-double ScaleSlide::get_value() {
-	return value;
-}
-
-void ScaleSlide::set_listener(ScaleSlide::ScaleSlideChangedListener *new_listener) {
-	listener = new_listener;
-}
-
-ScaleSlide::ScaleSlide(KammoGUI::GnuVGCanvas *cnvs) : SVGDocument(std::string(SVGLoader::get_svg_directory() + "/Scale.svg"), cnvs), listener(NULL), value(0.75), last_value(-2.0) {
+ScaleSlide::ScaleSlide(KammoGUI::GnuVGCanvas *cnvs) : SVGDocument(std::string(SVGLoader::get_svg_directory() + "/Scale.svg"), cnvs), value(0.75), last_value(-2.0) {
 	KammoGUI::GnuVGCanvas::ElementReference root(this);
 	root.set_display("none"); // disable the view for this, until show is called
 

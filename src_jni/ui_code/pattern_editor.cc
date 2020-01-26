@@ -479,18 +479,33 @@ void PatternEditor::select(NoteGraphic &ngph) {
 	KammoGUI::GnuVGCanvas::SVGRect rect;
 	ngph->graphic_reference.get_boundingbox(rect);
 
+	auto selected_note = ngph->note;
+
+	SATAN_DEBUG("Show slider for initial value %d\n", ngph->note.velocity);
 	scale_slider->show(
+		"Velocity",
+		((double)ngph->note.velocity) / 127.0,
 		rect.x, rect.y,
 		rect.width, rect.height,
 
 		finger_width * (double)(canvas_width_fingers - 3),
 		finger_height * (double)(1),
 		finger_width * 3.0,
-		finger_height * 6.0
+		finger_height * 6.0,
+		[this, selected_note](double value) {
+			int new_velocity = (int)(127.0 * value);
+			SATAN_DEBUG("New value from slider: %d\n", new_velocity);
+			deselect_all();
+			ri_seq->delete_note(pattern_id, selected_note);
+			ri_seq->add_note(
+				pattern_id,
+				selected_note.channel, selected_note.program, new_velocity,
+				selected_note.note,
+				selected_note.on_at,
+				selected_note.length
+			);
+		}
 		);
-//	scale_slider->set_listener(this);
-	scale_slider->set_label("Velocity");
-	scale_slider->set_value(((double)ngph->note.velocity) / 127.0);
 }
 
 void PatternEditor::deselect(NoteGraphic &ngph) {
@@ -500,10 +515,7 @@ void PatternEditor::deselect(NoteGraphic &ngph) {
 
 	KammoGUI::GnuVGCanvas::SVGRect rect;
 	ngph->graphic_reference.get_boundingbox(rect);
-	scale_slider->hide(
-		rect.x, rect.y,
-		rect.width, rect.height
-		);
+	scale_slider->hide();
 }
 
 void PatternEditor::note_on(int index) {

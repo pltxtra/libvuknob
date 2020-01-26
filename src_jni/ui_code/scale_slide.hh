@@ -24,13 +24,6 @@
 #include <functional>
 
 class ScaleSlide : public KammoGUI::GnuVGCanvas::SVGDocument {
-public:
-	class ScaleSlideChangedListener {
-	public:
-		virtual void on_scale_slide_changed(ScaleSlide *scl, double new_value) = 0;
-	};
-
-
 private:
 	class Transition : public KammoGUI::Animation {
 	private:
@@ -43,7 +36,7 @@ private:
 		virtual void on_touch_event();
 	};
 
-	ScaleSlideChangedListener *listener;
+	std::function<void(double new_value)> callback;
 	double value, last_value;
 
 	// graphical data
@@ -65,7 +58,7 @@ private:
 	KammoGUI::GnuVGCanvas::ElementReference front_label;
 	KammoGUI::GnuVGCanvas::ElementReference shade_label;
 
-	void interpolate(double value);
+	void interpolate(double progress);
 	static void transition_progressed(ScaleSlide *sc, float progress);
 
 	static void on_event(KammoGUI::GnuVGCanvas::SVGDocument *source,
@@ -77,16 +70,11 @@ public:
 	~ScaleSlide();
 
 	void show(
+		const std::string &label, double initial_value,
 		double initial_x, double initial_y, double initial_width, double initial_height,
-		double x, double y, double width, double height);
-	void hide(double final_x, double final_y, double final_width, double final_height);
-
-	void set_label(const std::string &label);
-
-	void set_value(double val);
-	double get_value();
-
-	void set_listener(ScaleSlideChangedListener *scl);
+		double x, double y, double width, double height,
+		std::function<void(double new_value)> callback);
+	void hide();
 
 	virtual void on_resize();
 	virtual void on_render();
