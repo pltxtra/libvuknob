@@ -31,12 +31,31 @@
 typedef RemoteInterface::ClientSpace::Sequence RISequence;
 typedef RemoteInterface::ClientSpace::Sequence::PatternInstance RIPatternInstance;
 
+class SequencerMenu
+	: public KammoGUI::GnuVGCanvas::SVGDocument
+{
+private:
+	KammoGUI::GnuVGCanvas::ElementReference root;
+	KammoGUI::GnuVGCanvas::SVGRect document_size;
+	double finger_width = 10.0, finger_height = 10.0; // sizes in pixels
+	int canvas_width_fingers = 8, canvas_height_fingers = 8; // sizes in "fingers"
+	float canvas_w_inches, canvas_h_inches; // sizes in inches
+	int canvas_w, canvas_h; // sizes in pixels
+
+public:
+	SequencerMenu(KammoGUI::GnuVGCanvas* cnvs);
+
+	virtual void on_resize() override;
+	virtual void on_render() override;
+};
+
 class Sequencer
 	: public RemoteInterface::Context::ObjectSetListener<RISequence>
 	, public KammoGUI::GnuVGCanvas::SVGDocument
 {
 
 private:
+	std::shared_ptr<SequencerMenu> sequencer_menu;
 	enum InstanceEventType {
 		finger_on,
 		moved,

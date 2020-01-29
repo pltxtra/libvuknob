@@ -53,6 +53,38 @@ static TapDetector tap_detector;
 
 /***************************
  *
+ *  Class SequencerMenu
+ *
+ ***************************/
+
+SequencerMenu::SequencerMenu(KammoGUI::GnuVGCanvas* cnvs)
+	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/sequencerMachineMenu.svg"), cnvs)
+{
+	root = KammoGUI::GnuVGCanvas::ElementReference(this);
+}
+
+void SequencerMenu::on_resize() {
+	auto canvas = get_canvas();
+	canvas->get_size_pixels(canvas_w, canvas_h);
+	canvas->get_size_inches(canvas_w_inches, canvas_h_inches);
+
+	double tmp;
+
+	tmp = canvas_w_inches / INCHES_PER_FINGER;
+	canvas_width_fingers = (int)tmp;
+	tmp = canvas_h_inches / INCHES_PER_FINGER;
+	canvas_height_fingers = (int)tmp;
+
+	tmp = canvas_w / ((double)canvas_width_fingers);
+	finger_width = tmp;
+	tmp = canvas_h / ((double)canvas_height_fingers);
+	finger_height = tmp;
+}
+
+void SequencerMenu::on_render() {}
+
+/***************************
+ *
  *  Class Sequencer::PatternInstance
  *
  ***************************/
@@ -522,20 +554,23 @@ auto Sequencer::Sequence::create_sequence(
 Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/sequencerMachine.svg"), cnvs)
 {
-	pattern_id_container = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdContainer");
-	pattern_id_plus = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdPlus");
-	pattern_id_minus = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdMinus");
-	pattern_id_text = KammoGUI::GnuVGCanvas::ElementReference(this, "patternIdText");
+	sequencer_menu = std::make_shared<SequencerMenu>(cnvs);
+
+	pattern_id_container = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "patternIdContainer");
+	pattern_id_plus = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "patternIdPlus");
+	pattern_id_minus = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "patternIdMinus");
+	pattern_id_text = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "patternIdText");
+	trashcan_icon = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "trashcanIcon");
+	notes_icon = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "notesIcon");
+	loop_icon = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "loopIcon");
+	loop_enabled_icon = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "loopEnabled");
+	loop_disabled_icon = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "loopDisabled");
+	length_icon = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "lengthIcon");
+	sequencer_shade = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "sequencerShade");
+	tapped_instance = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "tappedInstance");
+
 	sequencer_container = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerContainer");
 	sequence_graphic_template = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerMachineTemplate");
-	trashcan_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "trashcanIcon");
-	notes_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "notesIcon");
-	loop_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "loopIcon");
-	loop_enabled_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "loopEnabled");
-	loop_disabled_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "loopDisabled");
-	length_icon = KammoGUI::GnuVGCanvas::ElementReference(this, "lengthIcon");
-	sequencer_shade = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerShade");
-	tapped_instance = KammoGUI::GnuVGCanvas::ElementReference(this, "tappedInstance");
 	root = KammoGUI::GnuVGCanvas::ElementReference(this);
 
 	sequence_graphic_template.set_display("none");
