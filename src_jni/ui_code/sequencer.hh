@@ -225,6 +225,7 @@ private:
 public:
 
 	Sequencer(KammoGUI::GnuVGCanvas* cnvs);
+	void prepare_sequencer(KammoGUI::GnuVGCanvas* cnvs);
 
 	void vertical_scroll_event(const KammoGUI::MotionEvent &event);
 

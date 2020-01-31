@@ -554,6 +554,14 @@ auto Sequencer::Sequence::create_sequence(
 Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/sequencerMachine.svg"), cnvs)
 {
+	sequencer_container = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerContainer");
+	sequence_graphic_template = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerMachineTemplate");
+	root = KammoGUI::GnuVGCanvas::ElementReference(this);
+
+	sequence_graphic_template.set_display("none");
+}
+
+void Sequencer::prepare_sequencer(KammoGUI::GnuVGCanvas* cnvs) {
 	sequencer_menu = std::make_shared<SequencerMenu>(cnvs);
 
 	pattern_id_container = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "patternIdContainer");
@@ -569,11 +577,6 @@ Sequencer::Sequencer(KammoGUI::GnuVGCanvas* cnvs)
 	sequencer_shade = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "sequencerShade");
 	tapped_instance = KammoGUI::GnuVGCanvas::ElementReference(sequencer_menu.get(), "tappedInstance");
 
-	sequencer_container = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerContainer");
-	sequence_graphic_template = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerMachineTemplate");
-	root = KammoGUI::GnuVGCanvas::ElementReference(this);
-
-	sequence_graphic_template.set_display("none");
 	trashcan_icon.set_display("none");
 	notes_icon.set_display("none");
 	loop_icon.set_display("none");
@@ -1291,8 +1294,9 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		KammoGUI::GnuVGCanvas *cnvs = (KammoGUI::GnuVGCanvas *)wid;
 		cnvs->set_bg_color(1.0, 1.0, 1.0);
 
-		timelines = std::make_shared<TimeLines>(cnvs);
 		sequencer = std::make_shared<Sequencer>(cnvs);
+		timelines = std::make_shared<TimeLines>(cnvs);
+		sequencer->prepare_sequencer(cnvs);
 		plus_button = std::make_shared<GnuVGCornerButton>(
 			cnvs,
 			std::string(SVGLoader::get_svg_directory() + "/plusButton.svg"),
