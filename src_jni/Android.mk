@@ -186,6 +186,8 @@ LOCAL_SRC_FILES := \
 termination_handler.cc \
 engine_code/global_control_object.cc engine_code/global_control_object.hh \
 engine_code/sequence.cc engine_code/sequence.hh \
+engine_code/base_machine.cc engine_code/base_machine.hh \
+engine_code/machine_api.cc engine_code/machine_api.hh \
 engine_code/server.cc engine_code/server.hh
 
 LOCAL_LDFLAGS += -Xlinker --threads
@@ -215,6 +217,8 @@ LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 LOCAL_SRC_FILES := \
 engine_code/global_control_object.cc engine_code/global_control_object.hh \
 engine_code/sequence.cc engine_code/sequence.hh \
+engine_code/base_machine.cc engine_code/base_machine.hh \
+engine_code/machine_api.cc engine_code/machine_api.hh \
 engine_code/client.cc engine_code/client.hh
 
 LOCAL_LDFLAGS += -Xlinker --threads

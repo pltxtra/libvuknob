@@ -27,6 +27,7 @@
 
 #include "server.hh"
 #include "sequence.hh"
+#include "machine_api.hh"
 
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
@@ -140,6 +141,16 @@ SERVER_CODE(
 							SATAN_DEBUG("Serverside machine initiated.\n");
 
 							machine2rimachine[m_ptr] = mch;
+						}
+						);
+
+					create_object_from_factory<RemoteInterface::ServerSpace::MachineAPI>(
+						[this, m_ptr]
+						(std::shared_ptr<RemoteInterface::ServerSpace::MachineAPI> mchapi) {
+							mchapi->init_from_machine_ptr(m_ptr);
+							SATAN_DEBUG("Serverside MachineAPI object created\n");
+
+							machine2machineapi[m_ptr] = mchapi;
 						}
 						);
 

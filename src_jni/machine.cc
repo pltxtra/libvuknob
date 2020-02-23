@@ -1756,6 +1756,13 @@ void Machine::internal_deregister_machine(Machine *m) {
 	}
 	auto m_ptr = ms_i->second;
 
+	if(sink == m) {
+		internal_unregister_sink(m);
+	}
+
+	machine_set.erase(ms_i);
+	m->has_been_deregistered = true;
+
 	// notify listeners that the machine is no longer in use
 	for(auto w_mlist : machine_set_listeners) {
 		std::shared_ptr<MachineSetListener> mlist = w_mlist.lock();
@@ -1767,13 +1774,6 @@ void Machine::internal_deregister_machine(Machine *m) {
 				}
 				);
 		}
-	}
-
-	m->has_been_deregistered = true;
-	machine_set.erase(ms_i);
-
-	if(sink == m) {
-		internal_unregister_sink(m);
 	}
 }
 
