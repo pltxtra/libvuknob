@@ -85,6 +85,7 @@ int quantize_tick(int start_tick) {
 
 Machine::Controller::Controller(
 	Type tp,
+	const std::string &_group_name,
 	const std::string &_name, const std::string &_title,
 	void *_ptr,
 	const std::string &min,
@@ -96,6 +97,7 @@ Machine::Controller::Controller(
 
 	float_is_FTYPE = _float_is_FTYPE;
 	type = tp;
+	group_name = _group_name;
 	name = _name;
 	title = _title;
 	ptr = _ptr;
@@ -193,6 +195,10 @@ void Machine::Controller::set_midi_controller(int _coarse, int _fine) {
 
 std::string Machine::Controller::get_name() {
 	return name;
+}
+
+std::string Machine::Controller::get_group_name() {
+	return group_name;
 }
 
 std::string Machine::Controller::get_title() {
@@ -1399,6 +1405,7 @@ void Machine::execute() {
 
 Machine::Controller *Machine::create_controller(
 	Controller::Type tp,
+	std::string group_name,
 	std::string name,
 	std::string title,
 	void *ptr,
@@ -1408,7 +1415,7 @@ Machine::Controller *Machine::create_controller(
 	std::map<int, std::string> enumnames,
 	bool float_is_FTYPE) {
 	return new Controller(
-		tp, name, title, ptr, min, max, step, enumnames, float_is_FTYPE);
+		tp, group_name, name, title, ptr, min, max, step, enumnames, float_is_FTYPE);
 }
 
 void Machine::set_midi_controller(Controller *ctrl, int coarse, int fine) {
@@ -2450,7 +2457,7 @@ std::vector<std::string> Machine::get_controller_names(const std::string &_group
 }
 
 Machine::Controller *Machine::get_controller(const std::string &_name) {
-	Machine::Controller *retval;
+	Machine::Controller *retval = nullptr;
 
 	Machine::machine_operation_enqueue(
 		[this, _name, &retval] (void *d) {

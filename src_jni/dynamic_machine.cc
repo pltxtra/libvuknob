@@ -854,9 +854,11 @@ Machine::Controller *DynamicMachine::internal_get_controller(const std::string &
 	std::map<int, std::string> enumnames =
 		dh->get_controller_enumnames(name);
 
+	auto group_name = dh->get_controller_group(name);
+
 	bool has_midi_controller = dh->get_controller_has_midi(name);
 
-	Controller *ctr = create_controller(tp, name, title, ptr, min, max, step, enumnames, is_FTYPE);
+	Controller *ctr = create_controller(tp, group_name, name, title, ptr, min, max, step, enumnames, is_FTYPE);
 
 	if(has_midi_controller) {
 		int crs, fn;

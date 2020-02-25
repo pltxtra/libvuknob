@@ -169,7 +169,7 @@ public:
 	private:
 		friend class Machine;
 
-		std::string name;
+		std::string name, group_name;
 		std::string title;
 		Type type;
 		void *ptr;
@@ -186,6 +186,7 @@ public:
 
 		Controller(
 			Type tp,
+			const std::string &group_name,
 			const std::string &name, // internal name
 			const std::string &title, // displayed to user
 			void *ctrl_ptr,
@@ -211,6 +212,7 @@ public:
 		void internal_set_value(const std::string &val);
 
 	public:
+		std::string get_group_name();
 		std::string get_name();
 		std::string get_title();
 		Type get_type();
@@ -645,6 +647,7 @@ protected:
 	// create a new controller handle
 	Controller *create_controller(
 		Controller::Type tp,
+		std::string group_name,
 		std::string name,
 		std::string title,
 		void *ptr,
