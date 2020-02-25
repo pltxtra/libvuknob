@@ -54,8 +54,12 @@ namespace RemoteInterface {
 			void serderize_machine_api(SerderClassT &serder);
 
 		public:
-			MachineAPI(const Factory *factory, const RemoteInterface::Message &serialized);
-			MachineAPI(int32_t new_obj_id, const Factory *factory);
+			ON_CLIENT(
+				MachineAPI(const Factory *factory, const RemoteInterface::Message &serialized);
+				);
+			ON_SERVER(
+				MachineAPI(int32_t new_obj_id, const Factory *factory);
+				);
 
 			virtual void on_delete(RemoteInterface::Context* context) override {
 				context->unregister_this_object(this);

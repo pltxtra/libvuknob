@@ -46,6 +46,10 @@ namespace RemoteInterface {
 		public:
 			class Controller {
 			public:
+				static constexpr const char* serialize_identifier = "BaseMachine::Controller";
+				template <class SerderClassT>
+				void serderize(SerderClassT &serder);
+
 				class NoSuchEnumValue : public std::runtime_error {
 				public:
 					NoSuchEnumValue() : runtime_error("No such enum value in BaseMachine::Controller.") {}
@@ -63,16 +67,17 @@ namespace RemoteInterface {
 				};
 
 				ON_SERVER(
-					Controller(int ctrl_id, Machine::Controller *ctrl);
-
-					std::string get_serialized_controller();
+					Controller(int _ctrl_id, Machine::Controller *ctrl);
+					~Controller();
 					);
 				ON_CLIENT(
-					Controller(std::function<
-						   void(std::function<void(std::shared_ptr<Message> &msg_to_send)> )
-						   >  _send_obj_message,
-						   const std::string &serialized);
+					Controller();
+					void set_msg_builder(std::function<
+							     void(std::function<void(std::shared_ptr<Message> &msg_to_send)> )
+							     >  _send_obj_message
+						);
 
+					std::string get_group(); // the group to which the controller belongs
 					std::string get_name(); // name of the control
 					std::string get_title(); // user displayable title
 
@@ -106,6 +111,9 @@ namespace RemoteInterface {
 					);
 
 			private:
+				ON_SERVER(
+					Machine::Controller *m_ctrl;
+					);
 				ON_CLIENT(
 					std::function<
 					void(
@@ -129,19 +137,18 @@ namespace RemoteInterface {
 					data_i i;
 				} data;
 
-				int ctrl_id = -1;
+				int ctrl_id;
 				int ct_type = ric_int; //because of serderize limits, using enum Type values, but need to be explicitly stored as an integer
-				std::string name, title, str_data = "";
+				std::string name, title, str_data = "", group_name;
 				bool bl_data = false;
 				std::map<int, std::string> enum_names;
 				int coarse_controller = -1, fine_controller = -1;
-
-				template <class SerderClassT>
-				void serderize_controller(SerderClassT &serder);
 			};
 
 		private:
 			std::string name;
+			std::vector<std::string> groups;
+			std::set<std::shared_ptr<Controller> > controllers;
 
 			/* REQ means the client request the server to perform an operation */
 			/* CMD means the server commands the client to perform an operation */
@@ -154,9 +161,11 @@ namespace RemoteInterface {
 			void serderize_base_machine(SerderClassT &serder);
 
 		public:
-			BaseMachine(const Factory *factory, const RemoteInterface::Message &serialized);
-			BaseMachine(int32_t new_obj_id, const Factory *factory);
+			ON_CLIENT(
+				BaseMachine(const Factory *factory, const RemoteInterface::Message &serialized);
+				);
 			ON_SERVER(
+				BaseMachine(int32_t new_obj_id, const Factory *factory);
 				void serialize(std::shared_ptr<Message> &target) override;
 				void init_from_machine_ptr(std::shared_ptr<Machine> m_ptr);
 				);

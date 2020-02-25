@@ -26,35 +26,49 @@
 #include "server.hh"
 #endif
 
-SERVER_N_CLIENT_CODE(
+CLIENT_CODE(
 	MachineAPI::MachineAPI(const Factory *factory, const RemoteInterface::Message &serialized)
 	: BaseMachine(factory, serialized)
 	{
 		register_handlers();
 		SATAN_DEBUG("MachineAPI() created client side.\n");
 	}
+	);
 
+SERVER_CODE(
 	MachineAPI::MachineAPI(int32_t new_obj_id, const Factory *factory)
 	: BaseMachine(new_obj_id, factory)
 	{
 		register_handlers();
 		SATAN_DEBUG("MachineAPI() created server side.\n");
 	}
+	);
+SERVER_N_CLIENT_CODE(
 
 	std::shared_ptr<BaseObject> MachineAPI::MachineAPIFactory::create(
 		const Message &serialized,
 		RegisterObjectFunction register_object
 		) {
-		auto nseq = std::make_shared<MachineAPI>(this, serialized);
-		return register_object(nseq);
+		ON_CLIENT(
+			auto nseq = std::make_shared<MachineAPI>(this, serialized);
+			return register_object(nseq);
+			);
+		ON_SERVER(
+			return nullptr;
+			);
 	}
 
 	std::shared_ptr<BaseObject> MachineAPI::MachineAPIFactory::create(
 		int32_t new_obj_id,
 		RegisterObjectFunction register_object
 		) {
-		auto nseq = std::make_shared<MachineAPI>(new_obj_id, this);
-		return register_object(nseq);
+		ON_SERVER(
+			auto nseq = std::make_shared<MachineAPI>(new_obj_id, this);
+			return register_object(nseq);
+			);
+		ON_CLIENT(
+			return nullptr;
+			);
 	}
 
 	static MachineAPI::MachineAPIFactory this_will_register_us_as_a_factory;
