@@ -258,6 +258,7 @@ ui_code/connector.cc ui_code/connector.hh \
 ui_code/pattern_editor.cc ui_code/pattern_editor.hh \
 ui_code/timelines.cc ui_code/timelines.hh \
 ui_code/popup_window.cc ui_code/popup_window.hh \
+ui_code/popup_menu.cc ui_code/popup_menu.hh \
 ui_code/sequencer.cc ui_code/sequencer.hh \
 ui_code/loop_settings.cc ui_code/loop_settings.hh
 

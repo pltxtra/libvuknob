@@ -17,41 +17,44 @@
  * Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef VUKNOB_KNOB_EDITOR
-#define VUKNOB_KNOB_EDITOR
+#ifndef VUKNOB_POPUP_MENU
+#define VUKNOB_POPUP_MENU
 
 #include <map>
 #include <gnuVGcanvas.hh>
 
-class KnobEditor
-	: public RemoteInterface::Context::ObjectSetListener<RISequence>
-	, public KammoGUI::GnuVGCanvas::SVGDocument
+class PopupMenu
+	: public KammoGUI::GnuVGCanvas::SVGDocument
 {
 
 private:
-	class KnobInstance
-		: public std::enable_shared_from_this<KnobInstance>
+	class ItemInstance
+		: public std::enable_shared_from_this<ItemInstance>
 	{
 	private:
 		KammoGUI::GnuVGCanvas::ElementReference svg_reference;
+		int offset;
 
 	public:
-		KnobInstance(
-			KammoGUI::GnuVGCanvas::ElementReference &elref
+		ItemInstance(KammoGUI::GnuVGCanvas::ElementReference &elref, int offset,
+			     std::function<void(int selection)> callback
 			);
 
-		virtual ~KnobInstance() {
+		virtual ~ItemInstance() {
 			svg_reference.drop_element();
 		}
 
-		static std::shared_ptr<KnobInstance> create_knob_instance(
-			KammoGUI::GnuVGCanvas::ElementReference &container,
-			KammoGUI::GnuVGCanvas::ElementReference &template,
+		static std::shared_ptr<ItemInstance> create_item_instance(
+			KammoGUI::GnuVGCanvas::ElementReference &item_container,
+			KammoGUI::GnuVGCanvas::ElementReference &item_template,
+			std::function<void(int selection)> callback,
 			int offset);
 	};
 
-	KammoGUI::GnuVGCanvas::ElementReference root, knob_container, knob_template;
+	KammoGUI::GnuVGCanvas::ElementReference root, item_container, item_template, backdrop;
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
+
+	std::vector<std::shared_ptr<ItemInstance> > items;
 
 	double scaling; // graphical scaling factor
 	double finger_width = 10.0, finger_height = 10.0; // sizes in pixels
@@ -59,11 +62,16 @@ private:
 	float canvas_w_inches, canvas_h_inches; // sizes in inches
 	int canvas_w, canvas_h; // sizes in pixels
 
+	static PopupMenu *singleton;
+	PopupMenu(KammoGUI::GnuVGCanvas* cnvs);
+	void internal_show_menu(std::vector<std::string> items, std::function<void(int selection)> callback);
 public:
-	KnobEditor(KammoGUI::GnuVGCanvas* cnvs);
 
 	virtual void on_resize() override;
 	virtual void on_render() override;
+
+	static void prepare(KammoGUI::GnuVGCanvas* cnvs);
+	static void show_menu(std::vector<std::string> items, std::function<void(int selection)> callback);
 };
 
 #endif

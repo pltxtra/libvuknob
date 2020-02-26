@@ -30,6 +30,7 @@
 #include "loop_settings.hh"
 #include "pattern_editor.hh"
 #include "popup_window.hh"
+#include "popup_menu.hh"
 #include "gnuvg_corner_button.hh"
 #include "svg_loader.hh"
 #include "common.hh"
@@ -1334,6 +1335,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		RemoteInterface::ClientSpace::Client::register_object_set_listener<GCO>(timelines);
 		RemoteInterface::ClientSpace::Client::register_object_set_listener<GCO>(loop_settings);
 
+		PopupMenu::prepare(cnvs);
 		PopupWindow::prepare(cnvs);
 	}
 }
