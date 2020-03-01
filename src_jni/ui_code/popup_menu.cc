@@ -42,6 +42,7 @@ PopupMenu* PopupMenu::singleton = nullptr;
 
 PopupMenu::ItemInstance::ItemInstance(
 	KammoGUI::GnuVGCanvas::ElementReference &elref, int _offset,
+	const std::string &content,
 	std::function<void(int selection)> callback
 	)
 	: svg_reference(elref)
@@ -57,13 +58,19 @@ PopupMenu::ItemInstance::ItemInstance(
 			}
 		}
 		);
+	background = svg_reference.find_child_by_class("itemBackground");
+	text = svg_reference.find_child_by_class("itemText");
+	tspan = svg_reference.find_child_by_class("itemTspan");
+	tspan.set_text_content(content);
+	svg_reference.set_display("inline");
 }
 
 auto PopupMenu::ItemInstance::create_item_instance(
 	KammoGUI::GnuVGCanvas::ElementReference &item_container,
 	KammoGUI::GnuVGCanvas::ElementReference &item_template,
 	std::function<void(int selection)> callback,
-	int offset) -> std::shared_ptr<ItemInstance> {
+	int offset,
+	const std::string &content) -> std::shared_ptr<ItemInstance> {
 
 	char bfr[32];
 	snprintf(bfr, 32, "itm_%d", offset);
@@ -73,8 +80,16 @@ auto PopupMenu::ItemInstance::create_item_instance(
 
 	SATAN_DEBUG("PopupMenu::ItemInstance::create_item_instance() -- bfr: %s\n", bfr);
 
-	auto new_item = std::make_shared<ItemInstance>(new_graphic, offset, callback);
+	auto new_item = std::make_shared<ItemInstance>(new_graphic, offset, content, callback);
 	return new_item;
+}
+
+void PopupMenu::ItemInstance::set_graphic_parameters(double finger_height, double canvas_w, double canvas_h) {
+	background.set_rect_coords(0, offset * finger_height, canvas_w, finger_height);
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
+	transform_t.init_identity();
+	transform_t.translate(0.0, (double)(offset) * finger_height);
+	text.set_transform(transform_t);
 }
 
 /***************************
@@ -90,13 +105,20 @@ PopupMenu::PopupMenu(KammoGUI::GnuVGCanvas* cnvs)
 	item_container = KammoGUI::GnuVGCanvas::ElementReference(this, "itemContainer");
 	item_template = KammoGUI::GnuVGCanvas::ElementReference(this, "itemTemplate");
 	root = KammoGUI::GnuVGCanvas::ElementReference(this);
+
+	item_template.set_display("none");
 }
 
 void PopupMenu::internal_show_menu(std::vector<std::string> new_items, std::function<void(int selection)> callback) {
+	root.set_display("inline");
 	items.clear();
 	int offset = 0;
+	auto root_callback = [this, callback](int offset) {
+		root.set_display("none");
+		callback(offset);
+	};
 	for(auto new_item : new_items) {
-		items.push_back(ItemInstance::create_item_instance(item_container, item_template, callback, offset));
+		items.push_back(ItemInstance::create_item_instance(item_container, item_template, root_callback, offset, new_item));
 		++offset;
 	}
 }
@@ -121,9 +143,23 @@ void PopupMenu::on_resize() {
 	// get data
 	root.get_viewport(document_size);
 	scaling = finger_height / document_size.height;
+
+	// fill backdrop
+	backdrop.set_rect_coords(0.0, 0.0, canvas_w, canvas_h);
+	backdrop.set_event_handler(
+		[this](SVGDocument *source,
+		       KammoGUI::GnuVGCanvas::ElementReference *e,
+		       const KammoGUI::MotionEvent &event) {
+			SATAN_DEBUG("popup menu backdrop pressed\n");
+		}
+		);
 }
 
 void PopupMenu::on_render() {
+	// resize and move all menu items
+	for(auto item : items) {
+		item->set_graphic_parameters(finger_height, canvas_w, canvas_h);
+	}
 }
 
 void PopupMenu::prepare(KammoGUI::GnuVGCanvas* cnvs) {

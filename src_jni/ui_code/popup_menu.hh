@@ -32,11 +32,11 @@ private:
 		: public std::enable_shared_from_this<ItemInstance>
 	{
 	private:
-		KammoGUI::GnuVGCanvas::ElementReference svg_reference;
+		KammoGUI::GnuVGCanvas::ElementReference svg_reference, background, text, tspan;
 		int offset;
 
 	public:
-		ItemInstance(KammoGUI::GnuVGCanvas::ElementReference &elref, int offset,
+		ItemInstance(KammoGUI::GnuVGCanvas::ElementReference &elref, int offset, const std::string &content,
 			     std::function<void(int selection)> callback
 			);
 
@@ -48,7 +48,9 @@ private:
 			KammoGUI::GnuVGCanvas::ElementReference &item_container,
 			KammoGUI::GnuVGCanvas::ElementReference &item_template,
 			std::function<void(int selection)> callback,
-			int offset);
+			int offset, const std::string &content);
+
+		void set_graphic_parameters(double finger_height, double canvas_w, double canvas_h);
 	};
 
 	KammoGUI::GnuVGCanvas::ElementReference root, item_container, item_template, backdrop;
