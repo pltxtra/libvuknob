@@ -44,34 +44,34 @@ namespace RemoteInterface {
 			: public RemoteInterface::SimpleBaseObject
 		{
 		public:
-			class Controller {
+			class Knob {
 			public:
-				static constexpr const char* serialize_identifier = "BaseMachine::Controller";
+				static constexpr const char* serialize_identifier = "BaseMachine::Knob";
 				template <class SerderClassT>
 				void serderize(SerderClassT &serder);
 
 				class NoSuchEnumValue : public std::runtime_error {
 				public:
-					NoSuchEnumValue() : runtime_error("No such enum value in BaseMachine::Controller.") {}
+					NoSuchEnumValue() : runtime_error("No such enum value in BaseMachine::Knob.") {}
 					virtual ~NoSuchEnumValue() {}
 				};
 
 				enum Type {
-					ric_int = 0,
-					ric_float = 1,
-					ric_bool = 2,
-					ric_string = 3,
-					ric_enum = 4, // integer values map to a name
-					ric_sigid = 5, // integer values map to sample bank index
-					ric_double = 6
+					rik_int = 0,
+					rik_float = 1,
+					rik_bool = 2,
+					rik_string = 3,
+					rik_enum = 4, // integer values map to a name
+					rik_sigid = 5, // integer values map to sample bank index
+					rik_double = 6
 				};
 
 				ON_SERVER(
-					Controller(int _ctrl_id, Machine::Controller *ctrl);
-					~Controller();
+					Knob(int _knb_id, Machine::Controller *ctrl);
+					~Knob();
 					);
 				ON_CLIENT(
-					Controller();
+					Knob();
 					void set_msg_builder(std::function<
 							     void(std::function<void(std::shared_ptr<Message> &msg_to_send)> )
 							     >  _send_obj_message
@@ -137,8 +137,8 @@ namespace RemoteInterface {
 					data_i i;
 				} data;
 
-				int ctrl_id;
-				int ct_type = ric_int; //because of serderize limits, using enum Type values, but need to be explicitly stored as an integer
+				int knb_id;
+				int k_type = rik_int; //because of serderize limits, using enum Type values, but need to be explicitly stored as an integer
 				std::string name, title, str_data = "", group_name;
 				bool bl_data = false;
 				std::map<int, std::string> enum_names;
@@ -148,7 +148,7 @@ namespace RemoteInterface {
 		private:
 			std::string name;
 			std::vector<std::string> groups;
-			std::set<std::shared_ptr<Controller> > controllers;
+			std::set<std::shared_ptr<Knob> > knobs;
 
 			/* REQ means the client request the server to perform an operation */
 			/* CMD means the server commands the client to perform an operation */

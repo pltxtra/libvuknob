@@ -30,9 +30,9 @@
  ***************************/
 
 SERVER_CODE(
-	BaseMachine::Controller::Controller(int _ctrl_id, Machine::Controller *ctrl)
+	BaseMachine::Knob::Knob(int _knb_id, Machine::Controller *ctrl)
 	: m_ctrl(ctrl)
-	, ctrl_id(_ctrl_id)
+	, knb_id(_knb_id)
 	{
 		name = ctrl->get_name();
 		group_name = ctrl->get_group_name();
@@ -41,35 +41,35 @@ SERVER_CODE(
 		{
 			switch(ctrl->get_type()) {
 			case Machine::Controller::c_int:
-				ct_type = Controller::ric_int;
+				k_type = Knob::rik_int;
 				break;
 			case Machine::Controller::c_float:
-				ct_type = Controller::ric_float;
+				k_type = Knob::rik_float;
 				break;
 			case Machine::Controller::c_bool:
-				ct_type = Controller::ric_bool;
+				k_type = Knob::rik_bool;
 				break;
 			case Machine::Controller::c_string:
-				ct_type = Controller::ric_string;
+				k_type = Knob::rik_string;
 				break;
 			case Machine::Controller::c_enum:
-				ct_type = Controller::ric_enum;
+				k_type = Knob::rik_enum;
 				break;
 			case Machine::Controller::c_sigid:
-				ct_type = Controller::ric_sigid;
+				k_type = Knob::rik_sigid;
 				break;
 			case Machine::Controller::c_double:
-				ct_type = Controller::ric_double;
+				k_type = Knob::rik_double;
 				break;
 			}
 		}
 
-		if(ct_type ==  Controller::ric_float) {
+		if(k_type ==  Knob::rik_float) {
 			ctrl->get_min(data.f.min);
 			ctrl->get_max(data.f.max);
 			ctrl->get_step(data.f.step);
 			ctrl->get_value(data.f.value);
-		} else if(ct_type == Controller::ric_double) {
+		} else if(k_type == Knob::rik_double) {
 			ctrl->get_min(data.d.min);
 			ctrl->get_max(data.d.max);
 			ctrl->get_step(data.d.step);
@@ -80,109 +80,109 @@ SERVER_CODE(
 			ctrl->get_step(data.i.step);
 			ctrl->get_value(data.i.value);
 
-			if(ct_type == Controller::ric_enum) {
+			if(k_type == Knob::rik_enum) {
 				for(auto k = data.i.min; k <= data.i.max; k += data.i.step) {
 					enum_names[k] = ctrl->get_value_name(k);
 				}
 			}
 		}
-		if(ct_type == Controller::ric_string)
+		if(k_type == Knob::rik_string)
 			ctrl->get_value(str_data);
-		else if(ct_type == Controller::ric_bool)
+		else if(k_type == Knob::rik_bool)
 			ctrl->get_value(bl_data);
 
 		(void) /*ignore return value */ ctrl->has_midi_controller(coarse_controller, fine_controller);
 	}
 
-	BaseMachine::Controller::~Controller() {
+	BaseMachine::Knob::~Knob() {
 		delete m_ctrl;
 	}
 
 	)
 
 CLIENT_CODE(
-	BaseMachine::Controller::Controller() {}
+	BaseMachine::Knob::Knob() {}
 
-	void BaseMachine::Controller::set_msg_builder(std::function<
+	void BaseMachine::Knob::set_msg_builder(std::function<
 						      void(std::function<void(std::shared_ptr<Message> &msg_to_send)> )
 						      >  _send_obj_message) {
 		send_obj_message = _send_obj_message;
 	}
 
-	std::string BaseMachine::Controller::get_name() {
+	std::string BaseMachine::Knob::get_name() {
 		return name;
 	}
 
-	std::string BaseMachine::Controller::get_group() {
+	std::string BaseMachine::Knob::get_group() {
 		return group_name;
 	}
 
-	std::string BaseMachine::Controller::get_title() {
+	std::string BaseMachine::Knob::get_title() {
 		return title;
 	}
 
-	auto BaseMachine::Controller::get_type() -> Type {
-		return (Type)ct_type;
+	auto BaseMachine::Knob::get_type() -> Type {
+		return (Type)k_type;
 	}
 
-	void BaseMachine::Controller::get_min(float &val) {
+	void BaseMachine::Knob::get_min(float &val) {
 		val = data.f.min;
 	}
 
-	void BaseMachine::Controller::get_max(float &val) {
+	void BaseMachine::Knob::get_max(float &val) {
 		val = data.f.max;
 	}
 
-	void BaseMachine::Controller::get_step(float &val) {
+	void BaseMachine::Knob::get_step(float &val) {
 		val = data.f.step;
 	}
 
-	void BaseMachine::Controller::get_min(double &val) {
+	void BaseMachine::Knob::get_min(double &val) {
 		val = data.d.min;
 	}
 
-	void BaseMachine::Controller::get_max(double &val) {
+	void BaseMachine::Knob::get_max(double &val) {
 		val = data.d.max;
 	}
 
-	void BaseMachine::Controller::get_step(double &val) {
+	void BaseMachine::Knob::get_step(double &val) {
 		val = data.d.step;
 	}
 
-	void BaseMachine::Controller::get_min(int &val) {
+	void BaseMachine::Knob::get_min(int &val) {
 		val = data.i.min;
 	}
 
-	void BaseMachine::Controller::get_max(int &val) {
+	void BaseMachine::Knob::get_max(int &val) {
 		val = data.i.max;
 	}
 
-	void BaseMachine::Controller::get_step(int &val) {
+	void BaseMachine::Knob::get_step(int &val) {
 		val = data.i.step;
 	}
 
-	void BaseMachine::Controller::get_value(int &val) {
+	void BaseMachine::Knob::get_value(int &val) {
 		val = data.i.value;
 	}
 
-	void BaseMachine::Controller::get_value(float &val) {
+	void BaseMachine::Knob::get_value(float &val) {
 		val = data.f.value;
 	}
 
-	void BaseMachine::Controller::get_value(double &val) {
+	void BaseMachine::Knob::get_value(double &val) {
 		val = data.d.value;
 	}
 
-	void BaseMachine::Controller::get_value(bool &val) {
+	void BaseMachine::Knob::get_value(bool &val) {
 		val = bl_data;
 	}
 
-	void BaseMachine::Controller::get_value(std::string &val) {
+	void BaseMachine::Knob::get_value(std::string &val) {
 		val = str_data;
 	}
 
-	std::string BaseMachine::Controller::get_value_name(int val) {
-		if(ct_type == Controller::ric_sigid) {
+	std::string BaseMachine::Knob::get_value_name(int val) {
+		if(k_type == Knob::rik_sigid) {
 			std::string retval = "no file loaded";
 
 			auto global_sb = SampleBank::get_bank("");
@@ -203,67 +203,67 @@ CLIENT_CODE(
 		return (*enam).second;
 	}
 
-	void BaseMachine::Controller::set_value(int val) {
+	void BaseMachine::Knob::set_value(int val) {
 		data.i.value = val;
-		auto crid = ctrl_id;
+		auto kid = knb_id;
 		send_obj_message(
-			[crid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("command", "setctrval");
-				msg_to_send->set_value("ctrl_id", std::to_string(crid));
+			[kid, val](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("command", "setknbval");
+				msg_to_send->set_value("knb_id", std::to_string(kid));
 				msg_to_send->set_value("value", std::to_string(val));
 			}
 			);
 	}
 
-	void BaseMachine::Controller::set_value(float val) {
+	void BaseMachine::Knob::set_value(float val) {
 		data.f.value = val;
-		auto crid = ctrl_id;
+		auto kid = knb_id;
 		send_obj_message(
-			[crid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("command", "setctrval");
-				msg_to_send->set_value("ctrl_id", std::to_string(crid));
+			[kid, val](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("command", "setknbval");
+				msg_to_send->set_value("knb_id", std::to_string(kid));
 				msg_to_send->set_value("value", std::to_string(val));
 			}
 			);
 	}
 
-	void BaseMachine::Controller::set_value(double val) {
+	void BaseMachine::Knob::set_value(double val) {
 		data.d.value = val;
-		auto crid = ctrl_id;
+		auto kid = knb_id;
 		send_obj_message(
-			[crid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("command", "setctrval");
-				msg_to_send->set_value("ctrl_id", std::to_string(crid));
+			[kid, val](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("command", "setknbval");
+				msg_to_send->set_value("knb_id", std::to_string(kid));
 				msg_to_send->set_value("value", std::to_string(val));
 			}
 			);
 	}
 
-	void BaseMachine::Controller::set_value(bool val) {
+	void BaseMachine::Knob::set_value(bool val) {
 		bl_data = val;
-		auto crid = ctrl_id;
+		auto kid = knb_id;
 		send_obj_message(
-			[crid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("command", "setctrval");
-				msg_to_send->set_value("ctrl_id", std::to_string(crid));
+			[kid, val](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("command", "setknbval");
+				msg_to_send->set_value("knb_id", std::to_string(kid));
 				msg_to_send->set_value("value", val ? "true" : "false");
 			}
 			);
 	}
 
-	void BaseMachine::Controller::set_value(const std::string &val) {
+	void BaseMachine::Knob::set_value(const std::string &val) {
 		str_data = val;
-		auto crid = ctrl_id;
+		auto kid = knb_id;
 		send_obj_message(
-			[crid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("command", "setctrval");
-				msg_to_send->set_value("ctrl_id", std::to_string(crid));
+			[kid, val](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("command", "setknbval");
+				msg_to_send->set_value("knb_id", std::to_string(kid));
 				msg_to_send->set_value("value", val);
 			}
 			);
 	}
 
-	bool BaseMachine::Controller::has_midi_controller(int &__coarse_controller, int &__fine_controller) {
+	bool BaseMachine::Knob::has_midi_controller(int &__coarse_controller, int &__fine_controller) {
 		if(coarse_controller == -1 && fine_controller == -1) return false;
 
 		__coarse_controller = coarse_controller;
@@ -276,46 +276,46 @@ CLIENT_CODE(
 
 SERVER_N_CLIENT_CODE(
 	template <class SerderClassT>
-	void BaseMachine::Controller::serderize(SerderClassT& iserder) {
+	void BaseMachine::Knob::serderize(SerderClassT& iserder) {
 		iserder.process(name);
 		iserder.process(group_name);
 		iserder.process(title);
 
-		iserder.process(ct_type);
+		iserder.process(k_type);
 
-		switch(ct_type) {
-		case Controller::ric_float: {
+		switch(k_type) {
+		case Knob::rik_float: {
 			iserder.process(data.f.min);
 			iserder.process(data.f.max);
 			iserder.process(data.f.step);
 			iserder.process(data.f.value);
 		} break;
 
-		case Controller::ric_double: {
+		case Knob::rik_double: {
 			iserder.process(data.d.min);
 			iserder.process(data.d.max);
 			iserder.process(data.d.step);
 			iserder.process(data.d.value);
 		} break;
 
-		case Controller::ric_int:
-		case Controller::ric_enum:
-		case Controller::ric_sigid: {
+		case Knob::rik_int:
+		case Knob::rik_enum:
+		case Knob::rik_sigid: {
 			iserder.process(data.i.min);
 			iserder.process(data.i.max);
 			iserder.process(data.i.step);
 			iserder.process(data.i.value);
 
-			if(ct_type == Controller::ric_enum) {
+			if(k_type == Knob::rik_enum) {
 				iserder.process(enum_names);
 			}
 		} break;
 
-		case Controller::ric_bool: {
+		case Knob::rik_bool: {
 			iserder.process(bl_data);
 		} break;
 
-		case Controller::ric_string: {
+		case Knob::rik_string: {
 			iserder.process(str_data);
 		} break;
 
@@ -337,7 +337,7 @@ SERVER_N_CLIENT_CODE(
 	void BaseMachine::serderize_base_machine(SerderClassT& iserder) {
 		iserder.process(name);
 		iserder.process(groups);
-		iserder.process(controllers);
+		iserder.process(knobs);
 		SATAN_DEBUG("serderize_base_machine() -- base_machine_name: %s\n",
 			    name.c_str());
 	}
@@ -357,12 +357,12 @@ CLIENT_CODE(
 			SATAN_DEBUG("  : %s\n", group.c_str());
 		}
 
-		SATAN_DEBUG("BaseMachine(%s) controllers:\n", name.c_str());
-		for(auto ctrl : controllers) {
-			auto n = ctrl->get_name().c_str();
-			auto g = ctrl->get_group().c_str();
+		SATAN_DEBUG("BaseMachine(%s) knobs:\n", name.c_str());
+		for(auto knb : knobs) {
+			auto n = knb->get_name().c_str();
+			auto g = knb->get_group().c_str();
 			SATAN_DEBUG("  : %s (%s)\n", n, g);
-			ctrl->set_msg_builder(
+			knb->set_msg_builder(
 				[this](std::function<void(std::shared_ptr<Message> &)> fill_in_msg) {
 					send_object_message(fill_in_msg);
 				}
@@ -389,13 +389,13 @@ SERVER_CODE(
 	void BaseMachine::init_from_machine_ptr(std::shared_ptr<Machine> m_ptr) {
 		name = m_ptr->get_name();
 		groups = m_ptr->get_controller_groups();
-		int ctrl_id = 0;
+		int knb_id = 0;
 		for(auto ctrname : m_ptr->get_controller_names()) {
 			SATAN_DEBUG(" --- adding ctr %s\n", ctrname.c_str());
 			auto m_ctrl = m_ptr->get_controller(ctrname);
 			SATAN_DEBUG(" .. m_ctrl is %p\n", m_ctrl);
-			auto c = std::make_shared<Controller>(ctrl_id++, m_ctrl);
-			controllers.insert(c);
+			auto c = std::make_shared<Knob>(knb_id++, m_ctrl);
+			knobs.insert(c);
 		}
 	}
 	);
