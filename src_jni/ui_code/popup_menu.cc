@@ -107,6 +107,7 @@ PopupMenu::PopupMenu(KammoGUI::GnuVGCanvas* cnvs)
 	root = KammoGUI::GnuVGCanvas::ElementReference(this);
 
 	item_template.set_display("none");
+	root.set_display("none");
 }
 
 void PopupMenu::internal_show_menu(std::vector<std::string> new_items, std::function<void(int selection)> callback) {
