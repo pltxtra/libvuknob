@@ -31,6 +31,10 @@ CLIENT_CODE(
 	: BaseMachine(factory, serialized)
 	{
 		register_handlers();
+
+		Serialize::ItemDeserializer serder(serialized.get_value("machineapi_data"));
+		serderize_machine_api(serder);
+
 		SATAN_DEBUG("MachineAPI() created client side.\n");
 	}
 	);
@@ -42,8 +46,20 @@ SERVER_CODE(
 		register_handlers();
 		SATAN_DEBUG("MachineAPI() created server side.\n");
 	}
+
+	void MachineAPI::serialize(std::shared_ptr<Message> &target) {
+		BaseMachine::serialize(target);
+		Serialize::ItemSerializer iser;
+		serderize_machine_api(iser);
+		target->set_value("machineapi_data", iser.result());
+	}
+
 	);
 SERVER_N_CLIENT_CODE(
+	template <class SerderClassT>
+	void MachineAPI::serderize_machine_api(SerderClassT& iserder) {
+		SATAN_DEBUG("serderize_machine_api() -- done\n");
+	}
 
 	std::shared_ptr<BaseObject> MachineAPI::MachineAPIFactory::create(
 		const Message &serialized,

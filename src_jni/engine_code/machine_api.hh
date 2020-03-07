@@ -59,6 +59,7 @@ namespace RemoteInterface {
 				);
 			ON_SERVER(
 				MachineAPI(int32_t new_obj_id, const Factory *factory);
+				void serialize(std::shared_ptr<Message> &target) override;
 				);
 
 			virtual void on_delete(RemoteInterface::Context* context) override {
