@@ -40,6 +40,18 @@
 namespace RemoteInterface {
 	namespace __RI__CURRENT_NAMESPACE {
 
+		struct BaseMachine;
+
+		struct Connection {
+			std::weak_ptr<BaseMachine> source, destination;
+			std::string input_name, output_name;
+		};
+
+		struct Socket {
+			std::string name;
+			std::vector<Connection> connections;
+		};
+
 		class BaseMachine
 			: public RemoteInterface::SimpleBaseObject
 		{
@@ -66,6 +78,9 @@ namespace RemoteInterface {
 					rik_double = 6
 				};
 
+				void update_value_from_message_value(const std::string& value);
+				static std::shared_ptr<Knob> get_knob(std::set<std::shared_ptr<Knob> > knobs, int knob_id);
+
 				ON_SERVER(
 					Knob(int _knb_id, Machine::Controller *ctrl);
 					~Knob();
@@ -76,7 +91,6 @@ namespace RemoteInterface {
 							     void(std::function<void(std::shared_ptr<Message> &msg_to_send)> )
 							     >  _send_obj_message
 						);
-
 					std::string get_group(); // the group to which the controller belongs
 					std::string get_name(); // name of the control
 					std::string get_title(); // user displayable title
@@ -146,20 +160,38 @@ namespace RemoteInterface {
 			};
 
 		private:
+			ON_SERVER(
+				static std::map<std::shared_ptr<Machine>, std::shared_ptr<BaseMachine> > machine2basemachine;
+				);
 			std::string name;
 			std::vector<std::string> groups;
+			std::vector<Socket> inputs, outputs;
 			std::set<std::shared_ptr<Knob> > knobs;
 
 			/* REQ means the client request the server to perform an operation */
 			/* CMD means the server commands the client to perform an operation */
 
+			SERVER_SIDE_HANDLER(req_change_knob_value, "req_change_knob_value");
+			SERVER_SIDE_HANDLER(req_attach_input, "req_attach_input");
+			SERVER_SIDE_HANDLER(req_detach_input, "req_detach_input");
+
+			CLIENT_SIDE_HANDLER(cmd_change_knob_value, "cmd_change_knob_value");
+			CLIENT_SIDE_HANDLER(cmd_attach_input, "cmd_attach_input");
+			CLIENT_SIDE_HANDLER(cmd_detach_input, "cmd_detach_input");
+
 			void register_handlers() {
+				SERVER_REG_HANDLER(BaseMachine,req_change_knob_value);
+				SERVER_REG_HANDLER(BaseMachine,req_attach_input);
+				SERVER_REG_HANDLER(BaseMachine,req_detach_input);
+
+				CLIENT_REG_HANDLER(BaseMachine,cmd_change_knob_value);
+				CLIENT_REG_HANDLER(BaseMachine,cmd_attach_input);
+				CLIENT_REG_HANDLER(BaseMachine,cmd_detach_input);
 			}
 
 			// serder is an either an ItemSerializer or ItemDeserializer object.
 			template <class SerderClassT>
 			void serderize_base_machine(SerderClassT &serder);
-
 		public:
 			ON_CLIENT(
 				BaseMachine(const Factory *factory, const RemoteInterface::Message &serialized);
@@ -167,7 +199,17 @@ namespace RemoteInterface {
 			ON_SERVER(
 				BaseMachine(int32_t new_obj_id, const Factory *factory);
 				void serialize(std::shared_ptr<Message> &target) override;
-				void init_from_machine_ptr(std::shared_ptr<Machine> m_ptr);
+				void init_from_machine_ptr(std::shared_ptr<BaseMachine> bmchn, std::shared_ptr<Machine> m_ptr);
+
+				static void machine_unregistered(std::shared_ptr<Machine> m_ptr);
+				static void machine_input_attached(std::shared_ptr<Machine> source,
+								   std::shared_ptr<Machine> destination,
+								   const std::string &output_name,
+								   const std::string &input_name);
+				static void machine_input_detached(std::shared_ptr<Machine> source,
+								   std::shared_ptr<Machine> destination,
+								   const std::string &output_name,
+								   const std::string &input_name);
 				);
 		};
 	};

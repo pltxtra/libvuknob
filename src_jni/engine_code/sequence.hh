@@ -33,6 +33,8 @@
 #include "../remote_interface.hh"
 #include "../serialize.hh"
 
+#include "base_machine.hh"
+
 #ifdef __RI__SERVER_SIDE
 #include "../midi_generation.hh"
 #include "../machine_sequencer.hh"
@@ -43,7 +45,7 @@ namespace RemoteInterface {
 	namespace __RI__CURRENT_NAMESPACE {
 
 		class Sequence
-			: public RemoteInterface::SimpleBaseObject
+			: public BaseMachine
 		ON_SERVER(, public Machine)
 		{
 		public:
@@ -162,8 +164,14 @@ namespace RemoteInterface {
 				void enqueue_midi_data(size_t len, const char* data);
 				);
 
-			Sequence(const Factory *factory, const RemoteInterface::Message &serialized);
-			Sequence(int32_t new_obj_id, const Factory *factory);
+			ON_CLIENT(
+				Sequence(const Factory *factory, const RemoteInterface::Message &serialized);
+				);
+			ON_SERVER(
+				Sequence(int32_t new_obj_id, const Factory *factory);
+				static void create_sequence_for_machine(std::shared_ptr<Machine> m_ptr);
+				virtual void serialize(std::shared_ptr<Message> &target) override;
+				);
 
 			// functions for implementing class Machine
 			ON_SERVER(
@@ -193,10 +201,6 @@ namespace RemoteInterface {
 				virtual Controller *internal_get_controller(const std::string &name);
 				/// get a hint about what this machine is (for example, "effect" or "generator")
 				virtual std::string internal_get_hint();
-				)
-			ON_SERVER(
-				static void create_sequence_for_machine(std::shared_ptr<Machine> m_ptr);
-				virtual void serialize(std::shared_ptr<Message> &target) override;
 				)
 
 			virtual void on_delete(RemoteInterface::Context* context) override {

@@ -22,7 +22,6 @@
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
-
 /***************************
  *
  *  Class RemoteInterface::BaseMachine
@@ -208,7 +207,6 @@ CLIENT_CODE(
 		auto kid = knb_id;
 		send_obj_message(
 			[kid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("command", "setknbval");
 				msg_to_send->set_value("knb_id", std::to_string(kid));
 				msg_to_send->set_value("value", std::to_string(val));
 			}
@@ -220,7 +218,6 @@ CLIENT_CODE(
 		auto kid = knb_id;
 		send_obj_message(
 			[kid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("command", "setknbval");
 				msg_to_send->set_value("knb_id", std::to_string(kid));
 				msg_to_send->set_value("value", std::to_string(val));
 			}
@@ -232,7 +229,6 @@ CLIENT_CODE(
 		auto kid = knb_id;
 		send_obj_message(
 			[kid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("command", "setknbval");
 				msg_to_send->set_value("knb_id", std::to_string(kid));
 				msg_to_send->set_value("value", std::to_string(val));
 			}
@@ -244,7 +240,6 @@ CLIENT_CODE(
 		auto kid = knb_id;
 		send_obj_message(
 			[kid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("command", "setknbval");
 				msg_to_send->set_value("knb_id", std::to_string(kid));
 				msg_to_send->set_value("value", val ? "true" : "false");
 			}
@@ -256,7 +251,6 @@ CLIENT_CODE(
 		auto kid = knb_id;
 		send_obj_message(
 			[kid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("command", "setknbval");
 				msg_to_send->set_value("knb_id", std::to_string(kid));
 				msg_to_send->set_value("value", val);
 			}
@@ -275,6 +269,36 @@ CLIENT_CODE(
 	)
 
 SERVER_N_CLIENT_CODE(
+	void BaseMachine::Knob::update_value_from_message_value(const std::string& value) {
+		switch(k_type) {
+		case Knob::rik_int:
+		case Knob::rik_enum:
+		case Knob::rik_sigid:
+			data.i.value = std::stoi(value);
+			break;
+		case Knob::rik_bool:
+			bl_data = value == "true";
+			break;
+		case Knob::rik_float:
+			data.f.value = std::stof(value);
+			break;
+		case Knob::rik_double:
+			data.d.value = std::stod(value);
+			break;
+		case Knob::rik_string:
+			str_data = value;
+			break;
+		}
+	}
+
+	std::shared_ptr<BaseMachine::Knob> BaseMachine::Knob::get_knob(std::set<std::shared_ptr<Knob> > knobs, int knob_id) {
+		for(auto knob : knobs) {
+			if(knob->knb_id == knob_id)
+				return knob;
+		}
+		return nullptr;
+	}
+
 	template <class SerderClassT>
 	void BaseMachine::Knob::serderize(SerderClassT& iserder) {
 		iserder.process(name);
@@ -344,10 +368,34 @@ SERVER_N_CLIENT_CODE(
 	);
 
 CLIENT_CODE(
+	void BaseMachine::handle_cmd_change_knob_value(RemoteInterface::Context *context,
+						       RemoteInterface::MessageHandler *src,
+						       const RemoteInterface::Message& msg) {
+		int kid = std::stoi(msg.get_value("knb_id"));
+		std::string value = msg.get_value("value");
+		auto knob = Knob::get_knob(knobs, kid);
+		if(knob) {
+			knob->update_value_from_message_value(value);
+		}
+	}
+
+	void BaseMachine::handle_cmd_attach_input(RemoteInterface::Context *context,
+						  RemoteInterface::MessageHandler *src,
+						  const RemoteInterface::Message& msg) {
+
+	}
+
+	void BaseMachine::handle_cmd_detach_input(RemoteInterface::Context *context,
+						  RemoteInterface::MessageHandler *src,
+						  const RemoteInterface::Message& msg) {
+	}
+
 	BaseMachine::BaseMachine(const Factory *factory, const RemoteInterface::Message &serialized)
 	: SimpleBaseObject(factory, serialized)
 	{
 		register_handlers();
+
+		SATAN_DEBUG("Trying to create client side BaseMachine...\n");
 
 		Serialize::ItemDeserializer serder(serialized.get_value("basemachine_data"));
 		serderize_base_machine(serder);
@@ -364,7 +412,7 @@ CLIENT_CODE(
 			SATAN_DEBUG("  : %s (%s)\n", n, g);
 			knb->set_msg_builder(
 				[this](std::function<void(std::shared_ptr<Message> &)> fill_in_msg) {
-					send_object_message(fill_in_msg);
+					send_message_to_server(req_change_knob_value, fill_in_msg);
 				}
 				);
 		}
@@ -373,6 +421,36 @@ CLIENT_CODE(
 	);
 
 SERVER_CODE(
+	std::map<std::shared_ptr<Machine>, std::shared_ptr<BaseMachine> > BaseMachine::machine2basemachine;
+
+	void BaseMachine::handle_req_change_knob_value(RemoteInterface::Context *context,
+						       RemoteInterface::MessageHandler *src,
+						       const RemoteInterface::Message& msg) {
+		int kid = std::stoi(msg.get_value("knb_id"));
+		std::string value = msg.get_value("value");
+		auto knob = Knob::get_knob(knobs, kid);
+		if(knob) {
+			knob->update_value_from_message_value(value);
+		}
+		send_message(
+			cmd_change_knob_value,
+			[kid, value](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("knb_id", std::to_string(kid));
+				msg_to_send->set_value("value", value);
+			}
+			);
+	}
+
+	void BaseMachine::handle_req_attach_input(RemoteInterface::Context *context,
+						  RemoteInterface::MessageHandler *src,
+						  const RemoteInterface::Message& msg) {
+	}
+
+	void BaseMachine::handle_req_detach_input(RemoteInterface::Context *context,
+						  RemoteInterface::MessageHandler *src,
+						  const RemoteInterface::Message& msg) {
+	}
+
 	BaseMachine::BaseMachine(int32_t new_obj_id, const Factory *factory)
 	: SimpleBaseObject(new_obj_id, factory)
 	{
@@ -386,7 +464,9 @@ SERVER_CODE(
 		target->set_value("basemachine_data", iser.result());
 	}
 
-	void BaseMachine::init_from_machine_ptr(std::shared_ptr<Machine> m_ptr) {
+	void BaseMachine::init_from_machine_ptr(std::shared_ptr<BaseMachine> bmchn, std::shared_ptr<Machine> m_ptr) {
+		machine2basemachine[m_ptr] = bmchn;
+
 		name = m_ptr->get_name();
 		groups = m_ptr->get_controller_groups();
 		int knb_id = 0;
@@ -397,5 +477,38 @@ SERVER_CODE(
 			auto c = std::make_shared<Knob>(knb_id++, m_ctrl);
 			knobs.insert(c);
 		}
+
+		for(auto input_name : m_ptr->get_input_names()) {
+			inputs.emplace_back(Socket{.name = input_name});
+		}
+		for(auto output_name : m_ptr->get_output_names()) {
+			outputs.emplace_back(Socket{.name = output_name});
+		}
 	}
+
+	void BaseMachine::machine_unregistered(std::shared_ptr<Machine> m_ptr) {
+		auto found = machine2basemachine.find(m_ptr);
+		if(found != machine2basemachine.end()) {
+			machine2basemachine.erase(found);
+		}
+	}
+
+	void BaseMachine::machine_input_attached(std::shared_ptr<Machine> source,
+						 std::shared_ptr<Machine> destination,
+						 const std::string &output_name,
+						 const std::string &input_name) {
+		auto s = machine2basemachine.find(source);
+		auto d = machine2basemachine.find(destination);
+		if(s != machine2basemachine.end())
+			SATAN_DEBUG("Found source basemachine %p to match %p\n", s->first.get(), source.get());
+		if(d != machine2basemachine.end())
+			SATAN_DEBUG("Found destination basemachine %p to match %p\n", d->first.get(), destination.get());
+	}
+
+	void BaseMachine::machine_input_detached(std::shared_ptr<Machine> source,
+						 std::shared_ptr<Machine> destination,
+						 const std::string &output_name,
+						 const std::string &input_name) {
+	}
+
 	);

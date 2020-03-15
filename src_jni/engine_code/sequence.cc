@@ -34,6 +34,24 @@
 #define SEQUENCE_MIDI_OUTPUT_NAME "midi_OUTPUT"
 
 SERVER_CODE(
+	Sequence::Sequence(int32_t new_obj_id, const Factory *factory)
+	: BaseMachine(new_obj_id, factory)
+	ON_SERVER(, Machine("Sequencer", false, 0.0f, 0.0f))
+	{
+		ON_SERVER(
+			Machine::machine_operation_enqueue(
+				[this] {
+					output_descriptor[SEQUENCE_MIDI_OUTPUT_NAME] =
+						Signal::Description(_MIDI, 1, false);
+					setup_machine();
+				}
+				);
+			);
+		register_handlers();
+		SATAN_DEBUG("Sequence() created server side.\n");
+
+	}
+
 	void Sequence::handle_req_add_pattern_instance(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
@@ -255,7 +273,7 @@ SERVER_CODE(
 
 		Server::create_object<Sequence>(
 			[sibling](std::shared_ptr<Sequence> seq) {
-
+				seq->init_from_machine_ptr(seq, seq);
 				sibling->attach_input(seq.get(),
 						      MACHINE_SEQUENCER_MIDI_OUTPUT_NAME,
 						      MACHINE_SEQUENCER_MIDI_INPUT_NAME);
@@ -275,6 +293,7 @@ SERVER_CODE(
 	}
 
 	void Sequence::serialize(std::shared_ptr<Message> &target) {
+		BaseMachine::serialize(target);
 		Serialize::ItemSerializer iser;
 		serderize_sequence(iser);
 		target->set_value("sequence_data", iser.result());
@@ -468,6 +487,27 @@ SERVER_CODE(
 );
 
 CLIENT_CODE(
+
+	Sequence::Sequence(const Factory *factory, const RemoteInterface::Message &serialized)
+	: BaseMachine(factory, serialized)
+	ON_SERVER(, Machine("Sequencer", false, 0.0f, 0.0f))
+	{
+		ON_SERVER(
+			Machine::machine_operation_enqueue(
+				[this] {
+					output_descriptor[SEQUENCE_MIDI_OUTPUT_NAME] =
+						Signal::Description(_MIDI, 1, false);
+					setup_machine();
+				}
+				);
+			);
+		register_handlers();
+
+		Serialize::ItemDeserializer serder(serialized.get_value("sequence_data"));
+		serderize_sequence(serder);
+
+		SATAN_DEBUG("Sequence() created client side.\n");
+	}
 
 	void Sequence::handle_cmd_add_pattern_instance(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
@@ -884,57 +924,18 @@ SERVER_N_CLIENT_CODE(
 		iserder.process(patterns);
 	}
 
-	Sequence::Sequence(const Factory *factory, const RemoteInterface::Message &serialized)
-	: SimpleBaseObject(factory, serialized)
-	ON_SERVER(, Machine("Sequencer", false, 0.0f, 0.0f))
-	{
-		ON_SERVER(
-			Machine::machine_operation_enqueue(
-				[this] {
-					output_descriptor[SEQUENCE_MIDI_OUTPUT_NAME] =
-						Signal::Description(_MIDI, 1, false);
-					setup_machine();
-				}
-				);
-			);
-		register_handlers();
-
-		Serialize::ItemDeserializer serder(serialized.get_value("sequence_data"));
-		serderize_sequence(serder);
-
-		SATAN_DEBUG("Sequence() created client side.\n");
-	}
-
-	Sequence::Sequence(int32_t new_obj_id, const Factory *factory)
-	: SimpleBaseObject(new_obj_id, factory)
-	ON_SERVER(, Machine("Sequencer", false, 0.0f, 0.0f))
-	{
-		ON_SERVER(
-			Machine::machine_operation_enqueue(
-				[this] {
-					output_descriptor[SEQUENCE_MIDI_OUTPUT_NAME] =
-						Signal::Description(_MIDI, 1, false);
-					setup_machine();
-				}
-				);
-			);
-		register_handlers();
-		SATAN_DEBUG("Sequence() created server side.\n");
-
-	}
-
 	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(
 		const Message &serialized,
 		RegisterObjectFunction register_object
 		) {
-		ON_SERVER(
-			auto nseq_ptr = new Sequence(this, serialized);
-			auto nseq = std::dynamic_pointer_cast<Sequence>(nseq_ptr->get_shared_pointer());
-			);
 		ON_CLIENT(
+			SATAN_DEBUG("Trying to deserialize new Sequence...\n");
 			auto nseq = std::make_shared<Sequence>(this, serialized);
+			return register_object(nseq);
 			);
-		return register_object(nseq);
+		ON_SERVER(
+			return nullptr;
+			);
 	}
 
 	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(
@@ -944,11 +945,11 @@ SERVER_N_CLIENT_CODE(
 		ON_SERVER(
 			auto nseq_ptr = new Sequence(new_obj_id, this);
 			auto nseq = std::dynamic_pointer_cast<Sequence>(nseq_ptr->get_shared_pointer());
+			return register_object(nseq);
 			);
 		ON_CLIENT(
-			auto nseq = std::make_shared<Sequence>(new_obj_id, this);
+			return nullptr;
 			);
-		return register_object(nseq);
 	}
 
 	static Sequence::SequenceFactory this_will_register_us_as_a_factory;

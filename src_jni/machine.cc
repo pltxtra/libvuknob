@@ -1659,7 +1659,6 @@ void Machine::broadcast_attach(Machine *source_machine_p, Machine *destination_m
 		SATAN_ERROR("Machine::broadcast_attach() Could not acquire shared pointer for machines.\n");
 		return;
 	}
-
 	for(auto w_mlist : machine_set_listeners) {
 
 		std::shared_ptr<MachineSetListener> mlist = w_mlist.lock();

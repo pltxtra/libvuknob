@@ -28,6 +28,7 @@
 #include "server.hh"
 #include "sequence.hh"
 #include "machine_api.hh"
+#include "base_machine.hh"
 
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
@@ -147,10 +148,8 @@ SERVER_CODE(
 					create_object_from_factory<RemoteInterface::ServerSpace::MachineAPI>(
 						[this, m_ptr]
 						(std::shared_ptr<RemoteInterface::ServerSpace::MachineAPI> mchapi) {
-							mchapi->init_from_machine_ptr(m_ptr);
+							mchapi->init_from_machine_ptr(mchapi, m_ptr);
 							SATAN_DEBUG("Serverside MachineAPI object created\n");
-
-							machine2machineapi[m_ptr] = mchapi;
 						}
 						);
 
@@ -188,6 +187,7 @@ SERVER_CODE(
 
 			[this, m_ptr]()
 			{
+				BaseMachine::machine_unregistered(m_ptr);
 				auto mch = machine2rimachine.find(m_ptr);
 				if(mch != machine2rimachine.end()) {
 					delete_object(mch->second);
@@ -205,6 +205,7 @@ SERVER_CODE(
 		io_service.post(
 			[this, source, destination, output_name, input_name]()
 			{
+				BaseMachine::machine_input_attached(source, destination, output_name, input_name);
 				SATAN_DEBUG("Server::machine_inpute_attached() [%s:%s] -> [%s:%s]\n",
 					    source->get_name().c_str(), output_name.c_str(),
 					    destination->get_name().c_str(), input_name.c_str());

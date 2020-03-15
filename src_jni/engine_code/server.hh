@@ -42,7 +42,6 @@ SERVER_CODE(
 		int32_t last_obj_id; // I am making an assumption here that last_obj_id will not be counted up more than 1/sec. This gives that time until overflow for a session will be more than 20000 days. If this assumption does not hold, an error state will be communicated to the user.
 
 		std::map<std::shared_ptr<Machine>, std::shared_ptr<RIMachine> > machine2rimachine;
-		std::map<std::shared_ptr<Machine>, std::shared_ptr<MachineAPI> > machine2machineapi;
 
 		int32_t reserve_new_obj_id();
 
