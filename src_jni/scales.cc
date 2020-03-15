@@ -245,7 +245,7 @@ void Scales::handle_get_scale_keys(
 		}
 
 		Serialize::ItemSerializer iser;
-		iser.process(keys);
+		iser.process(7, keys);
 
 		std::shared_ptr<RemoteInterface::Message> reply = context->acquire_reply(msg);
 		reply->set_value("keys", iser.result());
@@ -266,7 +266,7 @@ void Scales::handle_get_scale_keysn(
 			keys[k] = scales[scale_index]->keys[k];
 
 		Serialize::ItemSerializer iser;
-		iser.process(keys);
+		iser.process(7, keys);
 
 		std::shared_ptr<RemoteInterface::Message> reply = context->acquire_reply(msg);
 		reply->set_value("keys", iser.result());

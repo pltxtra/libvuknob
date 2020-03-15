@@ -43,13 +43,19 @@ namespace RemoteInterface {
 		struct BaseMachine;
 
 		struct Connection {
+			static constexpr const char* serialize_identifier = "BaseMachine::Connection";
 			std::weak_ptr<BaseMachine> source, destination;
 			std::string input_name, output_name;
+			template <class SerderClassT>
+			void serderize(SerderClassT &serder);
 		};
 
 		struct Socket {
+			static constexpr const char* serialize_identifier = "BaseMachine::Socket";
 			std::string name;
 			std::vector<Connection> connections;
+			template <class SerderClassT>
+			void serderize(SerderClassT &serder);
 		};
 
 		class BaseMachine

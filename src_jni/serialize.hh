@@ -32,6 +32,17 @@
 
 namespace Serialize {
 
+	template<class T> struct is_container : public std::false_type {};
+
+	template<class T, class Alloc>
+	struct is_container<std::vector<T, Alloc>> : public std::true_type {};
+
+	template<class K, class T, class Comp, class Alloc>
+	struct is_container<std::map<K, T, Comp, Alloc>> : public std::true_type {};
+
+	template<class T, class Comp, class Alloc>
+	struct is_container<std::set<T, Comp, Alloc>> : public std::true_type {};
+
 /***************************
  *
  *  Decoder/Encoder functions
@@ -47,7 +58,7 @@ namespace Serialize {
 
 	public:
 
-		void process(const std::string &v) {
+		void process(std::string &v) {
 			result_stream << "string;" << encode_string(v) << ";";
 		}
 
@@ -72,7 +83,7 @@ namespace Serialize {
 		}
 
 		template <typename U, typename V>
-		void process(const std::pair<U,V> &pair);
+		void process(std::pair<U,V> &pair);
 
 		template <class SerializableT>
 		void process(std::shared_ptr<SerializableT> &t);
@@ -84,9 +95,13 @@ namespace Serialize {
 		auto process(const SerializableT& element)
 			-> typename std::enable_if<std::is_pointer<SerializableT>::value>::type;
 
+		template <typename SerializableT>
+		auto process(SerializableT& element)
+			-> typename std::enable_if<(!std::is_pointer<SerializableT>::value) && (!is_container<SerializableT>::value)>::type;
+
 		template <class ContainerT>
 		auto process(const ContainerT &elements)
-			-> typename std::enable_if<!std::is_pointer<ContainerT>::value>::type;
+			-> typename std::enable_if<is_container<ContainerT>::value>::type;
 
 		std::string result() {
 			return encode_string(result_stream.str());
@@ -94,7 +109,7 @@ namespace Serialize {
 	};
 
 	template <typename U, typename V>
-	void ItemSerializer::process(const std::pair<U,V> &pair) {
+	void ItemSerializer::process(std::pair<U,V> &pair) {
 		ItemSerializer subser;
 
 		subser.process(pair.first);
@@ -137,9 +152,21 @@ namespace Serialize {
 			      << ";";
 	}
 
+	template <typename SerializableT>
+	auto ItemSerializer::process(SerializableT& element)
+		-> typename std::enable_if<(!std::is_pointer<SerializableT>::value) && (!is_container<SerializableT>::value)>::type {
+		ItemSerializer subser;
+		element.serderize(subser);
+
+		result_stream << std::remove_pointer<SerializableT>::type::serialize_identifier
+			      << ";"
+			      << encode_string(subser.result())
+			      << ";";
+	}
+
 	template <class ContainerT>
 	auto ItemSerializer::process(const ContainerT &elements)
-		-> typename std::enable_if<!std::is_pointer<ContainerT>::value>::type {
+		-> typename std::enable_if<is_container<ContainerT>::value>::type {
 		ItemSerializer subser;
 
 		for(auto element : elements) {
@@ -249,9 +276,13 @@ namespace Serialize {
 		auto process(SerializableT& element)
 			-> typename std::enable_if<std::is_pointer<SerializableT>::value>::type;
 
+		template <typename SerializableT>
+		auto process(SerializableT& element)
+			-> typename std::enable_if<(!std::is_pointer<SerializableT>::value) && (!is_container<SerializableT>::value)>::type;
+
 		template <class ContainerT>
 		auto process(ContainerT &elements)
-			-> typename std::enable_if<!std::is_pointer<ContainerT>::value>::type;
+			-> typename std::enable_if<is_container<ContainerT>::value>::type;
 
 
 		bool eof() {
@@ -332,9 +363,21 @@ namespace Serialize {
 		element->serderize(subdeser);
 	}
 
+	template <typename SerializableT>
+	auto ItemDeserializer::process(SerializableT& element)
+		-> typename std::enable_if<!(std::is_pointer<SerializableT>::value) && (!is_container<SerializableT>::value)>::type {
+		verify_type(SerializableT::serialize_identifier);
+
+		__ITD_GET_STRING(subserialized);
+
+		ItemDeserializer subdeser(decode_string(subserialized));
+
+		element.serderize(subdeser);
+	}
+
 	template <class ContainerT>
 	auto ItemDeserializer::process(ContainerT &elements)
-		-> typename std::enable_if<!std::is_pointer<ContainerT>::value>::type {
+		-> typename std::enable_if<is_container<ContainerT>::value>::type {
 		typedef typename ContainerT::value_type ElementT;
 
 		verify_type("container");

@@ -24,6 +24,33 @@
 
 /***************************
  *
+ *  Class RemoteInterface::Connection
+ *
+ ***************************/
+SERVER_N_CLIENT_CODE(
+
+	template <class SerderClassT>
+	void Connection::serderize(SerderClassT& iserder) {
+	}
+
+	);
+
+/***************************
+ *
+ *  Class RemoteInterface::Socket
+ *
+ ***************************/
+
+SERVER_N_CLIENT_CODE(
+
+	template <class SerderClassT>
+	void Socket::serderize(SerderClassT& iserder) {
+	}
+
+	);
+
+/***************************
+ *
  *  Class RemoteInterface::BaseMachine
  *
  ***************************/
@@ -362,6 +389,8 @@ SERVER_N_CLIENT_CODE(
 		iserder.process(name);
 		iserder.process(groups);
 		iserder.process(knobs);
+		iserder.process(inputs);
+		iserder.process(outputs);
 		SATAN_DEBUG("serderize_base_machine() -- base_machine_name: %s\n",
 			    name.c_str());
 	}
