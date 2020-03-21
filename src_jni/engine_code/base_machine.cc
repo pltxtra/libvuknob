@@ -501,9 +501,7 @@ CLIENT_CODE(
 		}
 	}
 
-	void BaseMachine::handle_cmd_attach_input(RemoteInterface::Context *context,
-						  RemoteInterface::MessageHandler *src,
-						  const RemoteInterface::Message& msg) {
+	void BaseMachine::handle_attachment_command(AttachmentOperation atop, const RemoteInterface::Message& msg) {
 		auto source_name = msg.get_value("src");
 		auto output = msg.get_value("oup");
 		auto destination_name = msg.get_value("dst");
@@ -512,21 +510,31 @@ CLIENT_CODE(
 			    name2machine.size(),
 			    source_name.c_str(), output.c_str(), destination_name.c_str(), input.c_str());
 
-		for(auto n2m : name2machine) {
-			SATAN_ERROR("Name[%s] -> Machine [%p]\n", n2m.first.c_str(), n2m.second.get());
-		}
-
 		if(name2machine.count(source_name) && name2machine.count(destination_name)) {
 			auto source = name2machine[source_name];
 			auto destination = name2machine[source_name];
 			SATAN_ERROR("  -> found source (%p) and destination (%p)\n", source.get(), destination.get());
-			destination->attach_input(source, output, input);
+			switch(atop) {
+			case AttachInput:
+				destination->attach_input(source, output, input);
+				break;
+			case DetachInput:
+				destination->detach_input(source, output, input);
+				break;
+			}
 		}
+	}
+
+	void BaseMachine::handle_cmd_attach_input(RemoteInterface::Context *context,
+						  RemoteInterface::MessageHandler *src,
+						  const RemoteInterface::Message& msg) {
+		handle_attachment_command(AttachInput, msg);
 	}
 
 	void BaseMachine::handle_cmd_detach_input(RemoteInterface::Context *context,
 						  RemoteInterface::MessageHandler *src,
 						  const RemoteInterface::Message& msg) {
+		handle_attachment_command(DetachInput, msg);
 	}
 
 	BaseMachine::BaseMachine(const Factory *factory, const RemoteInterface::Message &serialized)
@@ -633,10 +641,12 @@ SERVER_CODE(
 		}
 	}
 
-	void BaseMachine::machine_input_attached(std::shared_ptr<Machine> source_machine,
-						 std::shared_ptr<Machine> destination_machine,
-						 const std::string &output_name,
-						 const std::string &input_name) {
+	void BaseMachine::send_attachment_command(
+		const std::string& command,
+		std::shared_ptr<Machine> source_machine,
+		std::shared_ptr<Machine> destination_machine,
+		const std::string &output_name,
+		const std::string &input_name) {
 		auto s = machine2basemachine.find(source_machine);
 		auto d = machine2basemachine.find(destination_machine);
 		if(s == machine2basemachine.end()) {
@@ -661,13 +671,21 @@ SERVER_CODE(
 				msg_to_send->set_value("inp", input_name);
 		};
 
-		destination->send_message(cmd_attach_input, f);
+		destination->send_message(command, f);
 	}
 
-	void BaseMachine::machine_input_detached(std::shared_ptr<Machine> source,
-						 std::shared_ptr<Machine> destination,
+	void BaseMachine::machine_input_attached(std::shared_ptr<Machine> source_machine,
+						 std::shared_ptr<Machine> destination_machine,
 						 const std::string &output_name,
 						 const std::string &input_name) {
+		send_attachment_command(cmd_attach_input, source_machine, destination_machine, output_name, input_name);
+	}
+
+	void BaseMachine::machine_input_detached(std::shared_ptr<Machine> source_machine,
+						 std::shared_ptr<Machine> destination_machine,
+						 const std::string &output_name,
+						 const std::string &input_name) {
+		send_attachment_command(cmd_detach_input, source_machine, destination_machine, output_name, input_name);
 	}
 
 	);

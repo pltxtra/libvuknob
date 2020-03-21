@@ -179,8 +179,12 @@ namespace RemoteInterface {
 			};
 
 		private:
+			enum AttachmentOperation {AttachInput, DetachInput};
 			ON_SERVER(
 				static std::map<std::shared_ptr<Machine>, std::shared_ptr<BaseMachine> > machine2basemachine;
+				);
+			ON_CLIENT(
+				static void handle_attachment_command(AttachmentOperation atop, const RemoteInterface::Message& msg);
 				);
 			static std::map<std::string, std::shared_ptr<BaseMachine> > name2machine;
 
@@ -220,6 +224,13 @@ namespace RemoteInterface {
 			// serder is an either an ItemSerializer or ItemDeserializer object.
 			template <class SerderClassT>
 			void serderize_base_machine(SerderClassT &serder);
+
+			static void send_attachment_command(
+				const std::string& command,
+				std::shared_ptr<Machine> source_machine,
+				std::shared_ptr<Machine> destination_machine,
+				const std::string &output_name,
+				const std::string &input_name);
 
 		protected:
 			static void register_by_name(std::shared_ptr<BaseMachine> bmchn);
