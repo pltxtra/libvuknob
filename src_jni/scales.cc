@@ -235,7 +235,7 @@ void Scales::handle_get_scale_keys(
 		initialize_scales();
 
 		auto scale_name = msg.get_value("name");
-		int keys[] = {0, 2, 4, 5, 7, 9, 11};
+		std::vector<int> keys = {0, 2, 4, 5, 7, 9, 11};
 
 		for(auto scale : scales) {
 			if(scale->name == scale_name) {
@@ -245,7 +245,7 @@ void Scales::handle_get_scale_keys(
 		}
 
 		Serialize::ItemSerializer iser;
-		iser.process(7, keys);
+		iser.process(keys);
 
 		std::shared_ptr<RemoteInterface::Message> reply = context->acquire_reply(msg);
 		reply->set_value("keys", iser.result());
@@ -260,13 +260,13 @@ void Scales::handle_get_scale_keysn(
 		initialize_scales();
 
 		int scale_index = std::stoi(msg.get_value("index"));
-		int keys[] = {0, 2, 4, 5, 7, 9, 11};
+		std::vector<int> keys = {0, 2, 4, 5, 7, 9, 11};
 
 		for(auto k = 0; k < 7; k++)
 			keys[k] = scales[scale_index]->keys[k];
 
 		Serialize::ItemSerializer iser;
-		iser.process(7, keys);
+		iser.process(keys);
 
 		std::shared_ptr<RemoteInterface::Message> reply = context->acquire_reply(msg);
 		reply->set_value("keys", iser.result());
@@ -379,13 +379,8 @@ std::vector<int> Scales::get_scale_keys(int index) {
 
 		[this, &retval](const RemoteInterface::Message *reply_message) {
 			if(reply_message) {
-				int keys[7];
-
 				Serialize::ItemDeserializer serder(reply_message->get_value("keys"));
-				serder.process(7, keys);
-				retval.clear();
-				for(auto k = 0; k < 7; k++)
-					retval.push_back(keys[k]);
+				serder.process(retval);
 			}
 		}
 		);

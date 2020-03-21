@@ -66,8 +66,9 @@ SERVER_N_CLIENT_CODE(
 		RegisterObjectFunction register_object
 		) {
 		ON_CLIENT(
-			auto nseq = std::make_shared<MachineAPI>(this, serialized);
-			return register_object(nseq);
+			auto mapi = std::make_shared<MachineAPI>(this, serialized);
+			BaseMachine::register_by_name(mapi);
+			return register_object(mapi);
 			);
 		ON_SERVER(
 			return nullptr;
@@ -79,8 +80,8 @@ SERVER_N_CLIENT_CODE(
 		RegisterObjectFunction register_object
 		) {
 		ON_SERVER(
-			auto nseq = std::make_shared<MachineAPI>(new_obj_id, this);
-			return register_object(nseq);
+			auto mapi = std::make_shared<MachineAPI>(new_obj_id, this);
+			return register_object(mapi);
 			);
 		ON_CLIENT(
 			return nullptr;

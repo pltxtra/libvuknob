@@ -289,6 +289,10 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
 		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
 		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				SATAN_DEBUG("controlls_button tapped.\n");
+				return;
+			}
 			sequencer->vertical_scroll_event(event);
 		}
 		);

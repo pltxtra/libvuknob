@@ -44,18 +44,31 @@ namespace RemoteInterface {
 
 		struct Connection {
 			static constexpr const char* serialize_identifier = "BaseMachine::Connection";
-			std::weak_ptr<BaseMachine> source, destination;
-			std::string input_name, output_name;
 			template <class SerderClassT>
 			void serderize(SerderClassT &serder);
+
+			std::string source_name, output_name, destination_name, input_name;
+
+			bool equals(const Connection& other) {
+				return
+					(source_name == other.source_name)
+					&&
+					(output_name == other.output_name)
+					&&
+					(destination_name == other.destination_name)
+					&&
+					(input_name == other.input_name);
+			}
 		};
 
-		struct Socket {
+		class Socket {
+		public:
 			static constexpr const char* serialize_identifier = "BaseMachine::Socket";
-			std::string name;
-			std::vector<Connection> connections;
 			template <class SerderClassT>
 			void serderize(SerderClassT &serder);
+
+			std::string name;
+			std::vector<std::shared_ptr<Connection> > connections;
 		};
 
 		class BaseMachine
@@ -169,10 +182,19 @@ namespace RemoteInterface {
 			ON_SERVER(
 				static std::map<std::shared_ptr<Machine>, std::shared_ptr<BaseMachine> > machine2basemachine;
 				);
+			static std::map<std::string, std::shared_ptr<BaseMachine> > name2machine;
+
 			std::string name;
 			std::vector<std::string> groups;
-			std::vector<Socket> inputs, outputs;
+			std::vector<std::shared_ptr<Socket> > inputs, outputs;
 			std::set<std::shared_ptr<Knob> > knobs;
+
+			enum SocketType {InputSocket, OutputSocket};
+			void add_connection(SocketType socket_type, const Connection& connection);
+			void remove_connection(SocketType socket_type, const Connection& connection);
+
+			void attach_input(std::shared_ptr<BaseMachine> source, std::string output, std::string input);
+			void detach_input(std::shared_ptr<BaseMachine> source, std::string output, std::string input);
 
 			/* REQ means the client request the server to perform an operation */
 			/* CMD means the server commands the client to perform an operation */
@@ -198,6 +220,9 @@ namespace RemoteInterface {
 			// serder is an either an ItemSerializer or ItemDeserializer object.
 			template <class SerderClassT>
 			void serderize_base_machine(SerderClassT &serder);
+
+		protected:
+			static void register_by_name(std::shared_ptr<BaseMachine> bmchn);
 		public:
 			ON_CLIENT(
 				BaseMachine(const Factory *factory, const RemoteInterface::Message &serialized);

@@ -31,6 +31,15 @@ SERVER_N_CLIENT_CODE(
 
 	template <class SerderClassT>
 	void Connection::serderize(SerderClassT& iserder) {
+		iserder.process(source_name);
+		iserder.process(output_name);
+		iserder.process(input_name);
+		iserder.process(destination_name);
+
+		SATAN_DEBUG("Connection[%s:%s -> %s:%s]\n",
+			    source_name.c_str(), output_name.c_str(),
+			    destination_name.c_str(), input_name.c_str()
+			);
 	}
 
 	);
@@ -45,6 +54,9 @@ SERVER_N_CLIENT_CODE(
 
 	template <class SerderClassT>
 	void Socket::serderize(SerderClassT& iserder) {
+		iserder.process(name);
+		iserder.process(connections);
+		SATAN_DEBUG("Socket[%s]\n", name.c_str());
 	}
 
 	);
@@ -384,8 +396,16 @@ SERVER_N_CLIENT_CODE(
  ***************************/
 
 SERVER_N_CLIENT_CODE(
+	std::map<std::string, std::shared_ptr<BaseMachine> > BaseMachine::name2machine;
+
+	void BaseMachine::register_by_name(std::shared_ptr<BaseMachine> bmchn) {
+		SATAN_DEBUG("[%s] register_by_name(%s)\n", CLIENTORSERVER_STRING, bmchn->name.c_str());
+		name2machine[bmchn->name] = bmchn;
+	}
+
 	template <class SerderClassT>
 	void BaseMachine::serderize_base_machine(SerderClassT& iserder) {
+		SATAN_DEBUG("serderize_base_machine() -- .....\n");
 		iserder.process(name);
 		iserder.process(groups);
 		iserder.process(knobs);
@@ -394,6 +414,79 @@ SERVER_N_CLIENT_CODE(
 		SATAN_DEBUG("serderize_base_machine() -- base_machine_name: %s\n",
 			    name.c_str());
 	}
+
+	void BaseMachine::add_connection(SocketType socket_type, const Connection& new_connection) {
+		auto f = [this](const Connection& new_connection, std::vector<std::shared_ptr<Socket> > sockets, const std::string& socket_name) {
+			for(auto socket : sockets) {
+				if(socket->name == socket_name) {
+					for(auto connection : socket->connections) {
+						if(connection->equals(new_connection)) {
+							return;
+						}
+					}
+					socket->connections.push_back(std::make_shared<Connection>(new_connection));
+				}
+			}
+		};
+		switch(socket_type) {
+		case InputSocket:
+		{
+			f(new_connection, inputs, new_connection.input_name);
+		}
+		break;
+		case OutputSocket:
+			f(new_connection, outputs, new_connection.output_name);
+		{
+		}
+		break;
+		}
+	}
+
+	void BaseMachine::remove_connection(SocketType socket_type, const Connection& connection2remove) {
+		auto f = [this](const Connection& connection2remove, std::vector<std::shared_ptr<Socket> > sockets, const std::string& socket_name) {
+			for(auto socket : sockets) {
+				if(socket->name == socket_name) {
+					for(auto cn = socket->connections.begin();
+					    cn != socket->connections.end();
+					    cn++) {
+						if((*cn)->equals(connection2remove)) {
+							socket->connections.erase(cn);
+							return;
+						}
+					}
+				}
+			}
+		};
+		switch(socket_type) {
+		case InputSocket:
+		{
+			f(connection2remove, inputs, connection2remove.input_name);
+		}
+		break;
+		case OutputSocket:
+			f(connection2remove, outputs, connection2remove.output_name);
+		{
+		}
+		break;
+		}
+	}
+
+	void BaseMachine::attach_input(std::shared_ptr<BaseMachine> source, std::string output, std::string input) {
+		auto cnxn = Connection{.source_name = source->name, .output_name = output,
+				       .destination_name = name, .input_name = input};
+		source->add_connection(OutputSocket, cnxn);
+		this->add_connection(InputSocket, cnxn);
+		SATAN_DEBUG("::attach_input() done.\n");
+	}
+
+	void BaseMachine::detach_input(std::shared_ptr<BaseMachine> source, std::string output, std::string input) {
+		auto cnxn = Connection{.source_name = source->name, .output_name = output,
+				       .destination_name = name, .input_name = input};
+		source->remove_connection(OutputSocket, cnxn);
+		this->remove_connection(InputSocket, cnxn);
+		SATAN_DEBUG("::detach_input() done.\n");
+	}
+
 	);
 
 CLIENT_CODE(
@@ -411,7 +504,24 @@ CLIENT_CODE(
 	void BaseMachine::handle_cmd_attach_input(RemoteInterface::Context *context,
 						  RemoteInterface::MessageHandler *src,
 						  const RemoteInterface::Message& msg) {
+		auto source_name = msg.get_value("src");
+		auto output = msg.get_value("oup");
+		auto destination_name = msg.get_value("dst");
+		auto input = msg.get_value("inp");
+		SATAN_ERROR("[%d] handle_cmd_attach([%s:%s] -> [%s:%s]\n",
+			    name2machine.size(),
+			    source_name.c_str(), output.c_str(), destination_name.c_str(), input.c_str());
 
+		for(auto n2m : name2machine) {
+			SATAN_ERROR("Name[%s] -> Machine [%p]\n", n2m.first.c_str(), n2m.second.get());
+		}
+
+		if(name2machine.count(source_name) && name2machine.count(destination_name)) {
+			auto source = name2machine[source_name];
+			auto destination = name2machine[source_name];
+			SATAN_ERROR("  -> found source (%p) and destination (%p)\n", source.get(), destination.get());
+			destination->attach_input(source, output, input);
+		}
 	}
 
 	void BaseMachine::handle_cmd_detach_input(RemoteInterface::Context *context,
@@ -494,9 +604,10 @@ SERVER_CODE(
 	}
 
 	void BaseMachine::init_from_machine_ptr(std::shared_ptr<BaseMachine> bmchn, std::shared_ptr<Machine> m_ptr) {
-		machine2basemachine[m_ptr] = bmchn;
-
 		name = m_ptr->get_name();
+		machine2basemachine[m_ptr] = bmchn;
+		register_by_name(bmchn);
+
 		groups = m_ptr->get_controller_groups();
 		int knb_id = 0;
 		for(auto ctrname : m_ptr->get_controller_names()) {
@@ -508,10 +619,10 @@ SERVER_CODE(
 		}
 
 		for(auto input_name : m_ptr->get_input_names()) {
-			inputs.emplace_back(Socket{.name = input_name});
+			inputs.push_back(std::make_shared<Socket>(Socket{.name = input_name}));
 		}
 		for(auto output_name : m_ptr->get_output_names()) {
-			outputs.emplace_back(Socket{.name = output_name});
+			outputs.push_back(std::make_shared<Socket>(Socket{.name = output_name}));
 		}
 	}
 
@@ -522,16 +633,35 @@ SERVER_CODE(
 		}
 	}
 
-	void BaseMachine::machine_input_attached(std::shared_ptr<Machine> source,
-						 std::shared_ptr<Machine> destination,
+	void BaseMachine::machine_input_attached(std::shared_ptr<Machine> source_machine,
+						 std::shared_ptr<Machine> destination_machine,
 						 const std::string &output_name,
 						 const std::string &input_name) {
-		auto s = machine2basemachine.find(source);
-		auto d = machine2basemachine.find(destination);
-		if(s != machine2basemachine.end())
-			SATAN_DEBUG("Found source basemachine %p to match %p\n", s->first.get(), source.get());
-		if(d != machine2basemachine.end())
-			SATAN_DEBUG("Found destination basemachine %p to match %p\n", d->first.get(), destination.get());
+		auto s = machine2basemachine.find(source_machine);
+		auto d = machine2basemachine.find(destination_machine);
+		if(s == machine2basemachine.end()) {
+			SATAN_ERROR("machine_input_attached(): Did not find source basemachine to match %p (%s)\n",
+				    source_machine.get(), source_machine->get_name().c_str());
+			return;
+		}
+		if(d == machine2basemachine.end()) {
+			SATAN_ERROR("machine_input_attached(): Did not find destination basemachine to match %p (%s)\n",
+				    destination_machine.get(), destination_machine->get_name().c_str());
+			return;
+		}
+		auto source = s->second;
+		auto destination = d->second;
+		auto source_name = source->name;
+		auto destination_name = destination->name;
+		auto f =
+			[source_name, output_name, destination_name, input_name](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("src", source_name);
+				msg_to_send->set_value("oup", output_name);
+				msg_to_send->set_value("dst", destination_name);
+				msg_to_send->set_value("inp", input_name);
+		};
+
+		destination->send_message(cmd_attach_input, f);
 	}
 
 	void BaseMachine::machine_input_detached(std::shared_ptr<Machine> source,

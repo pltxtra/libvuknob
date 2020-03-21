@@ -931,6 +931,7 @@ SERVER_N_CLIENT_CODE(
 		ON_CLIENT(
 			SATAN_DEBUG("Trying to deserialize new Sequence...\n");
 			auto nseq = std::make_shared<Sequence>(this, serialized);
+			BaseMachine::register_by_name(nseq);
 			return register_object(nseq);
 			);
 		ON_SERVER(
