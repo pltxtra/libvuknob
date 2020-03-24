@@ -23,9 +23,12 @@
 #include <map>
 #include <gnuVGcanvas.hh>
 
+#include "../engine_code/base_machine.hh"
+
+typedef RemoteInterface::ClientSpace::BaseMachine::Knob BMKnob;
+
 class KnobEditor
-	: public RemoteInterface::Context::ObjectSetListener<RISequence>
-	, public KammoGUI::GnuVGCanvas::SVGDocument
+	: public KammoGUI::GnuVGCanvas::SVGDocument
 {
 
 private:
@@ -34,10 +37,14 @@ private:
 	{
 	private:
 		KammoGUI::GnuVGCanvas::ElementReference svg_reference;
+		std::shared_ptr<BMKnob> knob;
+		int offset;
 
 	public:
 		KnobInstance(
-			KammoGUI::GnuVGCanvas::ElementReference &elref
+			KammoGUI::GnuVGCanvas::ElementReference &elref,
+			int _offset,
+			std::shared_ptr<BMKnob> _knob
 			);
 
 		virtual ~KnobInstance() {
@@ -45,8 +52,9 @@ private:
 		}
 
 		static std::shared_ptr<KnobInstance> create_knob_instance(
+			std::shared_ptr<BMKnob> knob,
 			KammoGUI::GnuVGCanvas::ElementReference &container,
-			KammoGUI::GnuVGCanvas::ElementReference &template,
+			KammoGUI::GnuVGCanvas::ElementReference &knob_template,
 			int offset);
 	};
 

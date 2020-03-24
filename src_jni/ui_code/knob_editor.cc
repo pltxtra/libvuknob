@@ -18,6 +18,10 @@
  */
 
 #include "knob_editor.hh"
+#include "svg_loader.hh"
+
+#define __DO_SATAN_DEBUG
+#include "satan_debug.hh"
 
 /***************************
  *
@@ -25,22 +29,33 @@
  *
  ***************************/
 
+KnobEditor::KnobInstance::KnobInstance(
+	KammoGUI::GnuVGCanvas::ElementReference &elref,
+	int _offset,
+	std::shared_ptr<BMKnob> _knob
+	)
+	: svg_reference(elref)
+	, knob(_knob)
+	, offset(_offset)
+{
+}
+
+
 auto KnobEditor::KnobInstance::create_knob_instance(
+	std::shared_ptr<BMKnob> knob,
 	KammoGUI::GnuVGCanvas::ElementReference &container,
-	KammoGUI::GnuVGCanvas::ElementReference &template,
+	KammoGUI::GnuVGCanvas::ElementReference &knob_template,
 	int offset) -> std::shared_ptr<KnobInstance> {
 
 	char bfr[32];
-	snprintf(bfr, 32, "seq_%p", ri_sequence.get());
+	snprintf(bfr, 32, "knb_%p", knob.get());
 
 	KammoGUI::GnuVGCanvas::ElementReference new_graphic =
-		root.add_element_clone(bfr, template);
+		container.add_element_clone(bfr, knob_template);
 
 	SATAN_DEBUG("KnobEditor::KnobInstance::create_knob() -- bfr: %s\n", bfr);
 
-	auto new_sequence = std::make_shared<Sequence>(new_graphic, ri_sequence, offset);
-	ri_sequence->add_sequence_listener(new_sequence);
-	return new_sequence;
+	return std::make_shared<KnobInstance>(new_graphic, offset, knob);
 }
 
 /***************************

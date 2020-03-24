@@ -29,6 +29,7 @@
 #include "timelines.hh"
 #include "loop_settings.hh"
 #include "pattern_editor.hh"
+#include "knob_editor.hh"
 #include "popup_window.hh"
 #include "popup_menu.hh"
 #include "gnuvg_corner_button.hh"
