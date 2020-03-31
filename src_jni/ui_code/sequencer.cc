@@ -50,6 +50,7 @@ static std::shared_ptr<Sequencer> sequencer;
 static std::shared_ptr<GnuVGCornerButton> plus_button;
 static std::shared_ptr<GnuVGCornerButton> return_button;
 static std::shared_ptr<PatternEditor> pattern_editor;
+static std::shared_ptr<KnobEditor> knob_editor;
 static std::shared_ptr<LoopSettings> loop_settings;
 static TapDetector tap_detector;
 
@@ -291,7 +292,17 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
 		       const KammoGUI::MotionEvent &event) {
 			if(tap_detector.analyze_events(event)) {
-				SATAN_DEBUG("controlls_button tapped.\n");
+				SATAN_DEBUG("controlls_button was tapped.\n");
+				auto destination_name = ri_seq->get_name();
+				SATAN_DEBUG("Trying to get the machine known as %s\n", destination_name.c_str());
+				auto destination = RemoteInterface::ClientSpace::BaseMachine::get_machine_by_name(destination_name);
+				KnobEditor::show(destination);
+
+				loop_settings->hide();
+				sequencer->hide_all();
+				timelines->hide_all();
+				return_button->show();
+
 				return;
 			}
 			sequencer->vertical_scroll_event(event);
@@ -1080,6 +1091,16 @@ void Sequencer::set_pattern_id_text(uint32_t pattern_id) {
 	pattern_id_text.set_text_content(ss.str());
 }
 
+void Sequencer::show_all() {
+	KammoGUI::GnuVGCanvas::ElementReference root_element(this);
+	root_element.set_display("inline");
+}
+
+void Sequencer::hide_all() {
+	KammoGUI::GnuVGCanvas::ElementReference root_element(this);
+	root_element.set_display("none");
+}
+
 void Sequencer::hide_elements(std::vector<KammoGUI::GnuVGCanvas::ElementReference *> elements_to_hide) {
 	for(auto element : elements_to_hide) {
 		element->set_style("opacity:1.0");
@@ -1308,12 +1329,14 @@ virtual void on_init(KammoGUI::Widget *wid) {
 			std::string(SVGLoader::get_svg_directory() + "/plusButton.svg"),
 			GnuVGCornerButton::bottom_right);
 		pattern_editor = PatternEditor::get_pattern_editor(cnvs, timelines);
+		loop_settings = std::make_shared<LoopSettings>(cnvs);
+		knob_editor = KnobEditor::get_knob_editor(cnvs);
 		return_button = std::make_shared<GnuVGCornerButton>(
 			cnvs,
 			std::string(SVGLoader::get_svg_directory() + "/leftArrow.svg"),
 			GnuVGCornerButton::top_left);
-		loop_settings = std::make_shared<LoopSettings>(cnvs);
 		PatternEditor::hide();
+		KnobEditor::hide();
 		return_button->hide();
 
 		plus_button->set_select_callback(
@@ -1332,8 +1355,12 @@ virtual void on_init(KammoGUI::Widget *wid) {
 
 		return_button->set_select_callback(
 			[]() {
+				KnobEditor::hide();
 				pattern_editor->hide();
 				return_button->hide();
+				sequencer->show_all();
+				timelines->show_all();
+				loop_settings->show();
 			});
 
 		RemoteInterface::ClientSpace::Client::register_object_set_listener<RISequence>(sequencer);

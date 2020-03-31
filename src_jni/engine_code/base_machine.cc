@@ -147,6 +147,73 @@ CLIENT_CODE(
 		send_obj_message = _send_obj_message;
 	}
 
+	void BaseMachine::Knob::set_value(int val) {
+		data.i.value = val;
+		auto kid = knb_id;
+		send_obj_message(
+			[kid, val](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("knb_id", std::to_string(kid));
+				msg_to_send->set_value("value", std::to_string(val));
+			}
+			);
+	}
+
+	void BaseMachine::Knob::set_value(float val) {
+		data.f.value = val;
+		auto kid = knb_id;
+		send_obj_message(
+			[kid, val](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("knb_id", std::to_string(kid));
+				msg_to_send->set_value("value", std::to_string(val));
+			}
+			);
+	}
+
+	void BaseMachine::Knob::set_value(double val) {
+		data.d.value = val;
+		auto kid = knb_id;
+		send_obj_message(
+			[kid, val](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("knb_id", std::to_string(kid));
+				msg_to_send->set_value("value", std::to_string(val));
+			}
+			);
+	}
+
+	void BaseMachine::Knob::set_value(bool val) {
+		bl_data = val;
+		auto kid = knb_id;
+		send_obj_message(
+			[kid, val](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("knb_id", std::to_string(kid));
+				msg_to_send->set_value("value", val ? "true" : "false");
+			}
+			);
+	}
+
+	void BaseMachine::Knob::set_value(const std::string &val) {
+		str_data = val;
+		auto kid = knb_id;
+		send_obj_message(
+			[kid, val](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("knb_id", std::to_string(kid));
+				msg_to_send->set_value("value", val);
+			}
+			);
+	}
+
+	bool BaseMachine::Knob::has_midi_controller(int &__coarse_controller, int &__fine_controller) {
+		if(coarse_controller == -1 && fine_controller == -1) return false;
+
+		__coarse_controller = coarse_controller;
+		__fine_controller = fine_controller;
+
+		return true;
+	}
+
+	)
+
+SERVER_N_CLIENT_CODE(
 	std::string BaseMachine::Knob::get_name() {
 		return name;
 	}
@@ -241,73 +308,6 @@ CLIENT_CODE(
 		return (*enam).second;
 	}
 
-	void BaseMachine::Knob::set_value(int val) {
-		data.i.value = val;
-		auto kid = knb_id;
-		send_obj_message(
-			[kid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("knb_id", std::to_string(kid));
-				msg_to_send->set_value("value", std::to_string(val));
-			}
-			);
-	}
-
-	void BaseMachine::Knob::set_value(float val) {
-		data.f.value = val;
-		auto kid = knb_id;
-		send_obj_message(
-			[kid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("knb_id", std::to_string(kid));
-				msg_to_send->set_value("value", std::to_string(val));
-			}
-			);
-	}
-
-	void BaseMachine::Knob::set_value(double val) {
-		data.d.value = val;
-		auto kid = knb_id;
-		send_obj_message(
-			[kid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("knb_id", std::to_string(kid));
-				msg_to_send->set_value("value", std::to_string(val));
-			}
-			);
-	}
-
-	void BaseMachine::Knob::set_value(bool val) {
-		bl_data = val;
-		auto kid = knb_id;
-		send_obj_message(
-			[kid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("knb_id", std::to_string(kid));
-				msg_to_send->set_value("value", val ? "true" : "false");
-			}
-			);
-	}
-
-	void BaseMachine::Knob::set_value(const std::string &val) {
-		str_data = val;
-		auto kid = knb_id;
-		send_obj_message(
-			[kid, val](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("knb_id", std::to_string(kid));
-				msg_to_send->set_value("value", val);
-			}
-			);
-	}
-
-	bool BaseMachine::Knob::has_midi_controller(int &__coarse_controller, int &__fine_controller) {
-		if(coarse_controller == -1 && fine_controller == -1) return false;
-
-		__coarse_controller = coarse_controller;
-		__fine_controller = fine_controller;
-
-		return true;
-	}
-
-	)
-
-SERVER_N_CLIENT_CODE(
 	void BaseMachine::Knob::update_value_from_message_value(const std::string& value) {
 		switch(k_type) {
 		case Knob::rik_int:
@@ -396,6 +396,70 @@ SERVER_N_CLIENT_CODE(
  ***************************/
 
 SERVER_N_CLIENT_CODE(
+
+	std::vector<std::string> BaseMachine::get_socket_names(SocketType type) {
+		auto f = [this](std::vector<std::shared_ptr<Socket> > sockets, std::vector<std::string> &result) {
+			for(auto socket : sockets) {
+				result.push_back(socket->name);
+			}
+		};
+		std::vector<std::string> result;
+		switch(type) {
+		case InputSocket:
+			f(inputs, result);
+			break;
+		case OutputSocket:
+			f(outputs, result);
+			break;
+		}
+		return result;
+	}
+
+	std::vector<std::shared_ptr<Connection> > BaseMachine::get_connections_on_socket(SocketType type, const std::string& socket_name) {
+		auto f = [this](std::vector<std::shared_ptr<Socket> > sockets,
+				const std::string& socket_name) -> std::vector<std::shared_ptr<Connection> >
+			{
+			std::vector<std::shared_ptr<Connection> > result;
+			for(auto socket : sockets) {
+				if(socket->name == socket_name) {
+					result = socket->connections;
+				}
+			}
+			return result;
+		};
+		std::vector<std::shared_ptr<Connection> > result;
+		switch(type) {
+		case InputSocket:
+			result = f(inputs, socket_name);
+			break;
+		case OutputSocket:
+			result = f(outputs, socket_name);
+			break;
+		}
+		return result;
+	}
+
+	std::vector<std::string> BaseMachine::get_knob_groups() {
+		return groups;
+	}
+
+	std::vector<std::shared_ptr<BaseMachine::Knob> > BaseMachine::get_knobs_for_group(const std::string& group_name) {
+		std::vector<std::shared_ptr<Knob> > retval;
+		for(auto knob : knobs) {
+			if(group_name == "")
+				retval.push_back(knob);
+			else if(knob->get_group() == group_name)
+				retval.push_back(knob);
+		}
+		return retval;
+	}
+
+	std::shared_ptr<BaseMachine> BaseMachine::get_machine_by_name(const std::string& name) {
+		if(name2machine.count(name))
+			return name2machine[name];
+		return nullptr;
+	}
+
 	std::map<std::string, std::shared_ptr<BaseMachine> > BaseMachine::name2machine;
 
 	void BaseMachine::register_by_name(std::shared_ptr<BaseMachine> bmchn) {
@@ -476,7 +540,12 @@ SERVER_N_CLIENT_CODE(
 				       .destination_name = name, .input_name = input};
 		source->add_connection(OutputSocket, cnxn);
 		this->add_connection(InputSocket, cnxn);
-		SATAN_DEBUG("::attach_input() done.\n");
+		SATAN_DEBUG("::attach_input() done with [%s:%s] -> [%s:%s].\n",
+			    cnxn.source_name.c_str(),
+			    cnxn.output_name.c_str(),
+			    cnxn.destination_name.c_str(),
+			    cnxn.input_name.c_str()
+			);
 	}
 
 	void BaseMachine::detach_input(std::shared_ptr<BaseMachine> source, std::string output, std::string input) {
@@ -512,7 +581,7 @@ CLIENT_CODE(
 
 		if(name2machine.count(source_name) && name2machine.count(destination_name)) {
 			auto source = name2machine[source_name];
-			auto destination = name2machine[source_name];
+			auto destination = name2machine[destination_name];
 			SATAN_ERROR("  -> found source (%p) and destination (%p)\n", source.get(), destination.get());
 			switch(atop) {
 			case AttachInput:

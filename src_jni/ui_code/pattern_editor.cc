@@ -917,7 +917,6 @@ PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
 								   min_visible_offset,
 								   max_visible_offset);
 				       });
-	singleton = this;
 
 	backdrop_reference = KammoGUI::GnuVGCanvas::ElementReference(this, "backdrop");
 	backdrop_reference.set_event_handler(
@@ -987,7 +986,8 @@ void PatternEditor::perform_operation(PatternEditorOperation p_operation) {
 
 std::shared_ptr<PatternEditor> PatternEditor::get_pattern_editor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines) {
 	if(singleton) return singleton->shared_from_this();
-	auto  response = std::shared_ptr<PatternEditor>(new PatternEditor(cnvs, timelines));
+	auto  response = std::make_shared<PatternEditor>(cnvs, timelines);
+	singleton = response.get();
 	PatternEditorMenu::prepare_menu(cnvs);
 	velocity_slider = std::make_shared<ScaleSlide>(cnvs);
 	return response;
@@ -1090,8 +1090,10 @@ void PatternEditor::hide() {
 		auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(singleton, "layer1");
 		layer1.set_display("none");
 
-		if(singleton->on_exit_pattern_editor)
+		if(singleton->on_exit_pattern_editor) {
 			singleton->on_exit_pattern_editor();
+			singleton->on_exit_pattern_editor = nullptr;
+		}
 	}
 }
 

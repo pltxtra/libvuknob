@@ -25,13 +25,17 @@
 
 #include "../engine_code/base_machine.hh"
 
+typedef RemoteInterface::ClientSpace::BaseMachine       BMachine;
 typedef RemoteInterface::ClientSpace::BaseMachine::Knob BMKnob;
 
 class KnobEditor
 	: public KammoGUI::GnuVGCanvas::SVGDocument
+	, public std::enable_shared_from_this<KnobEditor>
 {
 
 private:
+	static KnobEditor *singleton;
+
 	class KnobInstance
 		: public std::enable_shared_from_this<KnobInstance>
 	{
@@ -58,7 +62,7 @@ private:
 			int offset);
 	};
 
-	KammoGUI::GnuVGCanvas::ElementReference root, knob_container, knob_template;
+	KammoGUI::GnuVGCanvas::ElementReference root, knob_container, knob_template, popup_trigger, popup_text, popup_container;
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
 
 	double scaling; // graphical scaling factor
@@ -67,11 +71,20 @@ private:
 	float canvas_w_inches, canvas_h_inches; // sizes in inches
 	int canvas_w, canvas_h; // sizes in pixels
 
+	std::vector<std::string> groups;
+	std::string current_group;
+
+	void internal_show(std::shared_ptr<BMachine> machine);
 public:
 	KnobEditor(KammoGUI::GnuVGCanvas* cnvs);
 
 	virtual void on_resize() override;
 	virtual void on_render() override;
+
+	static std::shared_ptr<KnobEditor> get_knob_editor(KammoGUI::GnuVGCanvas* cnvs);
+
+	static void hide();
+	static void show(std::shared_ptr<BMachine> machine);
 };
 
 #endif

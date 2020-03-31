@@ -127,6 +127,8 @@ public:
 
 	void show_loop_markers();
 	void hide_loop_markers();
+	void hide_all();
+	void show_all();
 
 	double get_graphics_horizontal_offset();
 	double get_horizontal_pixels_per_line();

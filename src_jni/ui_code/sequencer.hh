@@ -228,6 +228,8 @@ public:
 	void prepare_sequencer(KammoGUI::GnuVGCanvas* cnvs);
 
 	void vertical_scroll_event(const KammoGUI::MotionEvent &event);
+	void show_all();
+	void hide_all();
 
 	virtual void on_resize() override;
 	virtual void on_render() override;

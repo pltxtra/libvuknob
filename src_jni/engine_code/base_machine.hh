@@ -110,30 +110,6 @@ namespace RemoteInterface {
 							     void(std::function<void(std::shared_ptr<Message> &msg_to_send)> )
 							     >  _send_obj_message
 						);
-					std::string get_group(); // the group to which the controller belongs
-					std::string get_name(); // name of the control
-					std::string get_title(); // user displayable title
-
-					Type get_type();
-
-					void get_min(float &val);
-					void get_max(float &val);
-					void get_step(float &val);
-					void get_min(double &val);
-					void get_max(double &val);
-					void get_step(double &val);
-					void get_min(int &val);
-					void get_max(int &val);
-					void get_step(int &val);
-
-					void get_value(int &val);
-					void get_value(float &val);
-					void get_value(double &val);
-					void get_value(bool &val);
-					void get_value(std::string &val);
-
-					std::string get_value_name(int val);
-
 					void set_value(int val);
 					void set_value(float val);
 					void set_value(double val);
@@ -142,6 +118,30 @@ namespace RemoteInterface {
 
 					bool has_midi_controller(int &coarse_controller, int &fine_controller);
 					);
+
+				std::string get_group(); // the group to which the controller belongs
+				std::string get_name(); // name of the control
+				std::string get_title(); // user displayable title
+
+				Type get_type();
+
+				void get_min(float &val);
+				void get_max(float &val);
+				void get_step(float &val);
+				void get_min(double &val);
+				void get_max(double &val);
+				void get_step(double &val);
+				void get_min(int &val);
+				void get_max(int &val);
+				void get_step(int &val);
+
+				void get_value(int &val);
+				void get_value(float &val);
+				void get_value(double &val);
+				void get_value(bool &val);
+				void get_value(std::string &val);
+
+				std::string get_value_name(int val);
 
 			private:
 				ON_SERVER(
@@ -178,6 +178,13 @@ namespace RemoteInterface {
 				int coarse_controller = -1, fine_controller = -1;
 			};
 
+			std::string get_name() { return name; }
+			enum SocketType {InputSocket, OutputSocket};
+			std::vector<std::string> get_socket_names(SocketType type);
+			std::vector<std::shared_ptr<Connection> > get_connections_on_socket(SocketType type, const std::string& socket_name);
+			std::vector<std::string> get_knob_groups();
+			std::vector<std::shared_ptr<Knob> > get_knobs_for_group(const std::string& group_name);
+			static std::shared_ptr<BaseMachine> get_machine_by_name(const std::string& name);
 		private:
 			enum AttachmentOperation {AttachInput, DetachInput};
 			ON_SERVER(
@@ -193,7 +200,6 @@ namespace RemoteInterface {
 			std::vector<std::shared_ptr<Socket> > inputs, outputs;
 			std::set<std::shared_ptr<Knob> > knobs;
 
-			enum SocketType {InputSocket, OutputSocket};
 			void add_connection(SocketType socket_type, const Connection& connection);
 			void remove_connection(SocketType socket_type, const Connection& connection);
 

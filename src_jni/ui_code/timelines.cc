@@ -514,6 +514,16 @@ void TimeLines::hide_loop_markers() {
 	loop_stop_marker.set_display("none");
 }
 
+void TimeLines::show_all() {
+	KammoGUI::GnuVGCanvas::ElementReference root_element(this);
+	root_element.set_display("inline");
+}
+
+void TimeLines::hide_all() {
+	KammoGUI::GnuVGCanvas::ElementReference root_element(this);
+	root_element.set_display("none");
+}
+
 double TimeLines::get_graphics_horizontal_offset() {
 	return current_zoom->line_offset;
 }
