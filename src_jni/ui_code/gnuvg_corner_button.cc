@@ -181,6 +181,13 @@ void GnuVGCornerButton::on_resize() {
 		break;
 
 		case bottom_left:
+		{
+			translate_x = 0.25 * document_size.width * scaling;
+			translate_y = canvas_h - 1.25 * document_size.height * scaling;
+			offset_target_x = -3.0 * document_size.width * scaling;
+			offset_target_y = 3.0 * document_size.height * scaling;
+		}
+		break;
 		case bottom_right:
 		{
 			translate_x = canvas_w - 1.25 * document_size.width * scaling;
