@@ -286,6 +286,32 @@ SERVER_N_CLIENT_CODE(
 		val = str_data;
 	}
 
+	std::string BaseMachine::Knob::get_value_as_text() {
+		std::stringstream ss;
+		switch(k_type) {
+		case Knob::rik_int:
+			ss <<  data.i.value;
+			break;
+		case Knob::rik_enum:
+		case Knob::rik_sigid:
+			ss << get_value_name(data.i.value);
+			break;
+		case Knob::rik_bool:
+			ss << (bl_data ? "true" : "false");
+			break;
+		case Knob::rik_float:
+			ss << data.f.value;
+			break;
+		case Knob::rik_double:
+			ss << data.d.value;
+			break;
+		case Knob::rik_string:
+			ss << str_data;
+			break;
+		}
+		return ss.str();
+	}
+
 	std::string BaseMachine::Knob::get_value_name(int val) {
 		if(k_type == Knob::rik_sigid) {
 			std::string retval = "no file loaded";
@@ -303,7 +329,7 @@ SERVER_N_CLIENT_CODE(
 		auto enam = enum_names.find(val);
 
 		if(enam == enum_names.end())
-			throw NoSuchEnumValue();
+			return "illegal value";
 
 		return (*enam).second;
 	}

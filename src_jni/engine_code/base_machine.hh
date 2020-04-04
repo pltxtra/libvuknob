@@ -141,6 +141,8 @@ namespace RemoteInterface {
 				void get_value(bool &val);
 				void get_value(std::string &val);
 
+				std::string get_value_as_text();
+
 				std::string get_value_name(int val);
 
 			private:

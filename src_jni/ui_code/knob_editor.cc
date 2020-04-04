@@ -43,6 +43,7 @@ KnobEditor::KnobInstance::KnobInstance(
 	, knob(_knob)
 	, offset(_offset)
 {
+	value_text = svg_reference.find_child_by_class("valueText");
 	value_decrease_button = svg_reference.find_child_by_class("valueDecreaseButton");
 	value_increase_button = svg_reference.find_child_by_class("valueIncreaseButton");
 }
@@ -69,6 +70,12 @@ auto KnobEditor::KnobInstance::create_knob_instance(
 	return std::make_shared<KnobInstance>(new_graphic, offset, knob);
 }
 
+void KnobEditor::KnobInstance::refresh_value_text() {
+	char bfr[128];
+	snprintf(bfr, 128, "%s: [%s]", knob->get_title().c_str(), knob->get_value_as_text().c_str());
+	value_text.set_text_content(bfr);
+}
+
 void KnobEditor::KnobInstance::refresh_transformation(double canvas_width, double finger_width, double finger_height) {
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	transform_t.init_identity();
@@ -78,6 +85,8 @@ void KnobEditor::KnobInstance::refresh_transformation(double canvas_width, doubl
 	transform_t.init_identity();
 	transform_t.translate(canvas_width - finger_width, 0.0);
 	value_increase_button.set_transform(transform_t);
+
+	refresh_value_text();
 }
 
 /***************************

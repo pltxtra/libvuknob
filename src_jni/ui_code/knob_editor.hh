@@ -41,12 +41,14 @@ private:
 	{
 	private:
 		KammoGUI::GnuVGCanvas::ElementReference svg_reference;
+		KammoGUI::GnuVGCanvas::ElementReference value_text;
 		KammoGUI::GnuVGCanvas::ElementReference value_decrease_button;
 		KammoGUI::GnuVGCanvas::ElementReference value_increase_button;
 
 		std::shared_ptr<BMKnob> knob;
 		int offset;
 
+		void refresh_value_text();
 	public:
 		KnobInstance(
 			KammoGUI::GnuVGCanvas::ElementReference &elref,
