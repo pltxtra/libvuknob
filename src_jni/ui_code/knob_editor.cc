@@ -43,13 +43,13 @@ KnobEditor::KnobInstance::KnobInstance(
 	, knob(_knob)
 	, offset(_offset)
 {
+	value_decrease_button = svg_reference.find_child_by_class("valueDecreaseButton");
+	value_increase_button = svg_reference.find_child_by_class("valueIncreaseButton");
 }
 
 KnobEditor::KnobInstance::~KnobInstance()
  {
-	 SATAN_DEBUG("~KnobInstance() [%p] dropping element %p\n", this, svg_reference.pointer());
 	 svg_reference.drop_element();
-	 SATAN_DEBUG("~KnobInstance() [%p] DROPPED!\n", this);
  }
 
 auto KnobEditor::KnobInstance::create_knob_instance(
@@ -69,11 +69,15 @@ auto KnobEditor::KnobInstance::create_knob_instance(
 	return std::make_shared<KnobInstance>(new_graphic, offset, knob);
 }
 
-void KnobEditor::KnobInstance::refresh_transformation(double width, double height) {
+void KnobEditor::KnobInstance::refresh_transformation(double canvas_width, double finger_width, double finger_height) {
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	transform_t.init_identity();
-	transform_t.translate(0.0, ((double)offset) * height);
+	transform_t.translate(0.0, ((double)offset) * finger_height);
 	svg_reference.set_transform(transform_t);
+
+	transform_t.init_identity();
+	transform_t.translate(canvas_width - finger_width, 0.0);
+	value_increase_button.set_transform(transform_t);
 }
 
 /***************************
@@ -89,8 +93,11 @@ void KnobEditor::refresh_knobs() {
 		SATAN_DEBUG("Creating instance for %s\n", knob->get_name().c_str());
 		auto new_knob_instance = KnobInstance::create_knob_instance(knob, knob_container, knob_template, k++);
 		knob_instances.push_back(new_knob_instance);
-		new_knob_instance->refresh_transformation(canvas_w, finger_height);
+		new_knob_instance->refresh_transformation(canvas_w, finger_width, finger_height);
 	}
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
+	transform_t.translate(0.0, finger_height);
+	knob_container.set_transform(transform_t);
 }
 
 void KnobEditor::internal_show(std::shared_ptr<BMachine> new_machine) {

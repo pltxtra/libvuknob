@@ -41,6 +41,9 @@ private:
 	{
 	private:
 		KammoGUI::GnuVGCanvas::ElementReference svg_reference;
+		KammoGUI::GnuVGCanvas::ElementReference value_decrease_button;
+		KammoGUI::GnuVGCanvas::ElementReference value_increase_button;
+
 		std::shared_ptr<BMKnob> knob;
 		int offset;
 
@@ -53,7 +56,7 @@ private:
 
 		virtual ~KnobInstance();
 
-		void refresh_transformation(double width, double height);
+		void refresh_transformation(double canvas_width, double finger_width, double finger_height);
 
 		static std::shared_ptr<KnobInstance> create_knob_instance(
 			std::shared_ptr<BMKnob> knob,
