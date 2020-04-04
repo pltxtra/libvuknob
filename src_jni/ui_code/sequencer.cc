@@ -298,6 +298,7 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 				auto destination = RemoteInterface::ClientSpace::BaseMachine::get_machine_by_name(destination_name);
 				KnobEditor::show(destination);
 
+				plus_button->hide();
 				loop_settings->hide();
 				sequencer->hide_all();
 				timelines->hide_all();
@@ -599,6 +600,7 @@ void Sequencer::prepare_sequencer(KammoGUI::GnuVGCanvas* cnvs) {
 	loop_icon.set_display("none");
 	length_icon.set_display("none");
 	sequencer_shade.set_display("none");
+	pattern_id_container.set_display("none");
 
 	timelines->add_scroll_callback(
 		[this](double _line_width, double _line_offset,
@@ -1334,7 +1336,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		return_button = std::make_shared<GnuVGCornerButton>(
 			cnvs,
 			std::string(SVGLoader::get_svg_directory() + "/leftArrow.svg"),
-			GnuVGCornerButton::top_left);
+			GnuVGCornerButton::bottom_left);
 		PatternEditor::hide();
 		KnobEditor::hide();
 		return_button->hide();
@@ -1361,6 +1363,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 				sequencer->show_all();
 				timelines->show_all();
 				loop_settings->show();
+				plus_button->show();
 			});
 
 		RemoteInterface::ClientSpace::Client::register_object_set_listener<RISequence>(sequencer);
