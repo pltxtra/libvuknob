@@ -51,9 +51,9 @@ private:
 			std::shared_ptr<BMKnob> _knob
 			);
 
-		virtual ~KnobInstance() {
-			svg_reference.drop_element();
-		}
+		virtual ~KnobInstance();
+
+		void refresh_transformation(double width, double height);
 
 		static std::shared_ptr<KnobInstance> create_knob_instance(
 			std::shared_ptr<BMKnob> knob,
@@ -71,9 +71,12 @@ private:
 	float canvas_w_inches, canvas_h_inches; // sizes in inches
 	int canvas_w, canvas_h; // sizes in pixels
 
+	std::shared_ptr<BMachine> current_machine;
 	std::vector<std::string> groups;
 	std::string current_group;
+	std::vector<std::shared_ptr<KnobInstance> > knob_instances;
 
+	void refresh_knobs();
 	void internal_show(std::shared_ptr<BMachine> machine);
 public:
 	KnobEditor(KammoGUI::GnuVGCanvas* cnvs);

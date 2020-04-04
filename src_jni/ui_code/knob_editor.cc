@@ -20,6 +20,7 @@
 #include "knob_editor.hh"
 #include "svg_loader.hh"
 #include "tap_detector.hh"
+#include "popup_menu.hh"
 
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
@@ -44,6 +45,12 @@ KnobEditor::KnobInstance::KnobInstance(
 {
 }
 
+KnobEditor::KnobInstance::~KnobInstance()
+ {
+	 SATAN_DEBUG("~KnobInstance() [%p] dropping element %p\n", this, svg_reference.pointer());
+	 svg_reference.drop_element();
+	 SATAN_DEBUG("~KnobInstance() [%p] DROPPED!\n", this);
+ }
 
 auto KnobEditor::KnobInstance::create_knob_instance(
 	std::shared_ptr<BMKnob> knob,
@@ -56,10 +63,17 @@ auto KnobEditor::KnobInstance::create_knob_instance(
 
 	KammoGUI::GnuVGCanvas::ElementReference new_graphic =
 		container.add_element_clone(bfr, knob_template);
-
+	new_graphic.set_display("inline");
 	SATAN_DEBUG("KnobEditor::KnobInstance::create_knob() -- bfr: %s\n", bfr);
 
 	return std::make_shared<KnobInstance>(new_graphic, offset, knob);
+}
+
+void KnobEditor::KnobInstance::refresh_transformation(double width, double height) {
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
+	transform_t.init_identity();
+	transform_t.translate(0.0, ((double)offset) * height);
+	svg_reference.set_transform(transform_t);
 }
 
 /***************************
@@ -68,27 +82,26 @@ auto KnobEditor::KnobInstance::create_knob_instance(
  *
  ***************************/
 
-void KnobEditor::internal_show(std::shared_ptr<BMachine> machine) {
+void KnobEditor::refresh_knobs() {
+	knob_instances.clear();
+	int k = 0;
+	for(auto knob : current_machine->get_knobs_for_group(current_group)) {
+		SATAN_DEBUG("Creating instance for %s\n", knob->get_name().c_str());
+		auto new_knob_instance = KnobInstance::create_knob_instance(knob, knob_container, knob_template, k++);
+		knob_instances.push_back(new_knob_instance);
+		new_knob_instance->refresh_transformation(canvas_w, finger_height);
+	}
+}
+
+void KnobEditor::internal_show(std::shared_ptr<BMachine> new_machine) {
+	current_machine = new_machine;
 	root.set_display("inline");
 
-	SATAN_DEBUG("Got the machine known as %s (%p)\n", machine->get_name().c_str(), machine.get());
-	groups = machine->get_knob_groups();
+	SATAN_DEBUG("Got the machine known as %s (%p)\n", current_machine->get_name().c_str(), current_machine.get());
+	groups = current_machine->get_knob_groups();
 
-	if(groups.size()) {
-		current_group = groups[0];
-		for(auto group : groups) {
-			SATAN_DEBUG("   knobs in [%s]:\n", group.c_str());
-			for(auto knob : machine->get_knobs_for_group(group)) {
-				SATAN_DEBUG("   [%s]\n", knob->get_name().c_str());
-			}
-		}
-	} else {
-		current_group = "";
-		SATAN_DEBUG("   all knobs:\n");
-		for(auto knob : machine->get_knobs_for_group("")) {
-			SATAN_DEBUG("   [%s]\n", knob->get_name().c_str());
-		}
-	}
+	current_group = groups.size() ? groups[0] : "";
+	refresh_knobs();
 }
 
 KnobEditor::KnobEditor(KammoGUI::GnuVGCanvas* cnvs)
@@ -107,6 +120,15 @@ KnobEditor::KnobEditor(KammoGUI::GnuVGCanvas* cnvs)
 		       const KammoGUI::MotionEvent &event) {
 			if(tap_detector.analyze_events(event)) {
 				SATAN_DEBUG("popup trigger was tapped.\n");
+
+				PopupMenu::show_menu(
+					groups,
+					[this](int selection) {
+						SATAN_DEBUG("User selected item %s\n", groups[selection].c_str());
+						current_group = groups[selection];
+						refresh_knobs();
+					}
+					);
 			}
 		}
 		);
@@ -165,6 +187,8 @@ std::shared_ptr<KnobEditor> KnobEditor::get_knob_editor(KammoGUI::GnuVGCanvas* c
 void KnobEditor::hide() {
 	if(singleton) {
 		singleton->root.set_display("none");
+		singleton->knob_instances.clear();
+		singleton->current_machine = nullptr;
 	}
 }
 
