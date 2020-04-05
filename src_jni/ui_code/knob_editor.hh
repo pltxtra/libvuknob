@@ -44,11 +44,17 @@ private:
 		KammoGUI::GnuVGCanvas::ElementReference value_text;
 		KammoGUI::GnuVGCanvas::ElementReference value_decrease_button;
 		KammoGUI::GnuVGCanvas::ElementReference value_increase_button;
+		KammoGUI::GnuVGCanvas::ElementReference value_base_bar;
+		KammoGUI::GnuVGCanvas::ElementReference value_actual_bar;
+		KammoGUI::GnuVGCanvas::ElementReference value_slider_knob;
 
 		std::shared_ptr<BMKnob> knob;
 		int offset;
 
-		void refresh_value_text();
+		double min, max, step;
+		double canvas_width, finger_width, finger_height;
+
+		void refresh_value_indicators();
 	public:
 		KnobInstance(
 			KammoGUI::GnuVGCanvas::ElementReference &elref,

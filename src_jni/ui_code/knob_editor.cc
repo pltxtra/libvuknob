@@ -46,6 +46,13 @@ KnobEditor::KnobInstance::KnobInstance(
 	value_text = svg_reference.find_child_by_class("valueText");
 	value_decrease_button = svg_reference.find_child_by_class("valueDecreaseButton");
 	value_increase_button = svg_reference.find_child_by_class("valueIncreaseButton");
+	value_base_bar = svg_reference.find_child_by_class("valueBaseBar");
+	value_actual_bar = svg_reference.find_child_by_class("valueActualBar");
+	value_slider_knob = svg_reference.find_child_by_class("valueSliderKnob");
+
+	min = knob->get_min();
+	max = knob->get_max();
+	step = knob->get_step();
 }
 
 KnobEditor::KnobInstance::~KnobInstance()
@@ -70,23 +77,47 @@ auto KnobEditor::KnobInstance::create_knob_instance(
 	return std::make_shared<KnobInstance>(new_graphic, offset, knob);
 }
 
-void KnobEditor::KnobInstance::refresh_value_text() {
+void KnobEditor::KnobInstance::refresh_value_indicators() {
 	char bfr[128];
 	snprintf(bfr, 128, "%s: [%s]", knob->get_title().c_str(), knob->get_value_as_text().c_str());
 	value_text.set_text_content(bfr);
+
+	auto value_as_percentage = knob->get_value() / max;
+	auto value_width = value_as_percentage * (canvas_width - 2.0 * (1.5 * finger_width));
+
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
+	transform_t.init_identity();
+	transform_t.translate(1.5 * finger_width + value_width, finger_height * 0.5);
+	value_slider_knob.set_transform(transform_t);
+
+	double thickness = finger_height / 20.0;
+	value_base_bar.set_rect_coords(
+		1.5 * finger_width, finger_height * 0.5 - 0.5 * thickness,
+		canvas_width - 2.0 * (1.5 * finger_width),
+		thickness
+		);
+	thickness *= 3.0;
+	value_actual_bar.set_rect_coords(
+		1.5 * finger_width, finger_height * 0.5 - 0.5 * thickness,
+		value_width,
+		thickness
+		);
 }
 
-void KnobEditor::KnobInstance::refresh_transformation(double canvas_width, double finger_width, double finger_height) {
+void KnobEditor::KnobInstance::refresh_transformation(double _canvas_width, double _finger_width, double _finger_height) {
+	canvas_width = _canvas_width;
+	finger_width = _finger_width;
+	finger_height = _finger_height;
+
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	transform_t.init_identity();
 	transform_t.translate(0.0, ((double)offset) * finger_height);
 	svg_reference.set_transform(transform_t);
-
 	transform_t.init_identity();
 	transform_t.translate(canvas_width - finger_width, 0.0);
 	value_increase_button.set_transform(transform_t);
 
-	refresh_value_text();
+	refresh_value_indicators();
 }
 
 /***************************

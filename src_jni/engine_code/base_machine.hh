@@ -125,6 +125,13 @@ namespace RemoteInterface {
 
 				Type get_type();
 
+				// get data automatically mapped to doubles (i.e bool->double, int->double, float->double)
+				// string type knobs will return 0.0 for all..
+				double get_value();
+				double get_min();
+				double get_max();
+				double get_step();
+
 				void get_min(float &val);
 				void get_max(float &val);
 				void get_step(float &val);

@@ -230,6 +230,102 @@ SERVER_N_CLIENT_CODE(
 		return (Type)k_type;
 	}
 
+	double BaseMachine::Knob::get_value() {
+		double retval;
+		switch(k_type) {
+		case Knob::rik_int:
+		case Knob::rik_enum:
+		case Knob::rik_sigid:
+			retval = (double)data.i.value;
+			break;
+		case Knob::rik_bool:
+			retval = (bl_data ? 1.0 : 0.0);
+			break;
+		case Knob::rik_float:
+			retval = (double)data.f.value;
+			break;
+		case Knob::rik_double:
+			retval = data.d.value;
+			break;
+		case Knob::rik_string:
+			retval = 0.0;
+			break;
+		}
+		return retval;
+	}
+
+	double BaseMachine::Knob::get_min() {
+		double retval;
+		switch(k_type) {
+		case Knob::rik_int:
+		case Knob::rik_enum:
+		case Knob::rik_sigid:
+			retval = (double)data.i.min;
+			break;
+		case Knob::rik_bool:
+			retval = 0.0;
+			break;
+		case Knob::rik_float:
+			retval = (double)data.f.min;
+			break;
+		case Knob::rik_double:
+			retval = data.d.min;
+			break;
+		case Knob::rik_string:
+			retval = 0.0;
+			break;
+		}
+		return retval;
+	}
+
+	double BaseMachine::Knob::get_max() {
+		double retval;
+		switch(k_type) {
+		case Knob::rik_int:
+		case Knob::rik_enum:
+		case Knob::rik_sigid:
+			retval = (double)data.i.max;
+			break;
+		case Knob::rik_bool:
+			retval = 1.0;
+			break;
+		case Knob::rik_float:
+			retval = (double)data.f.max;
+			break;
+		case Knob::rik_double:
+			retval = data.d.max;
+			break;
+		case Knob::rik_string:
+			retval = 0.0;
+			break;
+		}
+		return retval;
+	}
+
+	double BaseMachine::Knob::get_step() {
+		double retval;
+		switch(k_type) {
+		case Knob::rik_int:
+		case Knob::rik_enum:
+		case Knob::rik_sigid:
+			retval = (double)data.i.step;
+			break;
+		case Knob::rik_bool:
+			retval = 1.0;
+			break;
+		case Knob::rik_float:
+			retval = (double)data.f.step;
+			break;
+		case Knob::rik_double:
+			retval = data.d.step;
+			break;
+		case Knob::rik_string:
+			retval = 0.0;
+			break;
+		}
+		return retval;
+	}
+
 	void BaseMachine::Knob::get_min(float &val) {
 		val = data.f.min;
 	}
