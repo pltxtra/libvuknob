@@ -147,6 +147,32 @@ CLIENT_CODE(
 		send_obj_message = _send_obj_message;
 	}
 
+	void BaseMachine::Knob::set_callback(std::function<void()> new_callback) {
+		callback = new_callback;
+	}
+
+	void BaseMachine::Knob::set_value_as_double(double new_value) {
+		switch(k_type) {
+		case Knob::rik_int:
+		case Knob::rik_enum:
+		case Knob::rik_sigid:
+			set_value((int)new_value);
+			break;
+		case Knob::rik_float:
+			set_value((float)new_value);
+			break;
+		case Knob::rik_double:
+			set_value(new_value);
+			break;
+		case Knob::rik_bool:
+			set_value(new_value > 0.5 ? true : false);
+			break;
+		case Knob::rik_string:
+			// no numerical representation
+			break;
+		}
+	}
+
 	void BaseMachine::Knob::set_value(int val) {
 		data.i.value = val;
 		auto kid = knb_id;
@@ -231,7 +257,7 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	double BaseMachine::Knob::get_value() {
-		double retval;
+		double retval = 0.0;
 		switch(k_type) {
 		case Knob::rik_int:
 		case Knob::rik_enum:
@@ -255,7 +281,7 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	double BaseMachine::Knob::get_min() {
-		double retval;
+		double retval = 0.0;
 		switch(k_type) {
 		case Knob::rik_int:
 		case Knob::rik_enum:
@@ -279,7 +305,7 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	double BaseMachine::Knob::get_max() {
-		double retval;
+		double retval = 0.0;
 		switch(k_type) {
 		case Knob::rik_int:
 		case Knob::rik_enum:
@@ -303,7 +329,7 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	double BaseMachine::Knob::get_step() {
-		double retval;
+		double retval = 0.0;
 		switch(k_type) {
 		case Knob::rik_int:
 		case Knob::rik_enum:
@@ -450,6 +476,10 @@ SERVER_N_CLIENT_CODE(
 			str_data = value;
 			break;
 		}
+		ON_CLIENT(
+			if(callback)
+				callback();
+			);
 	}
 
 	std::shared_ptr<BaseMachine::Knob> BaseMachine::Knob::get_knob(std::set<std::shared_ptr<Knob> > knobs, int knob_id) {
@@ -465,7 +495,7 @@ SERVER_N_CLIENT_CODE(
 		iserder.process(name);
 		iserder.process(group_name);
 		iserder.process(title);
-
+		iserder.process(knb_id);
 		iserder.process(k_type);
 
 		switch(k_type) {
@@ -686,6 +716,7 @@ CLIENT_CODE(
 						       const RemoteInterface::Message& msg) {
 		int kid = std::stoi(msg.get_value("knb_id"));
 		std::string value = msg.get_value("value");
+		SATAN_DEBUG("handle_cmd_change_knob_valu(%d, %s)\n", kid, value.c_str());
 		auto knob = Knob::get_knob(knobs, kid);
 		if(knob) {
 			knob->update_value_from_message_value(value);
@@ -766,6 +797,7 @@ SERVER_CODE(
 						       const RemoteInterface::Message& msg) {
 		int kid = std::stoi(msg.get_value("knb_id"));
 		std::string value = msg.get_value("value");
+		SATAN_DEBUG("        -- handle_req_change_knob_value(%d, %s)\n", kid, value.c_str());
 		auto knob = Knob::get_knob(knobs, kid);
 		if(knob) {
 			knob->update_value_from_message_value(value);
@@ -812,7 +844,7 @@ SERVER_CODE(
 		for(auto ctrname : m_ptr->get_controller_names()) {
 			SATAN_DEBUG(" --- adding ctr %s\n", ctrname.c_str());
 			auto m_ctrl = m_ptr->get_controller(ctrname);
-			SATAN_DEBUG(" .. m_ctrl is %p\n", m_ctrl);
+			SATAN_DEBUG(" .. m_ctrl is %p, id %d\n", m_ctrl, knb_id);
 			auto c = std::make_shared<Knob>(knb_id++, m_ctrl);
 			knobs.insert(c);
 		}

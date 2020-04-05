@@ -110,6 +110,10 @@ namespace RemoteInterface {
 							     void(std::function<void(std::shared_ptr<Message> &msg_to_send)> )
 							     >  _send_obj_message
 						);
+
+					void set_callback(std::function<void()>);
+
+					void set_value_as_double(double new_value); // this converts numerical values to the correct type automatic
 					void set_value(int val);
 					void set_value(float val);
 					void set_value(double val);
@@ -162,6 +166,8 @@ namespace RemoteInterface {
 						std::function<void(std::shared_ptr<Message> &msg_to_send)>
 						)
 					>  send_obj_message;
+
+					std::function<void()> callback;
 					);
 
 				struct data_f {

@@ -53,10 +53,40 @@ KnobEditor::KnobInstance::KnobInstance(
 	min = knob->get_min();
 	max = knob->get_max();
 	step = knob->get_step();
+
+	value_decrease_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				SATAN_DEBUG("value decrease was tapped. [%p]\n", this);
+				auto new_value = knob->get_value() - step;
+				knob->set_value_as_double(new_value >= min ? new_value : min);
+			}
+		}
+		);
+
+	value_increase_button.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			if(tap_detector.analyze_events(event)) {
+				SATAN_DEBUG("value increase was tapped. [%p]\n", this);
+				auto new_value = knob->get_value() + step;
+				knob->set_value_as_double(new_value <= max ? new_value : max);
+			}
+		}
+		);
+
+	knob->set_callback([this]() {
+			SATAN_DEBUG(" callback for %p [%s]\n", this, knob->get_title().c_str());
+			refresh_value_indicators();
+		});
 }
 
 KnobEditor::KnobInstance::~KnobInstance()
 {
+	knob->set_callback([](){});
 	svg_reference.drop_element();
 }
 
