@@ -49,9 +49,9 @@ KnobEditor::KnobInstance::KnobInstance(
 }
 
 KnobEditor::KnobInstance::~KnobInstance()
- {
-	 svg_reference.drop_element();
- }
+{
+	svg_reference.drop_element();
+}
 
 auto KnobEditor::KnobInstance::create_knob_instance(
 	std::shared_ptr<BMKnob> knob,
