@@ -462,18 +462,23 @@ SERVER_N_CLIENT_CODE(
 		case Knob::rik_enum:
 		case Knob::rik_sigid:
 			data.i.value = std::stoi(value);
+			ON_SERVER(m_ctrl->set_value(data.i.value));
 			break;
 		case Knob::rik_bool:
 			bl_data = value == "true";
+			ON_SERVER(m_ctrl->set_value(bl_data));
 			break;
 		case Knob::rik_float:
 			data.f.value = std::stof(value);
+			ON_SERVER(m_ctrl->set_value(data.f.value));
 			break;
 		case Knob::rik_double:
 			data.d.value = std::stod(value);
+			ON_SERVER(m_ctrl->set_value(data.d.value));
 			break;
 		case Knob::rik_string:
 			str_data = value;
+			ON_SERVER(m_ctrl->set_value(str_data));
 			break;
 		}
 		ON_CLIENT(
