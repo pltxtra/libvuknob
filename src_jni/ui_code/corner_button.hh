@@ -28,7 +28,6 @@ public:
 	enum WhatCorner {top_left, top_right, bottom_left, bottom_right};
 
 private:
-	KammoGUI::SVGCanvas::SVGRect document_size;
 	KammoGUI::SVGCanvas::SVGMatrix base_transform_t;
 	WhatCorner my_corner;
 
