@@ -36,6 +36,7 @@
 #include "svg_loader.hh"
 #include "common.hh"
 #include "fling_animation.hh"
+#include "main_menu.hh"
 
 #include "../engine_code/sequence.hh"
 #include "../engine_code/client.hh"
@@ -52,6 +53,7 @@ static std::shared_ptr<GnuVGCornerButton> return_button;
 static std::shared_ptr<PatternEditor> pattern_editor;
 static std::shared_ptr<KnobEditor> knob_editor;
 static std::shared_ptr<LoopSettings> loop_settings;
+static std::shared_ptr<MainMenu> main_menu;
 static TapDetector tap_detector;
 
 /***************************
@@ -1333,6 +1335,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		pattern_editor = PatternEditor::get_pattern_editor(cnvs, timelines);
 		loop_settings = std::make_shared<LoopSettings>(cnvs);
 		knob_editor = KnobEditor::get_knob_editor(cnvs);
+		main_menu = std::make_shared<MainMenu>(cnvs);
 		return_button = std::make_shared<GnuVGCornerButton>(
 			cnvs,
 			std::string(SVGLoader::get_svg_directory() + "/leftArrow.svg"),

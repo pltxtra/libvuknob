@@ -154,6 +154,7 @@ ui_code/tap_detector.cc ui_code/tap_detector.hh \
 ui_code/fling_animation.cc ui_code/fling_animation.hh \
 ui_code/corner_button.cc ui_code/corner_button.hh \
 ui_code/simple_button.cc ui_code/simple_button.hh \
+ui_code/main_menu.cc ui_code/main_menu.hh \
 ui_code/connection_list.cc ui_code/connection_list.hh \
 ui_code/scale_editor.cc ui_code/scale_editor.hh
 

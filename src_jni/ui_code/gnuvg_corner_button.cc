@@ -150,10 +150,14 @@ void GnuVGCornerButton::on_resize() {
 		// calculate the width of the canvas in "fingers"
 		tmp = canvas_w_inches / INCHES_PER_FINGER;
 		double canvas_width_fingers = tmp;
+		tmp = canvas_h_inches / INCHES_PER_FINGER;
+		double canvas_height_fingers = tmp;
 
 		// calculate the size of a finger in pixels
 		tmp = canvas_w / (canvas_width_fingers);
 		double finger_width = tmp;
+		tmp = canvas_h / (canvas_height_fingers);
+		double finger_height = tmp;
 
 		// calculate scaling factor
 		double scaling = (1.5 * finger_width) / (double)document_size.width;
@@ -183,7 +187,7 @@ void GnuVGCornerButton::on_resize() {
 		case bottom_left:
 		{
 			translate_x = 0.25 * document_size.width * scaling;
-			translate_y = canvas_h - 1.25 * document_size.height * scaling;
+			translate_y = canvas_h - 1.25 * document_size.height * scaling - finger_height;
 			offset_target_x = -3.0 * document_size.width * scaling;
 			offset_target_y = 3.0 * document_size.height * scaling;
 		}
@@ -191,7 +195,7 @@ void GnuVGCornerButton::on_resize() {
 		case bottom_right:
 		{
 			translate_x = canvas_w - 1.25 * document_size.width * scaling;
-			translate_y = canvas_h - 1.25 * document_size.height * scaling;
+			translate_y = canvas_h - 1.25 * document_size.height * scaling - finger_height;
 			offset_target_x = 3.0 * document_size.width * scaling;
 			offset_target_y = 3.0 * document_size.height * scaling;
 		}
