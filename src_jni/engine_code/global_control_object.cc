@@ -128,6 +128,16 @@ SERVER_CODE(
 			);
 	}
 
+	void GlobalControlObject::send_periodic_update(int row) {
+		send_message(
+			cmd_per_upd,
+			[row](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("row", std::to_string(row));
+				SATAN_DEBUG("GlobalControlObject::send_periodic_update(%d) sending command...\n", row);
+			}
+			);
+	}
+
 	void GlobalControlObject::handle_req_set_loop_state(RemoteInterface::Context *context,
 							   RemoteInterface::MessageHandler *src,
 							   const RemoteInterface::Message& msg) {
@@ -429,6 +439,22 @@ CLIENT_CODE(
 			glol->lpb_changed(_lpb);
 	}
 
+	void GlobalControlObject::handle_cmd_per_upd(RemoteInterface::Context *context,
+						     RemoteInterface::MessageHandler *src,
+						     const RemoteInterface::Message& msg) {
+		std::set<std::shared_ptr<GlobalControlListener> > _gco_listeners;
+		int _row = std::stoi(msg.get_value("row"));
+		{
+			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+			_gco_listeners = gco_listeners;
+		}
+
+		SATAN_DEBUG("(client) ::handle_cmd_row_upd(%d) -- %d\n", _row, gco_listeners.size());
+
+		for(auto glol : _gco_listeners)
+			glol->row_update(_row);
+	}
+
 	);
 
 SERVER_N_CLIENT_CODE(
@@ -475,10 +501,16 @@ SERVER_N_CLIENT_CODE(
 		RegisterObjectFunction register_object
 		) {
 		SATAN_DEBUG("(%s) Factory will create GCO - from scratch\n", CLIENTORSERVER_STRING);
-		auto o = register_object(std::make_shared<GlobalControlObject>(new_obj_id, this));
+		auto new_gco = std::make_shared<GlobalControlObject>(new_obj_id, this);
+		auto o = register_object(new_gco);
 		ON_SERVER(
 			auto casted = std::dynamic_pointer_cast<PlaybackStateListener>(o);
 			Machine::register_playback_state_listener(casted);
+			Machine::register_periodic(
+				[new_gco](int row) {
+					new_gco->send_periodic_update(row);
+				}
+				);
 			);
 		return o;
 	}

@@ -59,6 +59,7 @@ namespace RemoteInterface {
 					virtual void record_state_changed(bool recording) {};
 					virtual void bpm_changed(int bpm) {};
 					virtual void lpb_changed(int lpb) {};
+					virtual void row_update(int row) {};
 				};
 
 				void add_global_control_listener(std::shared_ptr<GlobalControlListener> glol);
@@ -104,6 +105,10 @@ namespace RemoteInterface {
 				std::set<std::shared_ptr<GlobalControlListener> > gco_listeners;
 				);
 
+			ON_SERVER(
+				void send_periodic_update(int row);
+				);
+
 			/* REQ means the client request the server to perform an operation */
 			/* CMD means the server commands the client to perform an operation */
 
@@ -122,6 +127,7 @@ namespace RemoteInterface {
 			CLIENT_SIDE_HANDLER(cmd_set_record_state, "cmd_set_record_state");
 			CLIENT_SIDE_HANDLER(cmd_set_bpm, "cmd_set_bpm");
 			CLIENT_SIDE_HANDLER(cmd_set_lpb, "cmd_set_lpb");
+			CLIENT_SIDE_HANDLER(cmd_per_upd, "cmd_per_upd");
 
 			void register_handlers() {
 				SERVER_REG_HANDLER(GlobalControlObject,req_set_loop_state);
@@ -139,6 +145,7 @@ namespace RemoteInterface {
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_record_state);
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_bpm);
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_lpb);
+				CLIENT_REG_HANDLER(GlobalControlObject,cmd_per_upd);
 			}
 
 			// serder is an either an ItemSerializer or ItemDeserializer object.
