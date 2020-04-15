@@ -2083,7 +2083,6 @@ void Machine::jump_to(int _position) {
 		[] (void *d) {
 			int position = *((int *)d);
 
-			reset_all_machines();
 			if(__do_loop) {
 				if(position < __loop_start) {
 					position = __loop_start;
@@ -2091,20 +2090,15 @@ void Machine::jump_to(int _position) {
 					position = __loop_start;
 				}
 			}
-			__current_tick = 0;
-			__next_sequence_position = position;
+			reset_all_machines();
+			reset_global_playback_parameters(__do_loop ? __loop_start : position);
+			__resume_sequence_position = __next_sequence_position;
 		},
 		&_position, true);
 }
 
 void Machine::rewind() {
-	Machine::machine_operation_enqueue(
-		[] (void *this_is_null_and_ignored) {
-			reset_all_machines();
-			reset_global_playback_parameters(__do_loop ? __loop_start : 0);
-			__resume_sequence_position = __next_sequence_position;
-		},
-		NULL, false);
+	jump_to(0);
 }
 
 bool Machine::get_low_latency_mode() {
