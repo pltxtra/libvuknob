@@ -75,6 +75,9 @@ namespace RemoteInterface {
 
 				void set_bpm(int bpm);
 				void set_lpb(int lpb);
+
+				int get_bpm();
+				int get_lpb();
 				);
 
 			GlobalControlObject(const Factory *factory, const RemoteInterface::Message &serialized);

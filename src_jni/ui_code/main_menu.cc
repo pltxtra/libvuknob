@@ -39,6 +39,40 @@
  *
  ***************************/
 
+void MainMenu::object_registered(std::shared_ptr<GCO> _gco) {
+	SATAN_DEBUG("---------------------------------- MainMenu got gco object...\n");
+	KammoGUI::run_on_GUI_thread(
+		[this, _gco]() {
+			SATAN_DEBUG("-----------**************  MainMenu got gco object...\n");
+			gco_w = _gco;
+			if(auto gco = gco_w.lock()) {
+				SATAN_DEBUG("-------------**************  MainMenu locked gco object...\n");
+				gco->add_global_control_listener(shared_from_this());
+			}
+		}
+		);
+}
+
+void MainMenu::object_unregistered(std::shared_ptr<GCO> _gco) {
+	KammoGUI::run_on_GUI_thread(
+		[this, _gco]() {
+		}
+		);
+}
+
+void MainMenu::refresh_playback_indicator() {
+	SATAN_DEBUG(" -- -- -- -- -- MainMenu::row_update(%d) - is_playing: %s\n", current_row, is_playing ? "true" : "false");
+	bool show_pulse = false;
+	if(auto gco = gco_w.lock()) {
+		auto lpb = gco->get_lpb();
+		if(!(current_row % lpb))
+			show_pulse = true;
+		else
+			show_pulse = false;
+	}
+	playback_indicator.set_display((show_pulse && is_playing) ? "inline" : "none");
+}
+
 MainMenu::MainMenu(KammoGUI::GnuVGCanvas *cnvs)
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/MainMenu.svg"), cnvs)
 {
@@ -47,6 +81,7 @@ MainMenu::MainMenu(KammoGUI::GnuVGCanvas *cnvs)
 
 	rewind_button = KammoGUI::GnuVGCanvas::ElementReference(this, "rewindButton");
 	play_button = KammoGUI::GnuVGCanvas::ElementReference(this, "playButton");
+	playback_indicator = KammoGUI::GnuVGCanvas::ElementReference(this, "playbackIndicator");
 	record_button = KammoGUI::GnuVGCanvas::ElementReference(this, "recordButton");
 	connector_button = KammoGUI::GnuVGCanvas::ElementReference(this, "connectorButton");
 	jam_button = KammoGUI::GnuVGCanvas::ElementReference(this, "jamButton");
@@ -55,6 +90,26 @@ MainMenu::MainMenu(KammoGUI::GnuVGCanvas *cnvs)
 }
 
 MainMenu::~MainMenu() {}
+
+void MainMenu::row_update(int new_row) {
+	SATAN_DEBUG("************ MainMenu::row_update(%d)\n", new_row);
+	KammoGUI::run_on_GUI_thread(
+		[this, new_row]() {
+			SATAN_DEBUG(" -- -- -- -- -- MainMenu::row_update(%d)\n", new_row);
+			current_row = new_row;
+			refresh_playback_indicator();
+		}
+		);
+}
+
+void MainMenu::playback_state_changed(bool playing) {
+	KammoGUI::run_on_GUI_thread(
+		[this, playing]() {
+			is_playing= playing;
+			refresh_playback_indicator();
+		}
+		);
+}
 
 void MainMenu::on_render() {
 }

@@ -2312,6 +2312,17 @@ void Machine::play() {
 			__is_playing = true;
 			reset_global_playback_parameters(__resume_sequence_position);
 			reset_all_machines();
+			for(auto w_plist : playback_state_listeners) {
+				if(auto plist = w_plist.lock()) {
+					SATAN_ERROR("Machine::play() calling async function...\n");
+					Machine::run_async_function(
+						[plist]() {
+							SATAN_ERROR("Machine::play() async function called...\n");
+							plist->playback_state_changed(true);
+						}
+						);
+				}
+			}
 		},
 		NULL, false);
 }
@@ -2322,7 +2333,17 @@ void Machine::stop() {
 			__resume_sequence_position = __next_sequence_position;
 			__is_playing = false;
 			reset_all_machines();
-
+			for(auto w_plist : playback_state_listeners) {
+				if(auto plist = w_plist.lock()) {
+					SATAN_ERROR("Machine::stop() calling async function...\n");
+					Machine::run_async_function(
+						[plist]() {
+							SATAN_ERROR("Machine::stop() async function called...\n");
+							plist->playback_state_changed(false);
+						}
+						);
+				}
+			}
 		},
 		NULL, true);
 	TIME_MEASURE_PRINT_ALL_STATS();

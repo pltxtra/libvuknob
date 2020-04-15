@@ -21,13 +21,23 @@
 #define MAIN_MENU_CLASS
 
 #include <gnuVGcanvas.hh>
+#include "engine_code/global_control_object.hh"
 
-class MainMenu : public KammoGUI::GnuVGCanvas::SVGDocument{
+typedef RemoteInterface::ClientSpace::GlobalControlObject GCO;
+
+class MainMenu
+	: public KammoGUI::GnuVGCanvas::SVGDocument
+	, public RemoteInterface::Context::ObjectSetListener<GCO>
+	, public GCO::GlobalControlListener
+	, public std::enable_shared_from_this<MainMenu>
+{
 public:
 
 private:
+	std::weak_ptr<GCO> gco_w;
+
 	KammoGUI::GnuVGCanvas::ElementReference root, backdrop;
-	KammoGUI::GnuVGCanvas::ElementReference rewind_button, play_button, record_button;
+	KammoGUI::GnuVGCanvas::ElementReference rewind_button, play_button, playback_indicator, record_button;
 	KammoGUI::GnuVGCanvas::ElementReference connector_button, jam_button, sequencer_button, settings_button;
 
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
@@ -36,10 +46,21 @@ private:
 	double finger_width = 10.0, finger_height = 10.0; // one finger's size in pixels
 	int canvas_width_fingers = 8, canvas_height_fingers = 8; // sizes in "fingers"
 	double scaling;
+
+	int current_row;
+	bool is_playing;
+
+	void refresh_playback_indicator();
 public:
 
 	MainMenu(KammoGUI::GnuVGCanvas *cnv);
 	~MainMenu();
+
+	virtual void row_update(int new_row) override;
+	virtual void playback_state_changed(bool playing) override;
+
+	virtual void object_registered(std::shared_ptr<GCO> gco) override;
+	virtual void object_unregistered(std::shared_ptr<GCO> gco) override;
 
 	virtual void on_render();
 	virtual void on_resize();

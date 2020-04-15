@@ -320,6 +320,16 @@ CLIENT_CODE(
 		);
 	}
 
+	int GlobalControlObject::get_bpm() {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+		return bpm;
+	}
+
+	int GlobalControlObject::get_lpb() {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+		return lpb;
+	}
+
 	void GlobalControlObject::handle_cmd_set_loop_state(RemoteInterface::Context *context,
 							   RemoteInterface::MessageHandler *src,
 							   const RemoteInterface::Message& msg) {
