@@ -70,6 +70,7 @@ namespace RemoteInterface {
 
 				void play();
 				void stop();
+				void jump(int to_row);
 
 				void set_record_state(bool record);
 
@@ -122,6 +123,7 @@ namespace RemoteInterface {
 			SERVER_SIDE_HANDLER(req_set_record_state, "req_set_record_state");
 			SERVER_SIDE_HANDLER(req_set_bpm, "req_set_bpm");
 			SERVER_SIDE_HANDLER(req_set_lpb, "req_set_lpb");
+			SERVER_SIDE_HANDLER(req_jump_to, "req_jump_to");
 
 			CLIENT_SIDE_HANDLER(cmd_set_loop_state, "cmd_set_loop_state");
 			CLIENT_SIDE_HANDLER(cmd_set_loop_start, "cmd_set_loop_start");
@@ -140,6 +142,7 @@ namespace RemoteInterface {
 				SERVER_REG_HANDLER(GlobalControlObject,req_set_record_state);
 				SERVER_REG_HANDLER(GlobalControlObject,req_set_bpm);
 				SERVER_REG_HANDLER(GlobalControlObject,req_set_lpb);
+				SERVER_REG_HANDLER(GlobalControlObject,req_jump_to);
 
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_loop_state);
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_loop_start);

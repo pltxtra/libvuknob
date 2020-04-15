@@ -211,6 +211,16 @@ SERVER_CODE(
 		} catch(...) { /* ignore */ }
 	}
 
+	void GlobalControlObject::handle_req_jump_to(RemoteInterface::Context *context,
+						     RemoteInterface::MessageHandler *src,
+						     const RemoteInterface::Message& msg) {
+		int to_row = std::stoi(msg.get_value("jump"));
+		SATAN_ERROR("GlobalControlObject::handle_req_jump_to() --- %d\n", to_row);
+		try {
+			Machine::jump_to(to_row);
+		} catch(...) { /* ignore */ }
+	}
+
 	void GlobalControlObject::serialize(std::shared_ptr<Message> &target) {
 		Serialize::ItemSerializer iser;
 		serderize(iser);
@@ -287,6 +297,16 @@ CLIENT_CODE(
 			req_set_playback_state,
 			[](std::shared_ptr<RemoteInterface::Message> &msg2send) {
 				msg2send->set_value("playing", "false");
+			}
+		);
+	}
+
+	void GlobalControlObject::jump(int to_row) {
+		send_message_to_server(
+			req_jump_to,
+			[to_row](std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				SATAN_DEBUG("GlobalControlObject::jump(%d)\n", to_row);
+				msg2send->set_value("jump", std::to_string(to_row));
 			}
 		);
 	}
