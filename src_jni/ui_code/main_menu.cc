@@ -30,8 +30,12 @@
 #include "svg_loader.hh"
 #include "common.hh"
 
+#include "tap_detector.hh"
+
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
+
+static TapDetector tap_detector;
 
 /***************************
  *
@@ -73,6 +77,17 @@ void MainMenu::refresh_playback_indicator() {
 	playback_indicator.set_display((show_pulse && is_playing) ? "inline" : "none");
 }
 
+std::function<void(KammoGUI::GnuVGCanvas::SVGDocument *source,
+		   KammoGUI::GnuVGCanvas::ElementReference *e,
+		   const KammoGUI::MotionEvent &event
+		   )> on_tap(std::function<void()> action) {
+	return [action] (KammoGUI::GnuVGCanvas::SVGDocument *source,
+			 KammoGUI::GnuVGCanvas::ElementReference *e,
+			 const KammoGUI::MotionEvent &event) {
+		if(tap_detector.analyze_events(event)) action();
+	};
+}
+
 MainMenu::MainMenu(KammoGUI::GnuVGCanvas *cnvs)
 	: SVGDocument(std::string(SVGLoader::get_svg_directory() + "/MainMenu.svg"), cnvs)
 {
@@ -87,6 +102,13 @@ MainMenu::MainMenu(KammoGUI::GnuVGCanvas *cnvs)
 	jam_button = KammoGUI::GnuVGCanvas::ElementReference(this, "jamButton");
 	sequencer_button = KammoGUI::GnuVGCanvas::ElementReference(this, "sequencerButton");
 	settings_button = KammoGUI::GnuVGCanvas::ElementReference(this, "settingsButton");
+
+	rewind_button.set_event_handler(
+		on_tap([this]{ if(auto gco = gco_w.lock()) gco->jump(0); })
+		);
+	play_button.set_event_handler(
+		on_tap([this]{ if(auto gco = gco_w.lock()) gco->is_playing() ? gco->stop() : gco->play(); })
+		);
 }
 
 MainMenu::~MainMenu() {}

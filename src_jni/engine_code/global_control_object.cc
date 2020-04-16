@@ -283,6 +283,11 @@ CLIENT_CODE(
 		);
 	}
 
+	bool GlobalControlObject::is_playing() {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+		return playing;
+	}
+
 	void GlobalControlObject::play() {
 		send_message_to_server(
 			req_set_playback_state,

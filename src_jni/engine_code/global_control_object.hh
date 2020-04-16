@@ -68,6 +68,7 @@ namespace RemoteInterface {
 				void set_loop_start(int new_start);
 				void set_loop_length(int new_length);
 
+				bool is_playing();
 				void play();
 				void stop();
 				void jump(int to_row);
