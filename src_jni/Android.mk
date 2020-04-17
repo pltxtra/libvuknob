@@ -255,6 +255,9 @@ ui_code/controller_handler.cc \
 ui_code/livepad2.cc ui_code/livepad2.hh \
 ui_code/machine_selector_ui.cc \
 ui_code/connector.cc ui_code/connector.hh \
+ui_code/gnuvg_listview.cc ui_code/gnuvg_listview.hh \
+ui_code/gnuvg_connector.cc ui_code/gnuvg_connector.hh \
+ui_code/gnuvg_connection_list.cc ui_code/gnuvg_connection_list.hh \
 ui_code/pattern_editor.cc ui_code/pattern_editor.hh \
 ui_code/knob_editor.cc ui_code/knob_editor.hh \
 ui_code/timelines.cc ui_code/timelines.hh \
