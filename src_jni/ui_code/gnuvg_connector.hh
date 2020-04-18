@@ -105,7 +105,11 @@ private:
 		static void machine_unregistered(std::shared_ptr<MachineGraphic> machine);
 	};
 
-	class MachineGraphic : public KammoGUI::GnuVGCanvas::ElementReference, public RemoteInterface::RIMachine::RIMachineStateListener, public std::enable_shared_from_this<MachineGraphic>  {
+	class MachineGraphic
+		: public KammoGUI::GnuVGCanvas::ElementReference
+		, public RemoteInterface::RIMachine::RIMachineStateListener
+		, public std::enable_shared_from_this<MachineGraphic>
+	{
 	private:
 		static std::map<std::shared_ptr<RemoteInterface::RIMachine>, std::weak_ptr<MachineGraphic> > mch2grph;
 		static std::pair<std::weak_ptr<MachineGraphic>, std::string> *current_output;

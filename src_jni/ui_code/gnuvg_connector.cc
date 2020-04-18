@@ -285,9 +285,16 @@ void GnuVGConnector::MachineGraphic::debug_print() {
 		    machine->get_name().c_str(), pos_x, pos_y);
 }
 
-GnuVGConnector::MachineGraphic::MachineGraphic(GnuVGConnector *_context, const std::string &svg_id,
-					  std::shared_ptr<RemoteInterface::RIMachine> _machine) :
-	KammoGUI::GnuVGCanvas::ElementReference(_context, svg_id), tilt_x(0.0), detailed_mode(false), machine(_machine), context(_context), selected_animation(NULL) {
+GnuVGConnector::MachineGraphic::MachineGraphic(
+	GnuVGConnector *_context, const std::string &svg_id,
+	std::shared_ptr<RemoteInterface::RIMachine> _machine)
+	: KammoGUI::GnuVGCanvas::ElementReference(_context, svg_id)
+	, tilt_x(0.0)
+	, detailed_mode(false)
+	, machine(_machine)
+	, context(_context)
+	, selected_animation(NULL)
+{
 
 	pos_x = machine->get_x_position() * MACHINE_POS_SCALING;
 	pos_y = machine->get_y_position() * MACHINE_POS_SCALING;
@@ -673,8 +680,10 @@ void GnuVGConnector::MachineGraphic::on_input_socket_event(KammoGUI::GnuVGCanvas
 	}
 }
 
-std::shared_ptr<GnuVGConnector::MachineGraphic> GnuVGConnector::MachineGraphic::create(GnuVGConnector *context,
-									     std::shared_ptr<RemoteInterface::RIMachine> machine) {
+std::shared_ptr<GnuVGConnector::MachineGraphic> GnuVGConnector::MachineGraphic::create(
+	GnuVGConnector *context,
+	std::shared_ptr<RemoteInterface::RIMachine> machine)
+{
 	std::stringstream id_stream;
 	id_stream << "graphic_" << (void *)machine.get();
 

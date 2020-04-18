@@ -161,7 +161,7 @@ void GnuVGListView::row_selected(int row_index, const std::string &selected_text
 GnuVGListView::GnuVGListView(KammoGUI::GnuVGCanvas *cnv) : SVGDocument(std::string(SVGLoader::get_svg_directory() + "/listView.svg"), cnv), offset(0.0) {
 	hide();
 	title_text = KammoGUI::GnuVGCanvas::ElementReference(this, "titleText");
-	cancel_button = KammoGUI::GnuVGCanvas::ElementReference(this, "titleText");
+	cancel_button = KammoGUI::GnuVGCanvas::ElementReference(this, "cancelButton");
 	shade_layer = KammoGUI::GnuVGCanvas::ElementReference(this, "shadeLayer");
 
 	cancel_button.set_event_handler(on_cancel_event);
