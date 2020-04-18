@@ -109,6 +109,12 @@ MainMenu::MainMenu(KammoGUI::GnuVGCanvas *cnvs)
 	play_button.set_event_handler(
 		on_tap([this]{ if(auto gco = gco_w.lock()) gco->is_playing() ? gco->stop() : gco->play(); })
 		);
+	connector_button.set_event_handler(
+		on_tap([this]{ if(connector_callback) connector_callback(); })
+		);
+	sequencer_button.set_event_handler(
+		on_tap([this]{ if(sequencer_callback) sequencer_callback(); })
+		);
 }
 
 MainMenu::~MainMenu() {}
@@ -186,4 +192,20 @@ void MainMenu::on_resize() {
 	settings_button.set_transform(transform_t);
 
 	backdrop.set_rect_coords(0.0, 0.0, canvas_w, finger_height);
+}
+
+void MainMenu::on_connector_event(std::function<void()> f) {
+	connector_callback = f;
+}
+
+void MainMenu::on_jam_event(std::function<void()> f) {
+	jam_callback = f;
+}
+
+void MainMenu::on_sequencer_event(std::function<void()> f) {
+	sequencer_callback = f;
+}
+
+void MainMenu::on_settings_event(std::function<void()> f) {
+	settings_callback = f;
 }

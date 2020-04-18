@@ -260,7 +260,6 @@ private:
 	std::vector<std::shared_ptr<MachineGraphic> > graphics;
 	std::weak_ptr<MachineGraphic> selected_graphic;
 
-
 	double pan_zoom_offset_x, pan_zoom_offset_y, pan_zoom_scale;
 	double first_selection_x, first_selection_y;
 	double last_selection_x, last_selection_y;
@@ -284,8 +283,6 @@ private:
 					  const KammoGUI::MotionEvent &event);
 
 public:
-	static std::shared_ptr<GnuVGConnector> create(KammoGUI::GnuVGCanvas *cnvs);
-
 	GnuVGConnector(KammoGUI::GnuVGCanvas *cnv);
 	~GnuVGConnector();
 
@@ -305,6 +302,10 @@ public:
 	virtual void object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
 	virtual void object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
 
+	void show();
+	void hide();
+
+	static std::shared_ptr<GnuVGConnector> create(KammoGUI::GnuVGCanvas *cnvs);
 };
 
 #endif

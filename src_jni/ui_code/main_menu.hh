@@ -50,6 +50,8 @@ private:
 	int current_row;
 	bool is_playing;
 
+	std::function<void()> connector_callback, jam_callback, sequencer_callback, settings_callback;
+
 	void refresh_playback_indicator();
 public:
 
@@ -64,6 +66,11 @@ public:
 
 	virtual void on_render();
 	virtual void on_resize();
+
+	void on_connector_event(std::function<void()> f);
+	void on_jam_event(std::function<void()> f);
+	void on_sequencer_event(std::function<void()> f);
+	void on_settings_event(std::function<void()> f);
 };
 
 #endif

@@ -37,6 +37,7 @@
 #include "common.hh"
 #include "fling_animation.hh"
 #include "main_menu.hh"
+#include "gnuvg_connector.hh"
 
 #include "../engine_code/sequence.hh"
 #include "../engine_code/client.hh"
@@ -54,6 +55,7 @@ static std::shared_ptr<PatternEditor> pattern_editor;
 static std::shared_ptr<KnobEditor> knob_editor;
 static std::shared_ptr<LoopSettings> loop_settings;
 static std::shared_ptr<MainMenu> main_menu;
+static std::shared_ptr<GnuVGConnector> connector;
 static TapDetector tap_detector;
 
 /***************************
@@ -1335,6 +1337,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		pattern_editor = PatternEditor::get_pattern_editor(cnvs, timelines);
 		loop_settings = std::make_shared<LoopSettings>(cnvs);
 		knob_editor = KnobEditor::get_knob_editor(cnvs);
+		connector = GnuVGConnector::create(cnvs);
 		main_menu = std::make_shared<MainMenu>(cnvs);
 		return_button = std::make_shared<GnuVGCornerButton>(
 			cnvs,
@@ -1368,6 +1371,9 @@ virtual void on_init(KammoGUI::Widget *wid) {
 				loop_settings->show();
 				plus_button->show();
 			});
+
+		main_menu->on_connector_event([] { connector->show(); });
+		main_menu->on_sequencer_event([] { connector->hide(); });
 
 		RemoteInterface::ClientSpace::Client::register_object_set_listener<RISequence>(sequencer);
 		RemoteInterface::ClientSpace::Client::register_object_set_listener<GCO>(timelines);

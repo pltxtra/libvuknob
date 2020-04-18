@@ -48,12 +48,17 @@ std::map<GnuVGConnector::ConnectionGraphic::cg_machine_cpl,
 	 GnuVGConnector::ConnectionGraphic::cg_pair_compare> GnuVGConnector::ConnectionGraphic::connection_graphics;
 
 
-GnuVGConnector::ConnectionGraphic::ConnectionGraphic(GnuVGConnector *_context,
-						const std::string &element_id,
-						std::shared_ptr<MachineGraphic> _source,
-						std::shared_ptr<MachineGraphic> _destination,
-						const std::string &output,
-						const std::string &input) : KammoGUI::GnuVGCanvas::ElementReference(_context, element_id), source(_source), destination(_destination) {
+GnuVGConnector::ConnectionGraphic::ConnectionGraphic(
+	GnuVGConnector *_context,
+	const std::string &element_id,
+	std::shared_ptr<MachineGraphic> _source,
+	std::shared_ptr<MachineGraphic> _destination,
+	const std::string &output,
+	const std::string &input)
+	: KammoGUI::GnuVGCanvas::ElementReference(_context, element_id)
+	, source(_source)
+	, destination(_destination)
+{
 	output2input_names.insert({output, input});
 
 	_source->get_position(x1, y1);
@@ -1130,8 +1135,25 @@ void GnuVGConnector::object_unregistered(std::shared_ptr<RemoteInterface::RIMach
 		);
 }
 
+void GnuVGConnector::show() {
+	auto root = KammoGUI::GnuVGCanvas::ElementReference(this);
+	root.set_display("inline");
+	plus_button.show();
+	trash_button.show();
+	settings_button.show();
+}
+
+void GnuVGConnector::hide() {
+	auto root = KammoGUI::GnuVGCanvas::ElementReference(this);
+	root.set_display("none");
+	plus_button.hide();
+	trash_button.hide();
+	settings_button.hide();
+}
+
 std::shared_ptr<GnuVGConnector> GnuVGConnector::create(KammoGUI::GnuVGCanvas *cnvs) {
 	auto connector_ui = std::make_shared<GnuVGConnector>(cnvs);
 	RemoteInterface::ClientSpace::Client::register_object_set_listener<RemoteInterface::RIMachine>(connector_ui);
+	connector_ui->hide();
 	return connector_ui;
 }
