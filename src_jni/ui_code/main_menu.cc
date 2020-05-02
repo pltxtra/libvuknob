@@ -115,6 +115,9 @@ MainMenu::MainMenu(KammoGUI::GnuVGCanvas *cnvs)
 	sequencer_button.set_event_handler(
 		on_tap([this]{ if(sequencer_callback) sequencer_callback(); })
 		);
+	jam_button.set_event_handler(
+		on_tap([this]{ if(jam_callback) jam_callback(); })
+		);
 }
 
 MainMenu::~MainMenu() {}

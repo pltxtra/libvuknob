@@ -253,6 +253,8 @@ ui_code/logo_screen.cc ui_code/logo_screen.hh \
 ui_code/test_gnuvg.cc ui_code/test_gnuvg.hh \
 ui_code/controller_handler.cc \
 ui_code/livepad2.cc ui_code/livepad2.hh \
+ui_code/gnuvg_scaleeditor.cc ui_code/gnuvg_scaleeditor.hh \
+ui_code/gnuvg_livepad.cc ui_code/gnuvg_livepad.hh \
 ui_code/machine_selector_ui.cc \
 ui_code/connector.cc ui_code/connector.hh \
 ui_code/gnuvg_listview.cc ui_code/gnuvg_listview.hh \
