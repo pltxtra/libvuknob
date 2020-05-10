@@ -830,11 +830,6 @@ void Sequencer::focus_on_pattern_instance(double _icon_anchor_x, double _icon_an
 				const KammoGUI::MotionEvent &event
 				) {
 				auto restore_sequencer = [this]() {
-					timelines->use_zoom_context(nullptr);
-					root.set_display("inline");
-					timelines->show_loop_markers();
-					loop_settings->show();
-					plus_button->show();
 				};
 
 				if(tap_detector.analyze_events(event)) {
@@ -1364,20 +1359,45 @@ virtual void on_init(KammoGUI::Widget *wid) {
 				}
 			});
 
-		return_button->set_select_callback(
+		auto return_to_sequencer =
 			[]() {
 				KnobEditor::hide();
 				pattern_editor->hide();
 				return_button->hide();
 				sequencer->show_all();
+				timelines->use_zoom_context(nullptr);
+				timelines->show_loop_markers();
 				timelines->show_all();
 				loop_settings->show();
 				plus_button->show();
-			});
+		};
 
-		main_menu->on_jam_event([] { livepad->show(); });
-		main_menu->on_connector_event([] { connector->show(); });
-		main_menu->on_sequencer_event([] { connector->hide(); livepad->hide(); });
+		return_button->set_select_callback(return_to_sequencer);
+
+		main_menu->on_jam_event([] {
+				SATAN_DEBUG("                  -> on_jam_event()\n");
+				livepad->show(); connector->hide(); sequencer->hide_all();
+				timelines->hide_all();
+				loop_settings->hide();
+				plus_button->hide();
+				return_button->hide();
+				pattern_editor->hide();
+			});
+		main_menu->on_connector_event([] {
+				SATAN_DEBUG("                  -> on_connector_event()\n");
+				connector->show(); livepad->hide(); sequencer->hide_all();
+				timelines->hide_all();
+				loop_settings->hide();
+				plus_button->hide();
+				return_button->hide();
+				pattern_editor->hide();
+			});
+		main_menu->on_sequencer_event([return_to_sequencer] {
+				SATAN_DEBUG("                  -> on_sequencer_event()\n");
+				connector->hide(); livepad->hide();
+				sequencer->show_all();
+				return_to_sequencer();
+			});
 
 		RemoteInterface::ClientSpace::Client::register_object_set_listener<RISequence>(sequencer);
 		RemoteInterface::ClientSpace::Client::register_object_set_listener<GCO>(timelines);

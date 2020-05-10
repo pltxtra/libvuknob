@@ -889,8 +889,13 @@ void GnuVGConnector::on_pan_and_zoom_event(KammoGUI::GnuVGCanvas::SVGDocument *s
 	bool scroll_event = ctx->sgd.on_touch_event(event);
 
 	if(auto selgraph = ctx->selected_graphic.lock()) {
+		SATAN_ERROR(" ----- selgraph is %p\n", selgraph.get());
 		ignore_scroll = true;
 	}
+
+	SATAN_ERROR("  ------ ::on_pan_and_zoom_event() - scroll_event = %s, ignore_scroll = %s\n",
+		    scroll_event ? "true" : "false",
+		    ignore_scroll ? "true" : "false");
 
 	if((!(scroll_event)) && (!ignore_scroll)) {
 		double now_x = event.get_x();
@@ -926,6 +931,7 @@ void GnuVGConnector::on_pan_and_zoom_event(KammoGUI::GnuVGCanvas::SVGDocument *s
 			ctx->last_selection_y = now_y;
 			break;
 		case KammoGUI::MotionEvent::ACTION_UP:
+			ignore_scroll = false;
 			break;
 		}
 
@@ -942,7 +948,7 @@ void GnuVGConnector::on_pan_and_zoom_event(KammoGUI::GnuVGCanvas::SVGDocument *s
 		case KammoGUI::MotionEvent::ACTION_UP:
 			// when the last finger is lifted, break the ignore_scroll lock
 			ignore_scroll = false;
-			SATAN_DEBUG(" reset ignore_scroll!\n");
+			SATAN_ERROR(" reset ignore_scroll!\n");
 
 			// reset zoom if in selection mode
 			if(auto selgraph = ctx->selected_graphic.lock()) {
@@ -1059,6 +1065,7 @@ void GnuVGConnector::show_connection_list(double x_pos, double y_pos,
 
 void GnuVGConnector::zoom_in_at(std::shared_ptr<MachineGraphic> new_selection, double x_pos, double y_pos) {
 	selected_graphic = new_selection;
+	SATAN_ERROR("   -- zoom_in_at(%p)\n", new_selection.get());
 
 	old_scaling = scaling;
 	ZoomTransition *transition = new (std::nothrow) ZoomTransition(this, zoom_callback, scaling,

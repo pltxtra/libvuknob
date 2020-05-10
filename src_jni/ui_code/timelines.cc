@@ -215,7 +215,7 @@ void TimeLines::on_time_index_event(const KammoGUI::MotionEvent &event) {
 
 	bool scroll_event = sgd->on_touch_event(event);
 
-	if(scroll_event && (!ignore_scroll)) {
+	if((!scroll_event) && (!ignore_scroll)) {
 		if(fling_detector.on_touch_event(event)) {
 			SATAN_DEBUG("fling detected.\n");
 			float speed_x, speed_y;
