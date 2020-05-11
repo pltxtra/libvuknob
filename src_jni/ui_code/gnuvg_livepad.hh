@@ -31,15 +31,18 @@
 
 #include "gnuvg_listview.hh"
 #include "gnuvg_scaleeditor.hh"
-#include "remote_interface.hh"
+#include "engine_code/sequence.hh"
 
 #define HZONES PAD_HZONES
 #define VZONES PAD_VZONES
 
-class GnuVGLivePad : public KammoGUI::GnuVGCanvas::SVGDocument,
-		     public RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine>,
-		     public RemoteInterface::GlobalControlObject::PlaybackStateListener,
-		     public KammoGUI::SensorEvent::Listener {
+typedef RemoteInterface::ClientSpace::Sequence RISequence;
+
+class GnuVGLivePad
+	: public KammoGUI::GnuVGCanvas::SVGDocument
+	, public RemoteInterface::Context::ObjectSetListener<RISequence>
+	, public RemoteInterface::GlobalControlObject::PlaybackStateListener
+	, public KammoGUI::SensorEvent::Listener {
 private:
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_m;
 
@@ -52,8 +55,8 @@ private:
 	bool record, quantize, do_pitch_bend;
 	std::string arp_pattern, controller, pitch_bend_controller;
 
-	RemoteInterface::RIMachine::ChordMode_t chord_mode;
-	RemoteInterface::RIMachine::ArpeggioDirection_t arp_direction;
+	RISequence::ChordMode_t chord_mode;
+	RISequence::ArpeggioDirection_t arp_direction;
 
 	bool is_recording = false, is_playing = false;
 
@@ -63,10 +66,10 @@ private:
 
 	KammoGUI::GnuVGCanvas::ElementReference graphArea_element;
 	KammoGUI::GnuVGCanvas::SVGRect graphArea_viewport;
-	std::shared_ptr<RemoteInterface::RIMachine> mseq;
+	std::shared_ptr<RISequence> mseq;
 
-	std::set<std::weak_ptr<RemoteInterface::RIMachine>,
-		 std::owner_less<std::weak_ptr<RemoteInterface::RIMachine> > >msequencers; // all known machine sequencers
+	std::set<std::weak_ptr<RISequence>,
+		 std::owner_less<std::weak_ptr<RISequence> > >msequencers; // all known sequencers
 
 	GnuVGListView *listView;
 	GnuVGScaleEditor *scale_editor;
@@ -112,7 +115,7 @@ private:
 	void toggle_arp_direction();
 	void toggle_pitch_bend();
 
-	void switch_MachineSequencer(std::shared_ptr<RemoteInterface::RIMachine> mseq);
+	void switch_MachineSequencer(std::shared_ptr<RISequence> mseq);
 
 	static void yes(void *ctx);
 	static void no(void *ctx);
@@ -135,8 +138,8 @@ public:
 	virtual void on_resize();
 	virtual void on_render();
 
-	virtual void object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
-	virtual void object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
+	virtual void object_registered(std::shared_ptr<RISequence> ri_seq) override;
+	virtual void object_unregistered(std::shared_ptr<RISequence> ri_seq) override;
 
 	// RemoteInterface::GlobalControlObject::PlaybackStateListener
 	virtual void playback_state_changed(bool is_playing) override;

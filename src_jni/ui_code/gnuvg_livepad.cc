@@ -132,8 +132,8 @@ void GnuVGLivePad::select_machine() {
 
 	for(auto k_weak : msequencers) {
 		if(auto k = k_weak.lock()) {
-			SATAN_DEBUG("Adding machine %s to selection.\n", k->get_sibling_name().c_str());
-			listView->add_row(k->get_sibling_name());
+			SATAN_DEBUG("Adding machine %s to selection.\n", k->get_name().c_str());
+			listView->add_row(k->get_name());
 		}
 	}
 	SATAN_DEBUG("      ---- ::select_machine() 4\n");
@@ -144,9 +144,9 @@ void GnuVGLivePad::select_machine() {
 
 					   for(auto k_weak : msequencers) {
 						   if(auto k = k_weak.lock()) {
-							   if(row_text == k->get_sibling_name()) {
+							   if(row_text == k->get_name()) {
 								   SATAN_DEBUG("Machine selected: %s\n",
-									       k->get_sibling_name().c_str());
+									       k->get_name().c_str());
 								   switch_MachineSequencer(k);
 							   }
 						   }
@@ -311,7 +311,7 @@ void GnuVGLivePad::copy_to_loop() {
 		std::string failure_message = "";
 
 		try {
-			int max_loop = mseq->get_nr_of_loops();
+			int max_loop = 32; // XXX mseq->get_nr_of_loops();
 			SATAN_DEBUG("max_loop: %d\n", max_loop);
 			for(int k = 0; k < max_loop; k++) {
 				std::ostringstream loop_id;
@@ -385,12 +385,12 @@ void GnuVGLivePad::refresh_controller_indicator() {
 void GnuVGLivePad::refresh_machine_settings() {
 	refresh_scale_key_names();
 
-	if(!is_playing && arp_direction != RemoteInterface::RIMachine::arp_off) {
+	if(!is_playing && arp_direction != RISequence::arp_off) {
 		jInformer::inform("Press the play button before using arpeggio.");
-		arp_direction = RemoteInterface::RIMachine::arp_off;
+		arp_direction = RISequence::arp_off;
 	}
 
-	selectArpPattern_element.set_display(arp_direction == RemoteInterface::RIMachine::arp_off ? "none" : "inline");
+	selectArpPattern_element.set_display(arp_direction == RISequence::arp_off ? "none" : "inline");
 
 	std::string name = "mchn";
 	SATAN_DEBUG("Refresh machine settings, mseq\n");
@@ -399,15 +399,15 @@ void GnuVGLivePad::refresh_machine_settings() {
 		mseq->pad_set_scale(scale_index);
 		mseq->pad_set_record(record);
 		mseq->pad_set_quantize(quantize);
-		mseq->pad_assign_midi_controller(RemoteInterface::RIMachine::pad_y_axis,
+		mseq->pad_assign_midi_controller(RISequence::pad_y_axis,
 						 controller);
-		mseq->pad_assign_midi_controller(RemoteInterface::RIMachine::pad_z_axis,
+		mseq->pad_assign_midi_controller(RISequence::pad_z_axis,
 						 do_pitch_bend ? pitch_bend_controller : "[none]");
 		mseq->pad_set_chord_mode(chord_mode);
 		mseq->pad_set_arpeggio_pattern(arp_pattern);
 		mseq->pad_set_arpeggio_direction(arp_direction);
 
-		name = mseq->get_sibling_name();
+		name = mseq->get_name();
 	}
 
 	refresh_record_indicator();
@@ -428,13 +428,13 @@ void GnuVGLivePad::refresh_machine_settings() {
 		quad_chord.set_display("none");
 
 		switch(chord_mode) {
-		case RemoteInterface::RIMachine::chord_off:
+		case RISequence::chord_off:
 			no_chord.set_display("inline");
 			break;
-		case RemoteInterface::RIMachine::chord_triad:
+		case RISequence::chord_triad:
 			triad_chord.set_display("inline");
 			break;
-		case RemoteInterface::RIMachine::chord_quad:
+		case RISequence::chord_quad:
 			quad_chord.set_display("inline");
 			break;
 		}
@@ -448,16 +448,16 @@ void GnuVGLivePad::refresh_machine_settings() {
 
 		switch(arp_direction) {
 		default:
-		case RemoteInterface::RIMachine::arp_off:
+		case RISequence::arp_off:
 			/* nothing */
 			break;
-		case RemoteInterface::RIMachine::arp_forward:
+		case RISequence::arp_forward:
 			arrow_up.set_display("inline");
 			break;
-		case RemoteInterface::RIMachine::arp_reverse:
+		case RISequence::arp_reverse:
 			arrow_down.set_display("inline");
 			break;
-		case RemoteInterface::RIMachine::arp_pingpong:
+		case RISequence::arp_pingpong:
 			arrow_up.set_display("inline");
 			arrow_down.set_display("inline");
 			break;
@@ -490,14 +490,14 @@ void GnuVGLivePad::octave_down() {
 
 void GnuVGLivePad::toggle_chord() {
 	switch(chord_mode) {
-	case RemoteInterface::RIMachine::chord_off:
-		chord_mode = RemoteInterface::RIMachine::chord_triad;
+	case RISequence::chord_off:
+		chord_mode = RISequence::chord_triad;
 		break;
-	case RemoteInterface::RIMachine::chord_triad:
-		chord_mode = RemoteInterface::RIMachine::chord_quad;
+	case RISequence::chord_triad:
+		chord_mode = RISequence::chord_quad;
 		break;
-	case RemoteInterface::RIMachine::chord_quad:
-		chord_mode = RemoteInterface::RIMachine::chord_off;
+	case RISequence::chord_quad:
+		chord_mode = RISequence::chord_off;
 		break;
 	}
 	refresh_machine_settings();
@@ -505,17 +505,17 @@ void GnuVGLivePad::toggle_chord() {
 
 void GnuVGLivePad::toggle_arp_direction() {
 	switch(arp_direction) {
-	case RemoteInterface::RIMachine::arp_off:
-		arp_direction = RemoteInterface::RIMachine::arp_forward;
+	case RISequence::arp_off:
+		arp_direction = RISequence::arp_forward;
 		break;
-	case RemoteInterface::RIMachine::arp_forward:
-		arp_direction = RemoteInterface::RIMachine::arp_reverse;
+	case RISequence::arp_forward:
+		arp_direction = RISequence::arp_reverse;
 		break;
-	case RemoteInterface::RIMachine::arp_reverse:
-		arp_direction = RemoteInterface::RIMachine::arp_pingpong;
+	case RISequence::arp_reverse:
+		arp_direction = RISequence::arp_pingpong;
 		break;
-	case RemoteInterface::RIMachine::arp_pingpong:
-		arp_direction = RemoteInterface::RIMachine::arp_off;
+	case RISequence::arp_pingpong:
+		arp_direction = RISequence::arp_off;
 		break;
 	}
 
@@ -557,7 +557,7 @@ void GnuVGLivePad::ask_clear_pad() {
 	}
 	std::ostringstream question;
 
-	question << "Do you want to clear: " << mseq->get_sibling_name();
+	question << "Do you want to clear: " << mseq->get_name();
 
 	KammoGUI::ask_yes_no("Clear jammin?",
 			     question.str(),
@@ -650,7 +650,7 @@ void GnuVGLivePad::graphArea_on_event(KammoGUI::GnuVGCanvas::SVGDocument *source
 	y = (y - ctx->doc_y1);
 
 	int finger = event.get_pointer_id(event.get_action_index());
-	RemoteInterface::RIMachine::PadEvent_t pevt = RemoteInterface::RIMachine::ms_pad_no_event;
+	RISequence::PadEvent_t pevt = RISequence::ms_pad_no_event;
 
 	float width  = ctx->doc_x2 - ctx->doc_x1 + 1;
 	float height = ctx->doc_y2 - ctx->doc_y1 + 1; // +1 to disable overflow
@@ -666,13 +666,13 @@ void GnuVGLivePad::graphArea_on_event(KammoGUI::GnuVGCanvas::SVGDocument *source
 	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
 		break;
 	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
-		pevt = RemoteInterface::RIMachine::ms_pad_press;
+		pevt = RISequence::ms_pad_press;
 		break;
 	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
-		pevt = RemoteInterface::RIMachine::ms_pad_release;
+		pevt = RISequence::ms_pad_release;
 		break;
 	case KammoGUI::MotionEvent::ACTION_DOWN:
-		pevt = RemoteInterface::RIMachine::ms_pad_press;
+		pevt = RISequence::ms_pad_press;
 		break;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
 		if(ctx->mseq) {
@@ -693,18 +693,18 @@ void GnuVGLivePad::graphArea_on_event(KammoGUI::GnuVGCanvas::SVGDocument *source
 				ctx->l_ev_x[f] = ev_x / width;
 				ctx->l_ev_y[f] = ev_y / height;
 				ctx->f_active[f] = true;
-				ctx->mseq->pad_enqueue_event(f, RemoteInterface::RIMachine::ms_pad_slide,
+				ctx->mseq->pad_enqueue_event(f, RISequence::ms_pad_slide,
 							     ctx->l_ev_x[f], ctx->l_ev_y[f],
 							     z_value);
 			}
 		}
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
-		pevt = RemoteInterface::RIMachine::ms_pad_release;
+		pevt = RISequence::ms_pad_release;
 		break;
 	}
 
-	if(finger < 10 && pevt != RemoteInterface::RIMachine::ms_pad_no_event && ctx->mseq) {
+	if(finger < 10 && pevt != RISequence::ms_pad_no_event && ctx->mseq) {
 		ctx->mseq->pad_enqueue_event(finger, pevt, x / width, y / height, z_value);
 	}
 }
@@ -757,7 +757,7 @@ void GnuVGLivePad::on_sensor_event(std::shared_ptr<KammoGUI::SensorEvent> event)
 				if(f_active[f]) {
 					mseq->pad_enqueue_event(
 						f,
-						RemoteInterface::RIMachine::ms_pad_slide,
+						RISequence::ms_pad_slide,
 						l_ev_x[f], l_ev_y[f], l_ev_z);
 					break;
 				}
@@ -771,8 +771,8 @@ GnuVGLivePad::GnuVGLivePad(KammoGUI::GnuVGCanvas *cnv)
 	, octave(3), scale_index(0), scale_name("C- "), record(false), quantize(false)
 	, do_pitch_bend(false)
 	, arp_pattern("built-in #0"), controller("velocity")
-	, chord_mode(RemoteInterface::RIMachine::chord_off)
-	, arp_direction(RemoteInterface::RIMachine::arp_off)
+	, chord_mode(RISequence::chord_off)
+	, arp_direction(RISequence::arp_off)
 	, listView(NULL), scale_editor(NULL)
 {
 	for(int k = 0; k < 10; k++) {
@@ -851,7 +851,7 @@ GnuVGLivePad::GnuVGLivePad(KammoGUI::GnuVGCanvas *cnv)
 
 }
 
-void GnuVGLivePad::switch_MachineSequencer(std::shared_ptr<RemoteInterface::RIMachine> m) {
+void GnuVGLivePad::switch_MachineSequencer(std::shared_ptr<RISequence> m) {
 	mseq = m;
 
 	if(mseq) {
@@ -886,34 +886,26 @@ void GnuVGLivePad::hide() {
  *
  ***************************/
 
-void GnuVGLivePad::object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
-	SATAN_DEBUG("GnuVGLivePad::ri_machine_registered - type [%s] (%f, %f)\n",
-		    ri_machine->get_machine_type().c_str(), ri_machine->get_x_position(), ri_machine->get_y_position());
-
-	if(ri_machine->get_machine_type() != "MachineSequencer") return; // we're not interested in anything but the MachineSequencers
+void GnuVGLivePad::object_registered(std::shared_ptr<RISequence> ri_sequence) {
+	SATAN_DEBUG("GnuVGLivePad::ri_sequence_registered\n");
 
 	KammoGUI::run_on_GUI_thread(
-		[this, ri_machine]() {
-			msequencers.insert(ri_machine);
-			if(!mseq) switch_MachineSequencer(ri_machine);
+		[this, ri_sequence]() {
+			msequencers.insert(ri_sequence);
+			if(!mseq) switch_MachineSequencer(ri_sequence);
 		}
 		);
 }
 
-void GnuVGLivePad::object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
-	if(ri_machine->get_machine_type() != "MachineSequencer") return; // we're not interested in anything but the MachineSequencers
-
+void GnuVGLivePad::object_unregistered(std::shared_ptr<RISequence> ri_sequence) {
 	KammoGUI::run_on_GUI_thread(
-		[this, ri_machine]() {
-			if(mseq == ri_machine)
+		[this, ri_sequence]() {
+			if(mseq == ri_sequence)
 				mseq.reset();
 
-			for(auto found_weak = msequencers.begin();
-			    found_weak != msequencers.end();
-				) {
-				auto found = found_weak->lock();
-				if(found) {
-					if(found == ri_machine) {
+			for(auto found_weak = msequencers.begin(); found_weak != msequencers.end(); found_weak++) {
+				if(auto found = found_weak->lock()) {
+					if(found == ri_sequence) {
 						found_weak = msequencers.erase(found_weak);
 						break;
 					} else if(!mseq) {
@@ -931,7 +923,7 @@ void GnuVGLivePad::object_unregistered(std::shared_ptr<RemoteInterface::RIMachin
 
 std::shared_ptr<GnuVGLivePad> GnuVGLivePad::create(KammoGUI::GnuVGCanvas *cnvs) {
 	auto lpad = std::make_shared<GnuVGLivePad>(cnvs);
-	RemoteInterface::ClientSpace::Client::register_object_set_listener<RemoteInterface::RIMachine>(lpad);
+	RemoteInterface::ClientSpace::Client::register_object_set_listener<RISequence>(lpad);
 	RemoteInterface::GlobalControlObject::register_playback_state_listener(lpad);
 	KammoGUI::SensorEvent::register_listener(lpad);
 	lpad->hide();

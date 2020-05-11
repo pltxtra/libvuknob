@@ -24,7 +24,9 @@
 #include <functional>
 #include <list>
 
-#include "remote_interface.hh"
+#include "engine_code/sequence.hh"
+
+typedef RemoteInterface::ClientSpace::Sequence RISequence;
 
 class GnuVGScaleEditor : public KammoGUI::GnuVGCanvas::SVGDocument {
 private:
@@ -65,7 +67,7 @@ private:
 	Setting* active_setting = 0;
 
 	KammoGUI::GnuVGCanvas::ElementReference bt_OK;
-	std::shared_ptr<RemoteInterface::RIMachine> mseq;
+	std::shared_ptr<RISequence> mseq;
 
 public:
 	GnuVGScaleEditor(KammoGUI::GnuVGCanvas *cnv);
@@ -74,7 +76,7 @@ public:
 	virtual void on_render() override;
 
 	void hide();
-	void show(std::shared_ptr<RemoteInterface::RIMachine> mseq);
+	void show(std::shared_ptr<RISequence> mseq);
 };
 
 #endif

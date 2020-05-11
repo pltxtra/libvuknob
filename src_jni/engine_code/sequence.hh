@@ -49,6 +49,29 @@ namespace RemoteInterface {
 		ON_SERVER(, public Machine)
 		{
 		public:
+			enum PadAxis_t {
+				pad_x_axis = 0,
+				pad_y_axis = 1,
+				pad_z_axis = 2,
+			};
+			enum PadEvent_t {
+				ms_pad_press = 0,
+				ms_pad_slide = 1,
+				ms_pad_release = 2,
+				ms_pad_no_event = 3
+			};
+			enum ArpeggioDirection_t {
+				arp_off = 0,
+				arp_forward = 1,
+				arp_reverse = 2,
+				arp_pingpong = 3
+			};
+			enum ChordMode_t {
+				chord_off = 0,
+				chord_triad = 1,
+				chord_quad = 2
+			};
+
 			static constexpr const char* FACTORY_NAME		= "Sequence";
 
 			struct PatternInstance {
@@ -161,6 +184,19 @@ namespace RemoteInterface {
 				void add_pattern_listener(uint32_t pattern_id, std::shared_ptr<PatternListener> pal);
 				void drop_pattern_listener(std::shared_ptr<PatternListener> pal);
 
+				/* Live (Pad) interfaces */
+				std::set<std::string> available_midi_controllers();
+				void pad_export_to_loop(int loop_id = RI_LOOP_NOT_SET);
+				void pad_set_octave(int octave);
+				void pad_set_scale(int scale_index);
+				void pad_set_record(bool record);
+				void pad_set_quantize(bool do_quantize);
+				void pad_assign_midi_controller(PadAxis_t axis, const std::string &controller);
+				void pad_set_chord_mode(ChordMode_t chord_mode);
+				void pad_set_arpeggio_pattern(const std::string &arp_pattern);
+				void pad_set_arpeggio_direction(ArpeggioDirection_t arp_direction);
+				void pad_clear();
+				void pad_enqueue_event(int finger, PadEvent_t event_type, float ev_x, float ev_y, float ev_z);
 				void enqueue_midi_data(size_t len, const char* data);
 				);
 

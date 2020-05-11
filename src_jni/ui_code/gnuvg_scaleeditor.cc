@@ -260,7 +260,7 @@ GnuVGScaleEditor::GnuVGScaleEditor(KammoGUI::GnuVGCanvas *cnv)
 	hide();
 }
 
-void GnuVGScaleEditor::show(std::shared_ptr<RemoteInterface::RIMachine> _mseq) {
+void GnuVGScaleEditor::show(std::shared_ptr<RISequence> _mseq) {
 	KammoGUI::GnuVGCanvas::ElementReference root_element = KammoGUI::GnuVGCanvas::ElementReference(this);
 	root_element.set_display("inline");
 	mseq = _mseq;

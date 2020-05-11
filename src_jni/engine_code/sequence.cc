@@ -707,6 +707,33 @@ CLIENT_CODE(
 		);
 	}
 
+	std::set<std::string> Sequence::available_midi_controllers() {
+		std::set<std::string> empty;
+		return empty;
+	}
+
+	void Sequence::pad_export_to_loop(int loop_id) {}
+
+	void Sequence::pad_set_octave(int octave) {}
+
+	void Sequence::pad_set_scale(int scale_index) {}
+
+	void Sequence::pad_set_record(bool record) {}
+
+	void Sequence::pad_set_quantize(bool do_quantize) {}
+
+	void Sequence::pad_assign_midi_controller(PadAxis_t axis, const std::string &controller) {}
+
+	void Sequence::pad_set_chord_mode(ChordMode_t chord_mode) {}
+
+	void Sequence::pad_set_arpeggio_pattern(const std::string &arp_pattern) {}
+
+	void Sequence::pad_set_arpeggio_direction(ArpeggioDirection_t arp_direction) {}
+
+	void Sequence::pad_clear() {}
+
+	void Sequence::pad_enqueue_event(int finger, PadEvent_t event_type, float ev_x, float ev_y, float ev_z) {}
+
 	void Sequence::enqueue_midi_data(size_t len, const char* data) {
 		std::string encoded = encode_byte_array(len, data);
 		send_message_to_server(
