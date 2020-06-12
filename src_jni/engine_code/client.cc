@@ -59,6 +59,7 @@ CLIENT_CODE(
 				    {
 					    if (!ec)
 					    {
+						    SATAN_ERROR("Client::connect() calling start_receive()\n");
 						    start_receive();
 					    } else {
 						    SATAN_ERROR("Failed to connect to server.\n");

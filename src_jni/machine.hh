@@ -604,6 +604,9 @@ public:
 		throw MachineIsInvalid();
 	}
 
+	// used to tightly connect this machine with Machine *m
+	void tightly_connect(Machine *m);
+
 	/******************************************************************
 	 *
 	 * a "machine_operation" is an interface that a non audio playback
@@ -660,8 +663,6 @@ protected:
 	// fine_controller < 0 means no fine controller used
 	void set_midi_controller(Controller *ctrl, int coarse_controller, int fine_controller);
 
-	// used to tightly connect this machine with Machine *m
-	void tightly_connect(Machine *m);
 	// detaches all inputs
 	void detach_all_inputs(Machine *m = NULL);
 	// detaches all outputs

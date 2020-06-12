@@ -57,6 +57,9 @@ namespace Serialize {
 		std::stringstream result_stream;
 
 	public:
+		void process(const std::basic_string<char> &v) {
+			result_stream << "string;" << encode_string(v) << ";";
+		}
 
 		void process(std::string &v) {
 			result_stream << "string;" << encode_string(v) << ";";

@@ -33,7 +33,7 @@
 #include "../remote_interface.hh"
 #include "../serialize.hh"
 
-#include "base_machine.hh"
+#include "machine_api.hh"
 
 #ifdef __RI__SERVER_SIDE
 #include "../midi_generation.hh"
@@ -205,7 +205,7 @@ namespace RemoteInterface {
 				);
 			ON_SERVER(
 				Sequence(int32_t new_obj_id, const Factory *factory);
-				static void create_sequence_for_machine(std::shared_ptr<Machine> m_ptr);
+				static void create_sequence_for_machine(std::shared_ptr<MachineAPI> m_ptr);
 				virtual void serialize(std::shared_ptr<Message> &target) override;
 				);
 
@@ -262,11 +262,21 @@ namespace RemoteInterface {
 				static Pattern* allocate();
 			};
 
+			std::map<std::string, std::pair<int, int> > knob2midi;
 			ON_SERVER(
+				Pad pad;
 				MidiEventBuilder _meb;
-				static std::map<std::shared_ptr<Machine>,
-				std::shared_ptr<Sequence> > machine2sequence;
+				static std::map<std::shared_ptr<MachineAPI>, std::shared_ptr<Sequence> > machine2sequence;
 				Pattern *current_pattern = NULL;
+				void get_midi_controllers(const std::string &name, int &coarse, int &fine) {
+					coarse = fine = -1;
+					auto found = knob2midi.find(name);
+					if(found != knob2midi.end()) {
+						auto cnf = found->second;
+						coarse = cnf.first;
+						fine = cnf.second;
+					}
+				}
 				);
 
 			ON_CLIENT(
@@ -329,6 +339,16 @@ namespace RemoteInterface {
 			SERVER_SIDE_HANDLER(req_del_pattern_instance, "req_del_ptrn_inst");
 			SERVER_SIDE_HANDLER(req_add_note, "req_add_note");
 			SERVER_SIDE_HANDLER(req_del_note, "req_del_note");
+			SERVER_SIDE_HANDLER(req_pad_set_octave, "req_pad_set_octave");
+			SERVER_SIDE_HANDLER(req_pad_set_scale, "req_pad_set_scale");
+			SERVER_SIDE_HANDLER(req_pad_record, "req_pad_set_record");
+			SERVER_SIDE_HANDLER(req_pad_quantize, "req_pad_set_quantize");
+			SERVER_SIDE_HANDLER(req_pad_assign_midi_controller, "req_pad_assign_midi_controller");
+			SERVER_SIDE_HANDLER(req_pad_set_chord_mode, "req_pad_set_chord_mode");
+			SERVER_SIDE_HANDLER(req_pad_set_arpeggio_pattern, "req_pad_set_arpeggio_pattern");
+			SERVER_SIDE_HANDLER(req_pad_set_arpeggio_direction, "req_pad_set_arpeggio_direction");
+			SERVER_SIDE_HANDLER(req_pad_clear, "req_pad_clear");
+			SERVER_SIDE_HANDLER(req_pad_enqueue_event, "req_pad_enqueue_event");
 			SERVER_SIDE_HANDLER(req_enqueue_midi_data, "req_enqueue_midi_data");
 
 			CLIENT_SIDE_HANDLER(cmd_add_pattern_instance, "cmd_add_ptrn_inst");
@@ -341,6 +361,16 @@ namespace RemoteInterface {
 				SERVER_REG_HANDLER(Sequence,req_del_pattern_instance);
 				SERVER_REG_HANDLER(Sequence,req_add_note);
 				SERVER_REG_HANDLER(Sequence,req_del_note);
+				SERVER_REG_HANDLER(Sequence,req_pad_set_octave);
+				SERVER_REG_HANDLER(Sequence,req_pad_set_scale);
+				SERVER_REG_HANDLER(Sequence,req_pad_record);
+				SERVER_REG_HANDLER(Sequence,req_pad_quantize);
+				SERVER_REG_HANDLER(Sequence,req_pad_assign_midi_controller);
+				SERVER_REG_HANDLER(Sequence,req_pad_set_chord_mode);
+				SERVER_REG_HANDLER(Sequence,req_pad_set_arpeggio_pattern);
+				SERVER_REG_HANDLER(Sequence,req_pad_set_arpeggio_direction);
+				SERVER_REG_HANDLER(Sequence,req_pad_clear);
+				SERVER_REG_HANDLER(Sequence,req_pad_enqueue_event);
 				SERVER_REG_HANDLER(Sequence,req_enqueue_midi_data);
 
 				CLIENT_REG_HANDLER(Sequence,cmd_add_pattern_instance);

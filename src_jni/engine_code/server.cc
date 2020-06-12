@@ -30,7 +30,7 @@
 #include "machine_api.hh"
 #include "base_machine.hh"
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 
@@ -145,7 +145,7 @@ SERVER_CODE(
 						}
 						);
 
-					create_object_from_factory<RemoteInterface::ServerSpace::MachineAPI>(
+					auto new_machine_api = create_object_from_factory<RemoteInterface::ServerSpace::MachineAPI>(
 						[this, m_ptr]
 						(std::shared_ptr<RemoteInterface::ServerSpace::MachineAPI> mchapi) {
 							mchapi->init_from_machine_ptr(mchapi, m_ptr);
@@ -153,7 +153,7 @@ SERVER_CODE(
 						}
 						);
 
-					Sequence::create_sequence_for_machine(m_ptr);
+					Sequence::create_sequence_for_machine(new_machine_api);
 				} catch(...) {
 					int status = 0;
 					char * buff = __cxxabiv1::__cxa_demangle(

@@ -61,7 +61,7 @@ SERVER_CODE(
 		}
 
 		template <typename T>
-		void create_object_from_factory(
+		std::shared_ptr<T> create_object_from_factory(
 			std::function<void(std::shared_ptr<T> nuobj)> new_object_init_callback) {
 			int32_t new_obj_id = reserve_new_obj_id();
 
@@ -69,6 +69,7 @@ SERVER_CODE(
 				BaseObject::create_object_on_server<T>(this, new_obj_id);
 
 			remember_object<T>(new_obj, new_object_init_callback);
+			return new_obj;
 		}
 
 		void delete_object(std::shared_ptr<BaseObject> obj2delete);

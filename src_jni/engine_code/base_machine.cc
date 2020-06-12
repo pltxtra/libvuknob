@@ -228,6 +228,9 @@ CLIENT_CODE(
 			);
 	}
 
+	)
+
+SERVER_N_CLIENT_CODE(
 	bool BaseMachine::Knob::has_midi_controller(int &__coarse_controller, int &__fine_controller) {
 		if(coarse_controller == -1 && fine_controller == -1) return false;
 
@@ -237,9 +240,6 @@ CLIENT_CODE(
 		return true;
 	}
 
-	)
-
-SERVER_N_CLIENT_CODE(
 	std::string BaseMachine::Knob::get_name() {
 		return name;
 	}
@@ -611,10 +611,44 @@ SERVER_N_CLIENT_CODE(
 		return retval;
 	}
 
+	std::vector<std::shared_ptr<BaseMachine::Knob> > BaseMachine::get_all_knobs() {
+		return get_knobs_for_group("");
+	}
+
 	std::shared_ptr<BaseMachine> BaseMachine::get_machine_by_name(const std::string& name) {
 		if(name2machine.count(name))
 			return name2machine[name];
 		return nullptr;
+	}
+
+	void BaseMachine::attach_input(std::shared_ptr<BaseMachine> source,
+				       const std::string& output_name,
+				       const std::string& input_name) {
+		ON_SERVER(
+			auto src = source->machine_ptr.lock();
+			auto dst = machine_ptr.lock();
+			if(src && dst) {
+				dst->attach_input(src.get(), output_name, input_name);
+			}
+			);
+	}
+
+	void BaseMachine::connect_tightly(std::shared_ptr<BaseMachine> sibling) {
+		ON_SERVER(
+			auto w_sbl = sibling->machine_ptr;
+			auto w_slf = machine_ptr;
+			Machine::machine_operation_enqueue(
+				[w_sbl, w_slf]() {
+					auto sbl = w_sbl.lock();
+					auto slf = w_slf.lock();
+					if(sbl && slf) {
+						slf->tightly_connect(sbl.get());
+					} else {
+						SATAN_ERROR("BaseMachine::tightly_connect() failed to tightly connect machines.");
+					}
+				}
+				);
+			);
 	}
 
 	std::map<std::string, std::shared_ptr<BaseMachine> > BaseMachine::name2machine;
@@ -692,12 +726,12 @@ SERVER_N_CLIENT_CODE(
 		}
 	}
 
-	void BaseMachine::attach_input(std::shared_ptr<BaseMachine> source, std::string output, std::string input) {
+	void BaseMachine::create_input_attachment(std::shared_ptr<BaseMachine> source, const std::string& output, const std::string& input) {
 		auto cnxn = Connection{.source_name = source->name, .output_name = output,
 				       .destination_name = name, .input_name = input};
 		source->add_connection(OutputSocket, cnxn);
 		this->add_connection(InputSocket, cnxn);
-		SATAN_DEBUG("::attach_input() done with [%s:%s] -> [%s:%s].\n",
+		SATAN_DEBUG("::create_input_attachment() done with [%s:%s] -> [%s:%s].\n",
 			    cnxn.source_name.c_str(),
 			    cnxn.output_name.c_str(),
 			    cnxn.destination_name.c_str(),
@@ -705,12 +739,12 @@ SERVER_N_CLIENT_CODE(
 			);
 	}
 
-	void BaseMachine::detach_input(std::shared_ptr<BaseMachine> source, std::string output, std::string input) {
+	void BaseMachine::delete_input_attachment(std::shared_ptr<BaseMachine> source, const std::string& output, const std::string& input) {
 		auto cnxn = Connection{.source_name = source->name, .output_name = output,
 				       .destination_name = name, .input_name = input};
 		source->remove_connection(OutputSocket, cnxn);
 		this->remove_connection(InputSocket, cnxn);
-		SATAN_DEBUG("::detach_input() done.\n");
+		SATAN_DEBUG("::delete_input_attachment() done.\n");
 	}
 
 	);
@@ -743,10 +777,10 @@ CLIENT_CODE(
 			SATAN_ERROR("  -> found source (%p) and destination (%p)\n", source.get(), destination.get());
 			switch(atop) {
 			case AttachInput:
-				destination->attach_input(source, output, input);
+				destination->create_input_attachment(source, output, input);
 				break;
 			case DetachInput:
-				destination->detach_input(source, output, input);
+				destination->delete_input_attachment(source, output, input);
 				break;
 			}
 		}
@@ -840,6 +874,7 @@ SERVER_CODE(
 	}
 
 	void BaseMachine::init_from_machine_ptr(std::shared_ptr<BaseMachine> bmchn, std::shared_ptr<Machine> m_ptr) {
+		machine_ptr = m_ptr;
 		name = m_ptr->get_name();
 		machine2basemachine[m_ptr] = bmchn;
 		register_by_name(bmchn);

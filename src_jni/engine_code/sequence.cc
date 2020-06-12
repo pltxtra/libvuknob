@@ -225,6 +225,69 @@ SERVER_CODE(
 
 	}
 
+	void Sequence::handle_req_pad_set_octave(RemoteInterface::Context *context,
+						 RemoteInterface::MessageHandler *src,
+						 const RemoteInterface::Message& msg) {
+	}
+
+	void Sequence::handle_req_pad_set_scale(RemoteInterface::Context *context,
+						RemoteInterface::MessageHandler *src,
+						const RemoteInterface::Message& msg) {
+	}
+
+	void Sequence::handle_req_pad_record(RemoteInterface::Context *context,
+					     RemoteInterface::MessageHandler *src,
+					     const RemoteInterface::Message& msg) {
+	}
+
+	void Sequence::handle_req_pad_quantize(RemoteInterface::Context *context,
+					       RemoteInterface::MessageHandler *src,
+					       const RemoteInterface::Message& msg) {
+	}
+
+	void Sequence::handle_req_pad_assign_midi_controller(RemoteInterface::Context *context,
+							     RemoteInterface::MessageHandler *src,
+							     const RemoteInterface::Message& msg) {
+		auto p_axis = (PadAxis_t)std::stoi(msg.get_value("axis"));
+		auto name = msg.get_value("controller");
+
+		int pad_controller_coarse = -1;
+		int pad_controller_fine = -1;
+		get_midi_controllers(name, pad_controller_coarse, pad_controller_fine);
+		SATAN_DEBUG("Sequence::handle_req_pad_assign_midi_controller() : c(%d), f(%d)\n",
+			    pad_controller_coarse,
+			    pad_controller_fine);
+		pad.config.set_coarse_controller(
+			p_axis == pad_y_axis ? 0 : 1, pad_controller_coarse);
+		pad.config.set_fine_controller(
+			p_axis == pad_y_axis ? 0 : 1, pad_controller_fine);
+	}
+
+	void Sequence::handle_req_pad_set_chord_mode(RemoteInterface::Context *context,
+						     RemoteInterface::MessageHandler *src,
+						     const RemoteInterface::Message& msg) {
+	}
+
+	void Sequence::handle_req_pad_set_arpeggio_pattern(RemoteInterface::Context *context,
+							   RemoteInterface::MessageHandler *src,
+							   const RemoteInterface::Message& msg) {
+	}
+
+	void Sequence::handle_req_pad_set_arpeggio_direction(RemoteInterface::Context *context,
+							     RemoteInterface::MessageHandler *src,
+							     const RemoteInterface::Message& msg) {
+	}
+
+	void Sequence::handle_req_pad_clear(RemoteInterface::Context *context,
+					    RemoteInterface::MessageHandler *src,
+					    const RemoteInterface::Message& msg) {
+	}
+
+	void Sequence::handle_req_pad_enqueue_event(RemoteInterface::Context *context,
+						    RemoteInterface::MessageHandler *src,
+						    const RemoteInterface::Message& msg) {
+	}
+
 	void Sequence::handle_req_enqueue_midi_data(RemoteInterface::Context *context,
 						    RemoteInterface::MessageHandler *src,
 						    const RemoteInterface::Message& msg) {
@@ -242,54 +305,55 @@ SERVER_CODE(
 			});
 	}
 
-	std::map<std::shared_ptr<Machine>, std::shared_ptr<Sequence> > Sequence::machine2sequence;
+	std::map<std::shared_ptr<MachineAPI>, std::shared_ptr<Sequence> > Sequence::machine2sequence;
 
-	void Sequence::create_sequence_for_machine(std::shared_ptr<Machine> sibling) {
-		{
-			bool midi_input_found = false;
-
-			try {
-				(void) sibling->get_input_index(MACHINE_SEQUENCER_MIDI_INPUT_NAME);
-				midi_input_found = true;
-			} catch(...) {
-				// ignore
-			}
-
-			if(!midi_input_found) {
-				return; // no midi input to attach MachineSequencer too
-			}
-		}
-
-		Machine::machine_operation_enqueue(
-			[sibling]() {
-				if(machine2sequence.find(sibling) !=
-				   machine2sequence.end()) {
-					SATAN_ERROR("Error. Machine already has a sequencer.\n");
-					throw jException("Trying to create MachineSequencer for a machine that already has one!",
-							 jException::sanity_error);
-				}
-			}
-			);
-
-		Server::create_object<Sequence>(
-			[sibling](std::shared_ptr<Sequence> seq) {
-				seq->init_from_machine_ptr(seq, seq);
-				sibling->attach_input(seq.get(),
-						      MACHINE_SEQUENCER_MIDI_OUTPUT_NAME,
-						      MACHINE_SEQUENCER_MIDI_INPUT_NAME);
-				seq->sequence_name = sibling->get_name();
-
-				SATAN_DEBUG("Sequence::create_sequence_for_machine() -- sequence_name = %s\n",
-					    seq->sequence_name.c_str());
-
+	void Sequence::create_sequence_for_machine(std::shared_ptr<MachineAPI> sibling) {
+		for(auto socket_name : sibling->get_socket_names(BaseMachine::InputSocket))
+			if(MACHINE_SEQUENCER_MIDI_INPUT_NAME == socket_name) {
 				Machine::machine_operation_enqueue(
-					[sibling, seq]() {
-						seq->tightly_connect(sibling.get());
+					[sibling]() {
+						if(machine2sequence.find(sibling) !=
+						   machine2sequence.end()) {
+							SATAN_ERROR("Error. Machine already has a sequencer.\n");
+							throw jException("Trying to create MachineSequencer for a machine that already has one!",
+									 jException::sanity_error);
+						}
+					}
+					);
+
+				Server::create_object<Sequence>(
+					[sibling](std::shared_ptr<Sequence> seq) {
+						seq->init_from_machine_ptr(seq, seq);
+						sibling->attach_input(
+							seq,
+							MACHINE_SEQUENCER_MIDI_OUTPUT_NAME,
+							MACHINE_SEQUENCER_MIDI_INPUT_NAME);
+						seq->sequence_name = sibling->get_name();
+
+						SATAN_DEBUG("    ***   \n");
+						SATAN_DEBUG("    ***   Scanning controllers for midi...\n");
+						SATAN_DEBUG("    ***   \n");
+
+						for(auto knob : sibling->get_all_knobs()) {
+							SATAN_DEBUG(" ---- knob name: %s\n", knob->get_name().c_str());
+							int coarse_controller, fine_controller;
+							if(knob->has_midi_controller(coarse_controller, fine_controller)) {
+								seq->knob2midi[knob->get_name()] =
+									std::pair<int, int>(coarse_controller, fine_controller);
+								SATAN_DEBUG("  !! Created knob2midi[%s] for %p\n", knob->get_name().c_str(), knob.get());
+							} else {
+								SATAN_DEBUG("  !! --- has no midi.\n");
+							}
+						}
+
+						SATAN_DEBUG("Sequence::create_sequence_for_machine() -- sequence_name = %s\n",
+							    seq->sequence_name.c_str());
+
+						seq->connect_tightly(sibling);
 						machine2sequence[sibling] = seq;
 					}
 					);
 			}
-			);
 	}
 
 	void Sequence::serialize(std::shared_ptr<Message> &target) {
@@ -418,7 +482,7 @@ SERVER_CODE(
 
 			while(_meb.skip(skip_length)) {
 
-//			pad.process(no_sound, PAD_TIME(sequence_position, current_tick), &_meb);
+				pad.process(no_sound, PAD_TIME(sequence_position, current_tick), &_meb);
 
 				if(current_tick == 0) {
 					auto pattern_id = get_pattern_starting_at(sequence_position);
@@ -459,6 +523,9 @@ SERVER_CODE(
 		);
 
 	void Sequence::reset() {
+		ON_SERVER(
+			pad.reset();
+			);
 	}
 
 	std::vector<std::string> Sequence::internal_get_controller_groups() {
@@ -708,8 +775,13 @@ CLIENT_CODE(
 	}
 
 	std::set<std::string> Sequence::available_midi_controllers() {
-		std::set<std::string> empty;
-		return empty;
+		std::set<std::string> result;
+
+		for(auto k2m : knob2midi) {
+			result.insert(k2m.first);
+		}
+
+		return result;
 	}
 
 	void Sequence::pad_export_to_loop(int loop_id) {}
@@ -722,7 +794,16 @@ CLIENT_CODE(
 
 	void Sequence::pad_set_quantize(bool do_quantize) {}
 
-	void Sequence::pad_assign_midi_controller(PadAxis_t axis, const std::string &controller) {}
+	void Sequence::pad_assign_midi_controller(PadAxis_t axis, const std::string &controller) {
+		send_message_to_server(
+			req_pad_assign_midi_controller,
+			[axis, controller](std::shared_ptr<Message> &msg2send) {
+				msg2send->set_value("axis", std::to_string(axis));
+				msg2send->set_value("controller", controller);
+				SATAN_DEBUG("Sequence::pad_assign_midi_controller() - controller: %s\n", controller.c_str());
+			}
+			);
+	}
 
 	void Sequence::pad_set_chord_mode(ChordMode_t chord_mode) {}
 
@@ -739,7 +820,6 @@ CLIENT_CODE(
 		send_message_to_server(
 			req_enqueue_midi_data,
 			[encoded](std::shared_ptr<Message> &msg2send) {
-				msg2send->set_value("command", "midi");
 				msg2send->set_value("data", encoded);
 				SATAN_DEBUG("Sequence::enqueue_midi_data() - data: %s\n", encoded.c_str());
 			}
@@ -944,11 +1024,15 @@ SERVER_N_CLIENT_CODE(
 
 	template <class SerderClassT>
 	void Sequence::serderize_sequence(SerderClassT& iserder) {
+		SATAN_DEBUG("[%s] : ----- GOING IN %p, knob2midi.size(%d)\n", CLIENTORSERVER_STRING, this, knob2midi.size());
 		iserder.process(sequence_name);
 		SATAN_DEBUG("serderize_sequence() -- sequence_name: %s\n",
 			    sequence_name.c_str());
 
 		iserder.process(patterns);
+		iserder.process(knob2midi);
+
+		SATAN_DEBUG("[%s] : ----- (post %p) knob2midi.size(%d)\n", CLIENTORSERVER_STRING, this, knob2midi.size());
 	}
 
 	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(

@@ -120,9 +120,9 @@ namespace RemoteInterface {
 					void set_value(bool val);
 					void set_value(const std::string &val);
 
-					bool has_midi_controller(int &coarse_controller, int &fine_controller);
 					);
 
+				bool has_midi_controller(int &coarse_controller, int &fine_controller);
 				std::string get_group(); // the group to which the controller belongs
 				std::string get_name(); // name of the control
 				std::string get_title(); // user displayable title
@@ -199,10 +199,16 @@ namespace RemoteInterface {
 			std::vector<std::shared_ptr<Connection> > get_connections_on_socket(SocketType type, const std::string& socket_name);
 			std::vector<std::string> get_knob_groups();
 			std::vector<std::shared_ptr<Knob> > get_knobs_for_group(const std::string& group_name);
+			std::vector<std::shared_ptr<Knob> > get_all_knobs();
 			static std::shared_ptr<BaseMachine> get_machine_by_name(const std::string& name);
+
+			void attach_input(std::shared_ptr<BaseMachine> source, const std::string& output_name, const std::string& input_name);
+			void connect_tightly(std::shared_ptr<BaseMachine> sibling);
+
 		private:
 			enum AttachmentOperation {AttachInput, DetachInput};
 			ON_SERVER(
+				std::weak_ptr<Machine> machine_ptr;
 				static std::map<std::shared_ptr<Machine>, std::shared_ptr<BaseMachine> > machine2basemachine;
 				);
 			ON_CLIENT(
@@ -218,8 +224,8 @@ namespace RemoteInterface {
 			void add_connection(SocketType socket_type, const Connection& connection);
 			void remove_connection(SocketType socket_type, const Connection& connection);
 
-			void attach_input(std::shared_ptr<BaseMachine> source, std::string output, std::string input);
-			void detach_input(std::shared_ptr<BaseMachine> source, std::string output, std::string input);
+			void create_input_attachment(std::shared_ptr<BaseMachine> source, const std::string& output, const std::string& input);
+			void delete_input_attachment(std::shared_ptr<BaseMachine> source, const std::string& output, const std::string& input);
 
 			/* REQ means the client request the server to perform an operation */
 			/* CMD means the server commands the client to perform an operation */
@@ -255,6 +261,7 @@ namespace RemoteInterface {
 
 		protected:
 			static void register_by_name(std::shared_ptr<BaseMachine> bmchn);
+
 		public:
 			ON_CLIENT(
 				BaseMachine(const Factory *factory, const RemoteInterface::Message &serialized);
