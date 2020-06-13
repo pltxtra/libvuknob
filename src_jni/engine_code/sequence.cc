@@ -228,11 +228,15 @@ SERVER_CODE(
 	void Sequence::handle_req_pad_set_octave(RemoteInterface::Context *context,
 						 RemoteInterface::MessageHandler *src,
 						 const RemoteInterface::Message& msg) {
+		int octave = std::stoi(msg.get_value("octave"));
+		pad.config.set_octave(octave);
 	}
 
 	void Sequence::handle_req_pad_set_scale(RemoteInterface::Context *context,
 						RemoteInterface::MessageHandler *src,
 						const RemoteInterface::Message& msg) {
+		int scale = std::stoi(msg.get_value("scale"));
+		pad.config.set_scale(scale);
 	}
 
 	void Sequence::handle_req_pad_record(RemoteInterface::Context *context,
@@ -808,9 +812,23 @@ CLIENT_CODE(
 
 	void Sequence::pad_export_to_loop(int loop_id) {}
 
-	void Sequence::pad_set_octave(int octave) {}
+	void Sequence::pad_set_octave(int octave) {
+		send_message_to_server(
+			req_pad_set_octave,
+			[octave](std::shared_ptr<Message> &msg2send) {
+				msg2send->set_value("octave", std::to_string(octave));
+			}
+			);
+	}
 
-	void Sequence::pad_set_scale(int scale_index) {}
+	void Sequence::pad_set_scale(int scale_index) {
+		send_message_to_server(
+			req_pad_set_scale,
+			[scale_index](std::shared_ptr<Message> &msg2send) {
+				msg2send->set_value("scale", std::to_string(scale_index));
+			}
+			);
+	}
 
 	void Sequence::pad_set_record(bool record) {}
 
