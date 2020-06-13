@@ -229,14 +229,22 @@ SERVER_CODE(
 						 RemoteInterface::MessageHandler *src,
 						 const RemoteInterface::Message& msg) {
 		int octave = std::stoi(msg.get_value("octave"));
-		pad.config.set_octave(octave);
+		Machine::machine_operation_enqueue(
+			[this, octave]() {
+				pad.config.set_octave(octave);
+			}
+			);
 	}
 
 	void Sequence::handle_req_pad_set_scale(RemoteInterface::Context *context,
 						RemoteInterface::MessageHandler *src,
 						const RemoteInterface::Message& msg) {
 		int scale = std::stoi(msg.get_value("scale"));
-		pad.config.set_scale(scale);
+		Machine::machine_operation_enqueue(
+			[this, scale]() {
+				pad.config.set_scale(scale);
+			}
+			);
 	}
 
 	void Sequence::handle_req_pad_record(RemoteInterface::Context *context,
@@ -261,20 +269,75 @@ SERVER_CODE(
 		SATAN_DEBUG("Sequence::handle_req_pad_assign_midi_controller() : c(%d), f(%d)\n",
 			    pad_controller_coarse,
 			    pad_controller_fine);
-		pad.config.set_coarse_controller(
-			p_axis == pad_y_axis ? 0 : 1, pad_controller_coarse);
-		pad.config.set_fine_controller(
-			p_axis == pad_y_axis ? 0 : 1, pad_controller_fine);
+		Machine::machine_operation_enqueue(
+			[this, p_axis, pad_controller_coarse, pad_controller_fine]() {
+				pad.config.set_coarse_controller(
+					p_axis == pad_y_axis ? 0 : 1, pad_controller_coarse);
+				pad.config.set_fine_controller(
+					p_axis == pad_y_axis ? 0 : 1, pad_controller_fine);
+			}
+			);
 	}
 
 	void Sequence::handle_req_pad_set_chord_mode(RemoteInterface::Context *context,
 						     RemoteInterface::MessageHandler *src,
 						     const RemoteInterface::Message& msg) {
+		ChordMode_t chord_mode = (ChordMode_t)std::stoi(msg.get_value("chordmode"));
+		Pad::PadConfiguration::ChordMode cm = Pad::PadConfiguration::chord_off;
+		switch(chord_mode) {
+		case chord_off:
+			cm = Pad::PadConfiguration::chord_off;
+			break;
+		case chord_triad:
+			cm = Pad::PadConfiguration::chord_triad;
+			break;
+		case chord_quad:
+			cm = Pad::PadConfiguration::chord_quad;
+			break;
+		}
+		Machine::machine_operation_enqueue(
+			[this, cm]() {
+				pad.config.set_chord_mode(cm);
+			}
+			);
+	}
+
+	static std::vector<std::string> arpeggio_pattern_id_list;
+	static bool arpeggio_pattern_id_list_ready = false;
+	static void build_arpeggio_pattern_id_list() {
+		if(arpeggio_pattern_id_list_ready) return;
+		arpeggio_pattern_id_list_ready = true;
+
+		for(int k = 0; k < MAX_BUILTIN_ARP_PATTERNS; k++) {
+			std::stringstream bi_name;
+			bi_name << "built-in #" << k;
+			arpeggio_pattern_id_list.push_back(bi_name.str());
+		}
 	}
 
 	void Sequence::handle_req_pad_set_arpeggio_pattern(RemoteInterface::Context *context,
 							   RemoteInterface::MessageHandler *src,
 							   const RemoteInterface::Message& msg) {
+		std::string identity = msg.get_value("arppattern");
+
+		build_arpeggio_pattern_id_list();
+
+		int arp_pattern_index = -1;
+		for(unsigned int k = 0; k < arpeggio_pattern_id_list.size(); k++) {
+			if(arpeggio_pattern_id_list[k] == identity) {
+				arp_pattern_index = k;
+			}
+		}
+
+		Machine::machine_operation_enqueue(
+			[this, arp_pattern_index]() {
+				if(arp_pattern_index == -1) {
+					pad.config.set_arpeggio_direction(Pad::PadConfiguration::arp_off);
+				}
+
+				pad.config.set_arpeggio_pattern(arp_pattern_index);
+			}
+			);
 	}
 
 	void Sequence::handle_req_pad_set_arpeggio_direction(RemoteInterface::Context *context,
@@ -845,9 +908,23 @@ CLIENT_CODE(
 			);
 	}
 
-	void Sequence::pad_set_chord_mode(ChordMode_t chord_mode) {}
+	void Sequence::pad_set_chord_mode(ChordMode_t chord_mode) {
+		send_message_to_server(
+			req_pad_set_chord_mode,
+			[chord_mode](std::shared_ptr<Message> &msg2send) {
+				msg2send->set_value("chordmode", std::to_string((int)chord_mode));
+			}
+			);
+	}
 
-	void Sequence::pad_set_arpeggio_pattern(const std::string &arp_pattern) {}
+	void Sequence::pad_set_arpeggio_pattern(const std::string &arp_pattern) {
+		send_message_to_server(
+			req_pad_set_arpeggio_pattern,
+			[arp_pattern](std::shared_ptr<Message> &msg2send) {
+				msg2send->set_value("arppattern", arp_pattern);
+			}
+			);
+	}
 
 	void Sequence::pad_set_arpeggio_direction(ArpeggioDirection_t arp_direction) {}
 
