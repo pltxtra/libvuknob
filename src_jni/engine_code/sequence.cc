@@ -286,6 +286,28 @@ SERVER_CODE(
 	void Sequence::handle_req_pad_enqueue_event(RemoteInterface::Context *context,
 						    RemoteInterface::MessageHandler *src,
 						    const RemoteInterface::Message& msg) {
+		PadEvent_t event_type = (PadEvent_t)(std::stol(msg.get_value("evt")));
+		int finger = std::stol(msg.get_value("fgr"));
+		int xp = std::stol(msg.get_value("xp"));
+		int yp = std::stol(msg.get_value("yp"));
+		int zp = std::stol(msg.get_value("zp"));
+
+		Pad::PadEvent::PadEvent_t pevt = Pad::PadEvent::ms_pad_no_event;
+		switch(event_type) {
+		case ms_pad_press:
+			pevt = Pad::PadEvent::ms_pad_press;
+			break;
+		case ms_pad_slide:
+			pevt = Pad::PadEvent::ms_pad_slide;
+			break;
+		case ms_pad_release:
+			pevt = Pad::PadEvent::ms_pad_release;
+			break;
+		case ms_pad_no_event:
+			pevt = Pad::PadEvent::ms_pad_no_event;
+			break;
+		}
+		pad.enqueue_event(finger, pevt, xp, yp, zp);
 	}
 
 	void Sequence::handle_req_enqueue_midi_data(RemoteInterface::Context *context,
@@ -813,7 +835,26 @@ CLIENT_CODE(
 
 	void Sequence::pad_clear() {}
 
-	void Sequence::pad_enqueue_event(int finger, PadEvent_t event_type, float ev_x, float ev_y, float ev_z) {}
+	void Sequence::pad_enqueue_event(int finger, PadEvent_t event_type, float ev_x, float ev_y, float ev_z) {
+		ev_x *= 16383.0f;
+		ev_y = (1.0 - ev_y) * 16383.0f;
+		ev_z = ev_z * 16383.0f;
+		int xp = ev_x;
+		int yp = ev_y;
+		int zp = ev_z;
+
+		auto thiz = std::dynamic_pointer_cast<RIMachine>(shared_from_this());
+		send_message_to_server(
+			req_pad_enqueue_event,
+			[xp, yp, zp, finger, event_type](std::shared_ptr<Message> &msg2send) {
+				msg2send->set_value("evt", std::to_string(((int)event_type)));
+				msg2send->set_value("fgr", std::to_string(finger));
+				msg2send->set_value("xp", std::to_string(xp));
+				msg2send->set_value("yp", std::to_string(yp));
+				msg2send->set_value("zp", std::to_string(zp));
+			}
+			);
+	}
 
 	void Sequence::enqueue_midi_data(size_t len, const char* data) {
 		std::string encoded = encode_byte_array(len, data);
