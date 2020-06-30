@@ -24,6 +24,8 @@
 #define __MAX_BPM__ 200
 #define __MIN_LPB__ 2
 #define __MAX_LPB__ 24
+#define __MIN_SHUFFLE__ 0
+#define __MAX_SHUFFLE__ 100
 
 #define BITS_PER_LINE 4
 #define MACHINE_TICKS_PER_LINE (1 << BITS_PER_LINE)

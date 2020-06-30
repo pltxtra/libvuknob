@@ -2110,6 +2110,7 @@ int Machine::get_shuffle_factor() {
 }
 
 void Machine::set_shuffle_factor(int _nf) {
+	if(_nf < __MIN_SHUFFLE__ || _nf > __MAX_SHUFFLE__) throw ParameterOutOfSpec();
 	Machine::machine_operation_enqueue(
 		[] (void *d) {
 			shuffle_factor = *((int *)d);
