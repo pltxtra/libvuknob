@@ -273,7 +273,6 @@ std::shared_ptr<RemoteInterface::Message> RemoteInterface::Context::acquire_repl
  ***************************/
 
 void RemoteInterface::MessageHandler::do_read_header() {
-	SATAN_ERROR("::do_read_header()\n");
 	auto self(shared_from_this());
 	asio::async_read(
 		my_socket,

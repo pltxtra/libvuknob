@@ -32,7 +32,7 @@
 
 #include "tap_detector.hh"
 
-#define __DO_SATAN_DEBUG
+//#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 static TapDetector tap_detector;
