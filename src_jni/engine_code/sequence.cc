@@ -343,6 +343,28 @@ SERVER_CODE(
 	void Sequence::handle_req_pad_set_arpeggio_direction(RemoteInterface::Context *context,
 							     RemoteInterface::MessageHandler *src,
 							     const RemoteInterface::Message& msg) {
+		ArpeggioDirection_t i_arp_direction = (ArpeggioDirection_t)std::stoi(msg.get_value("direction"));
+		Pad::PadConfiguration::ArpeggioDirection adir =
+			Pad::PadConfiguration::arp_off;
+		switch(i_arp_direction) {
+		case arp_off:
+			adir = Pad::PadConfiguration::arp_off;
+			break;
+		case arp_forward:
+			adir = Pad::PadConfiguration::arp_forward;
+			break;
+		case arp_reverse:
+			adir = Pad::PadConfiguration::arp_reverse;
+			break;
+		case arp_pingpong:
+			adir = Pad::PadConfiguration::arp_pingpong;
+			break;
+		}
+		Machine::machine_operation_enqueue(
+			[this, adir]() {
+				SATAN_DEBUG("Arpeggio direction selected (%p): %d\n", &(pad), adir);
+				pad.config.set_arpeggio_direction(adir);
+			});
 	}
 
 	void Sequence::handle_req_pad_clear(RemoteInterface::Context *context,
@@ -926,7 +948,14 @@ CLIENT_CODE(
 			);
 	}
 
-	void Sequence::pad_set_arpeggio_direction(ArpeggioDirection_t arp_direction) {}
+	void Sequence::pad_set_arpeggio_direction(ArpeggioDirection_t arp_direction) {
+		send_message_to_server(
+			req_pad_set_arpeggio_direction,
+			[arp_direction](std::shared_ptr<Message> &msg2send) {
+				msg2send->set_value("direction", std::to_string((int)arp_direction));
+			}
+			);
+	}
 
 	void Sequence::pad_clear() {}
 
