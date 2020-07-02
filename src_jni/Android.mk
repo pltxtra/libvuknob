@@ -267,6 +267,7 @@ ui_code/popup_window.cc ui_code/popup_window.hh \
 ui_code/popup_menu.cc ui_code/popup_menu.hh \
 ui_code/sequencer.cc ui_code/sequencer.hh \
 ui_code/main_menu.cc ui_code/main_menu.hh \
+ui_code/settings_screen.cc ui_code/settings_screen.hh \
 ui_code/loop_settings.cc ui_code/loop_settings.hh
 
 LOCAL_LDFLAGS += -Xlinker --threads

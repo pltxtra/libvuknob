@@ -30,6 +30,7 @@
 #include "loop_settings.hh"
 #include "pattern_editor.hh"
 #include "knob_editor.hh"
+#include "settings_screen.hh"
 #include "popup_window.hh"
 #include "popup_menu.hh"
 #include "gnuvg_corner_button.hh"
@@ -54,6 +55,7 @@ static std::shared_ptr<GnuVGCornerButton> plus_button;
 static std::shared_ptr<GnuVGCornerButton> return_button;
 static std::shared_ptr<PatternEditor> pattern_editor;
 static std::shared_ptr<KnobEditor> knob_editor;
+static std::shared_ptr<SettingsScreen> settings_screen;
 static std::shared_ptr<LoopSettings> loop_settings;
 static std::shared_ptr<MainMenu> main_menu;
 static std::shared_ptr<GnuVGConnector> connector;
@@ -1334,6 +1336,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		pattern_editor = PatternEditor::get_pattern_editor(cnvs, timelines);
 		loop_settings = std::make_shared<LoopSettings>(cnvs);
 		knob_editor = KnobEditor::get_knob_editor(cnvs);
+		settings_screen = SettingsScreen::get_settings_screen(cnvs);
 		connector = GnuVGConnector::create(cnvs);
 		livepad = GnuVGLivePad::create(cnvs);
 		main_menu = std::make_shared<MainMenu>(cnvs);
@@ -1377,6 +1380,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		main_menu->on_jam_event([] {
 				SATAN_DEBUG("                  -> on_jam_event()\n");
 				livepad->show(); connector->hide(); sequencer->hide_all();
+				settings_screen->hide();
 				timelines->hide_all();
 				loop_settings->hide();
 				plus_button->hide();
@@ -1386,6 +1390,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		main_menu->on_connector_event([] {
 				SATAN_DEBUG("                  -> on_connector_event()\n");
 				connector->show(); livepad->hide(); sequencer->hide_all();
+				settings_screen->hide();
 				timelines->hide_all();
 				loop_settings->hide();
 				plus_button->hide();
@@ -1395,8 +1400,20 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		main_menu->on_sequencer_event([return_to_sequencer] {
 				SATAN_DEBUG("                  -> on_sequencer_event()\n");
 				connector->hide(); livepad->hide();
+				settings_screen->hide();
 				sequencer->show_all();
 				return_to_sequencer();
+			});
+
+		main_menu->on_settings_event([return_to_sequencer] {
+				SATAN_DEBUG("                  -> on_settings_event()\n");
+				connector->hide(); livepad->hide(); sequencer->hide_all();
+				settings_screen->show();
+				timelines->hide_all();
+				loop_settings->hide();
+				plus_button->hide();
+				return_button->hide();
+				pattern_editor->hide();
 			});
 
 		RemoteInterface::ClientSpace::Client::register_object_set_listener<RISequence>(sequencer);
