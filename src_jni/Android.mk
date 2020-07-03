@@ -248,6 +248,7 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 LOCAL_SRC_FILES := \
 satan.cc \
+ui_code/ui_stack.cc ui_code/ui_stack.hh \
 ui_code/gnuvg_corner_button.cc ui_code/gnuvg_corner_button.hh \
 ui_code/logo_screen.cc ui_code/logo_screen.hh \
 ui_code/test_gnuvg.cc ui_code/test_gnuvg.hh \
