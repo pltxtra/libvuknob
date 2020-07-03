@@ -52,16 +52,33 @@ public:
 	template <class T>
 	static void push(std::shared_ptr<T> i) {
 		auto next = std::make_shared<Hideable>(i);
-		current->hide();
-		previous.push(current);
+		if(current) {
+			current->hide();
+			previous.push(current);
+		}
 		next->show();
 		current = next;
 	}
 
 	static void pop() {
-		current->hide();
-		auto current = previous.top();
-		previous.pop();
+		if(current) {
+			current->hide();
+			current.reset();
+		}
+		if(!previous.empty()) {
+			current = previous.top();
+			previous.pop();
+		}
+	}
+
+	static void clear() {
+		if(current) {
+			current->hide();
+			current.reset();
+		}
+		while (!previous.empty()) {
+			previous.pop();
+		}
 	}
 };
 
