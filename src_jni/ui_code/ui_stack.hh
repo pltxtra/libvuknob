@@ -51,7 +51,7 @@ private:
 public:
 	template <class T>
 	static void push(std::shared_ptr<T> i) {
-		auto next = std::make_shared<Hideable>(i);
+		auto next = std::make_shared<Hideable<T> >(i);
 		if(current) {
 			current->hide();
 			previous.push(current);

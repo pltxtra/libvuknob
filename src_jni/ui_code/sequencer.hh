@@ -231,6 +231,9 @@ public:
 	void show_all();
 	void hide_all();
 
+	void show();
+	void hide();
+
 	virtual void on_resize() override;
 	virtual void on_render() override;
 
