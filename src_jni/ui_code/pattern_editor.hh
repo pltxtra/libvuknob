@@ -175,17 +175,16 @@ public:
 	PatternEditor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
 	~PatternEditor();
 
+	void use_context(std::shared_ptr<RISequence> ri_seq, uint32_t pattern_id);
+	void hide(bool hide_timelines = true);
+	void show();
+
 	virtual void on_resize() override;
 	virtual void on_render() override;
 
 	static void perform_operation(PatternEditorOperation p_operation);
 
 	static std::shared_ptr<PatternEditor> get_pattern_editor(KammoGUI::GnuVGCanvas* cnvs, std::shared_ptr<TimeLines> timelines);
-
-	static void hide();
-	static void show(std::function<void()> on_exit_pattern_editor,
-			 std::shared_ptr<RISequence> ri_seq,
-			 uint32_t pattern_id);
 
 	virtual void note_added(uint32_t pattern_id, const RINote &note);
 	virtual void note_deleted(uint32_t pattern_id, const RINote &note);

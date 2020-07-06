@@ -515,11 +515,13 @@ void TimeLines::hide_loop_markers() {
 }
 
 void TimeLines::show_all() {
+	SATAN_ERROR("TimeLines::show_all()\n");
 	KammoGUI::GnuVGCanvas::ElementReference root_element(this);
 	root_element.set_display("inline");
 }
 
 void TimeLines::hide_all() {
+	SATAN_ERROR("TimeLines::hide_all()\n");
 	KammoGUI::GnuVGCanvas::ElementReference root_element(this);
 	root_element.set_display("none");
 }

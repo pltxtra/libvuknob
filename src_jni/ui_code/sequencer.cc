@@ -832,21 +832,15 @@ void Sequencer::focus_on_pattern_instance(double _icon_anchor_x, double _icon_an
 				KammoGUI::GnuVGCanvas::ElementReference *e,
 				const KammoGUI::MotionEvent &event
 				) {
-				auto restore_sequencer = [this]() {
-				};
-
 				if(tap_detector.analyze_events(event)) {
 					sequencer->show_sequencers({});
 					auto instance = get_tapped_pattern_instance(ri_seq_w);
 					auto ri_seq = ri_seq_w.lock();
 					if(instance && ri_seq) {
 						timelines->use_zoom_context(instance->zoom_context);
-
-						PatternEditor::show(restore_sequencer,
-								    ri_seq,
-								    instance->data().pattern_id);
-						root.set_display("none");
 						timelines->hide_loop_markers();
+						pattern_editor->use_context(ri_seq, instance->data().pattern_id);
+						UIStack::push(pattern_editor);
 						return_button->show();
 					}
 				}
@@ -1314,24 +1308,24 @@ void Sequencer::object_unregistered(std::shared_ptr<RemoteInterface::ClientSpace
 }
 
 void Sequencer::show() {
-	sequencer->show_all();
+	show_all();
 	timelines->use_zoom_context(nullptr);
 	timelines->show_loop_markers();
 	timelines->show_all();
 	return_button->hide();
 	loop_settings->show();
 	plus_button->show();
-	pattern_editor->hide();
 	KnobEditor::hide();
 }
 
 void Sequencer::hide() {
+	show_sequencers({});
 	timelines->hide_all();
 	loop_settings->hide();
 	plus_button->hide();
 	return_button->hide();
 	pattern_editor->hide();
-	sequencer->hide_all();
+	hide_all();
 }
 
 /***************************
@@ -1366,7 +1360,7 @@ virtual void on_init(KammoGUI::Widget *wid) {
 			cnvs,
 			std::string(SVGLoader::get_svg_directory() + "/leftArrow.svg"),
 			GnuVGCornerButton::bottom_left);
-		PatternEditor::hide();
+		pattern_editor->hide(false);
 		KnobEditor::hide();
 		return_button->hide();
 
@@ -1386,9 +1380,11 @@ virtual void on_init(KammoGUI::Widget *wid) {
 
 		return_button->set_select_callback(
 			[] {
-				SATAN_DEBUG("                  -> return_button()\n");
-				UIStack::clear();
-				UIStack::push(sequencer);
+				SATAN_DEBUG("                  -> return_button() - ciao ciao!\n");
+				UIStack::pop();
+				SATAN_DEBUG("                  -> return_button() - woot!\n");
+				return_button->hide();
+				SATAN_DEBUG("                  -> return_button() - bella!\n");
 			});
 		main_menu->on_jam_event([] {
 				SATAN_DEBUG("                  -> on_jam_event()\n");
@@ -1419,6 +1415,8 @@ virtual void on_init(KammoGUI::Widget *wid) {
 
 		PopupMenu::prepare(cnvs);
 		PopupWindow::prepare(cnvs);
+
+		UIStack::push(sequencer, true);
 	}
 }
 

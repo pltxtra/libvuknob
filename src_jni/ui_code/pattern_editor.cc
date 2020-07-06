@@ -944,6 +944,40 @@ PatternEditor::~PatternEditor() {
 	singleton = nullptr;
 }
 
+void PatternEditor::use_context(std::shared_ptr<RISequence> ri_seq, uint32_t pattern_id) {
+	if(ri_seq) {
+		use_sequence_and_pattern(ri_seq, pattern_id);
+	}
+}
+
+void PatternEditor::hide(bool hide_timelines) {
+	PatternEditorMenu::hide();
+	cleanup_pattern_listening();
+
+	if(hide_timelines)
+		timelines->hide_all();
+
+	auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(this, "layer1");
+	layer1.set_display("none");
+}
+
+void PatternEditor::show() {
+	PatternEditorMenu::show();
+
+	timelines->show_all();
+
+	auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(this, "layer1");
+	layer1.set_display("inline");
+
+	auto pianoroll_transition = new KammoGUI::SimpleAnimation(
+		TRANSITION_TIME,
+		[this](float progress) mutable {
+			pianoroll_horizontal_offset = ((double)progress - 1.0) * singleton->finger_width;
+		}
+		);
+	start_animation(pianoroll_transition);
+}
+
 void PatternEditor::internal_perform_operation(PatternEditor::PatternEditorOperation p_operation) {
 	velocity_slider->hide();
 	expected_new_selection.clear();
@@ -1083,20 +1117,6 @@ void PatternEditor::on_render() {
 	pianoroll_reference.set_transform(transform_t);
 }
 
-void PatternEditor::hide() {
-	if(singleton) {
-		PatternEditorMenu::hide();
-		singleton->cleanup_pattern_listening();
-		auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(singleton, "layer1");
-		layer1.set_display("none");
-
-		if(singleton->on_exit_pattern_editor) {
-			singleton->on_exit_pattern_editor();
-			singleton->on_exit_pattern_editor = nullptr;
-		}
-	}
-}
-
 void PatternEditor::cleanup_pattern_listening() {
 	if(ri_seq) {
 		ri_seq->drop_pattern_listener(shared_from_this());
@@ -1112,27 +1132,6 @@ void PatternEditor::use_sequence_and_pattern(std::shared_ptr<RISequence> _ri_seq
 	ri_seq->add_pattern_listener(pattern_id, shared_from_this());
 	PatternEditorMenu::set_pattern_id(pattern_id);
 	expected_new_selection.clear();
-}
-
-void PatternEditor::show(std::function<void()> _on_exit_pattern_editor,
-			 std::shared_ptr<RISequence> ri_seq,
-			 uint32_t pattern_id) {
-	if(singleton && ri_seq) {
-		PatternEditorMenu::show();
-		singleton->on_exit_pattern_editor = _on_exit_pattern_editor;
-		auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(singleton, "layer1");
-		layer1.set_display("inline");
-
-		singleton->use_sequence_and_pattern(ri_seq, pattern_id);
-
-		auto pianoroll_transition = new KammoGUI::SimpleAnimation(
-			TRANSITION_TIME,
-			[](float progress) mutable {
-				singleton->pianoroll_horizontal_offset = ((double)progress - 1.0) * singleton->finger_width;
-			}
-		);
-		singleton->start_animation(pianoroll_transition);
-	}
 }
 
 void PatternEditor::note_added(uint32_t pattern_id, const RINote &note) {
