@@ -19,5 +19,12 @@
 
 #include "ui_stack.hh"
 
+//#define __DO_SATAN_DEBUG
+#include "satan_debug.hh"
+
 std::shared_ptr<AbstractHideable> UIStack::current;
 std::stack<std::shared_ptr<AbstractHideable> > UIStack::previous;
+
+void UIStack::print_string(const std::string& str) {
+	SATAN_ERROR("%s", str.c_str());
+}

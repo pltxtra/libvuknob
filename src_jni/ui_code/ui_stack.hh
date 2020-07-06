@@ -19,6 +19,7 @@
 
 #include<stack>
 #include<memory>
+#include<sstream>
 
 #ifndef VUKNOB_UI_STACK
 #define VUKNOB_UI_STACK
@@ -48,27 +49,42 @@ class UIStack {
 private:
 	static std::shared_ptr<AbstractHideable> current;
 	static std::stack<std::shared_ptr<AbstractHideable> > previous;
+
+	static void print_string(const std::string& str);
 public:
 	template <class T>
-	static void push(std::shared_ptr<T> i) {
+	static void push(std::shared_ptr<T> i, bool already_visible = false) {
+		std::stringstream ss;
+		ss << "::push(" << (already_visible ? "true" : "false") << ")\n";
+		print_string(ss.str());
+
 		auto next = std::make_shared<Hideable<T> >(i);
 		if(current) {
 			current->hide();
 			previous.push(current);
 		}
-		next->show();
+		if(!already_visible)
+			next->show();
 		current = next;
 	}
 
 	static void pop() {
+		print_string("::pop() begin\n");
 		if(current) {
 			current->hide();
 			current.reset();
 		}
+		print_string("::pop() middle\n");
 		if(!previous.empty()) {
+			print_string("::pop() middle A\n");
 			current = previous.top();
+			print_string("::pop() middle B\n");
 			previous.pop();
+			print_string("::pop() middle C\n");
+			current->show();
+			print_string("::pop() middle D\n");
 		}
+		print_string("::pop() end\n");
 	}
 
 	static void clear() {
