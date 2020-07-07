@@ -21,6 +21,7 @@
 #include "svg_loader.hh"
 #include "tap_detector.hh"
 #include "popup_menu.hh"
+#include "ui_stack.hh"
 
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
@@ -258,20 +259,37 @@ std::shared_ptr<KnobEditor> KnobEditor::get_knob_editor(KammoGUI::GnuVGCanvas* c
 	if(singleton) return singleton->shared_from_this();
 	auto response = std::make_shared<KnobEditor>(cnvs);
 	singleton = response.get();
+
+	singleton->return_button = std::make_shared<GnuVGCornerButton>(
+		cnvs,
+		std::string(SVGLoader::get_svg_directory() + "/leftArrow.svg"),
+		GnuVGCornerButton::bottom_left);
+	singleton->return_button->set_select_callback(
+		[] {
+			SATAN_DEBUG("                  -> KnobEditor::return_button() - ciao ciao!\n");
+			UIStack::pop();
+			SATAN_DEBUG("                  -> KnobEditor::return_button() - bella!\n");
+		});
+	singleton->return_button->hide();
+
 	return response;
 }
 
+void KnobEditor::set_context(std::shared_ptr<BMachine> new_machine) {
+	current_machine = new_machine;
+	SATAN_DEBUG("Got the machine known as %s (%p)\n", current_machine->get_name().c_str(), current_machine.get());
+	groups = current_machine->get_knob_groups();
+	current_group = groups.size() ? groups[0] : "";
+}
 void KnobEditor::hide() {
-	if(singleton) {
-		singleton->root.set_display("none");
-		singleton->knob_instances.clear();
-		singleton->current_machine = nullptr;
-	}
+	root.set_display("none");
+	return_button->hide();
+	knob_instances.clear();
+	current_machine = nullptr;
 }
 
-void KnobEditor::show(std::shared_ptr<BMachine> machine) {
-	SATAN_DEBUG("KnobEditor::show() [%p]\n", singleton);
-	if(singleton && machine) {
-		singleton->internal_show(machine);
-	}
+void KnobEditor::show() {
+	root.set_display("inline");
+	return_button->show();
+	refresh_knobs();
 }

@@ -31,6 +31,7 @@
 #include "fling_animation.hh"
 #include "scale_slide.hh"
 #include "popup_window.hh"
+#include "ui_stack.hh"
 
 #include "tap_detector.hh"
 
@@ -956,6 +957,7 @@ void PatternEditor::hide(bool hide_timelines) {
 
 	if(hide_timelines)
 		timelines->hide_all();
+	return_button->hide();
 
 	auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(this, "layer1");
 	layer1.set_display("none");
@@ -965,6 +967,7 @@ void PatternEditor::show() {
 	PatternEditorMenu::show();
 
 	timelines->show_all();
+	return_button->show();
 
 	auto layer1 = KammoGUI::GnuVGCanvas::ElementReference(this, "layer1");
 	layer1.set_display("inline");
@@ -1024,6 +1027,19 @@ std::shared_ptr<PatternEditor> PatternEditor::get_pattern_editor(KammoGUI::GnuVG
 	singleton = response.get();
 	PatternEditorMenu::prepare_menu(cnvs);
 	velocity_slider = std::make_shared<ScaleSlide>(cnvs);
+
+	singleton->return_button = std::make_shared<GnuVGCornerButton>(
+		cnvs,
+		std::string(SVGLoader::get_svg_directory() + "/leftArrow.svg"),
+		GnuVGCornerButton::bottom_left);
+	singleton->return_button->set_select_callback(
+		[] {
+			SATAN_DEBUG("                  -> KnobEditor::return_button() - ciao ciao!\n");
+			UIStack::pop();
+			SATAN_DEBUG("                  -> KnobEditor::return_button() - bella!\n");
+		});
+	singleton->return_button->hide();
+
 	return response;
 }
 

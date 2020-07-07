@@ -24,6 +24,7 @@
 #include <gnuVGcanvas.hh>
 
 #include "../engine_code/base_machine.hh"
+#include "gnuvg_corner_button.hh"
 
 typedef RemoteInterface::ClientSpace::BaseMachine       BMachine;
 typedef RemoteInterface::ClientSpace::BaseMachine::Knob BMKnob;
@@ -73,6 +74,8 @@ private:
 			int offset);
 	};
 
+	std::shared_ptr<GnuVGCornerButton> return_button;
+
 	KammoGUI::GnuVGCanvas::ElementReference root, knob_container, knob_template, popup_trigger, popup_text, popup_container;
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
 
@@ -97,8 +100,9 @@ public:
 
 	static std::shared_ptr<KnobEditor> get_knob_editor(KammoGUI::GnuVGCanvas* cnvs);
 
-	static void hide();
-	static void show(std::shared_ptr<BMachine> machine);
+	void set_context(std::shared_ptr<BMachine> new_machine);
+	void hide();
+	void show();
 };
 
 #endif

@@ -25,6 +25,7 @@
 
 #include "engine_code/sequence.hh"
 #include "../common.hh"
+#include "gnuvg_corner_button.hh"
 
 #include "timelines.hh"
 
@@ -101,6 +102,8 @@ private:
 	static PatternEditor *singleton;
 
 	KammoGUI::FlingGestureDetector fling_detector;
+
+	std::shared_ptr<GnuVGCornerButton> return_button;
 
 	KammoGUI::GnuVGCanvas::ElementReference backdrop_reference;
 	KammoGUI::GnuVGCanvas::ElementReference pianorollscroll_reference;

@@ -53,7 +53,6 @@
 static std::shared_ptr<TimeLines> timelines;
 static std::shared_ptr<Sequencer> sequencer;
 static std::shared_ptr<GnuVGCornerButton> plus_button;
-static std::shared_ptr<GnuVGCornerButton> return_button;
 static std::shared_ptr<PatternEditor> pattern_editor;
 static std::shared_ptr<KnobEditor> knob_editor;
 static std::shared_ptr<SettingsScreen> settings_screen;
@@ -305,13 +304,8 @@ Sequencer::Sequence::Sequence(KammoGUI::GnuVGCanvas::ElementReference elref,
 				auto destination_name = ri_seq->get_name();
 				SATAN_DEBUG("Trying to get the machine known as %s\n", destination_name.c_str());
 				auto destination = RemoteInterface::ClientSpace::BaseMachine::get_machine_by_name(destination_name);
-				KnobEditor::show(destination);
-
-				plus_button->hide();
-				loop_settings->hide();
-				sequencer->hide_all();
-				timelines->hide_all();
-				return_button->show();
+				knob_editor->set_context(destination);
+				UIStack::push(knob_editor);
 
 				return;
 			}
@@ -841,7 +835,6 @@ void Sequencer::focus_on_pattern_instance(double _icon_anchor_x, double _icon_an
 						timelines->hide_loop_markers();
 						pattern_editor->use_context(ri_seq, instance->data().pattern_id);
 						UIStack::push(pattern_editor);
-						return_button->show();
 					}
 				}
 			}
@@ -1312,10 +1305,8 @@ void Sequencer::show() {
 	timelines->use_zoom_context(nullptr);
 	timelines->show_loop_markers();
 	timelines->show_all();
-	return_button->hide();
 	loop_settings->show();
 	plus_button->show();
-	KnobEditor::hide();
 }
 
 void Sequencer::hide() {
@@ -1323,7 +1314,6 @@ void Sequencer::hide() {
 	timelines->hide_all();
 	loop_settings->hide();
 	plus_button->hide();
-	return_button->hide();
 	pattern_editor->hide();
 	hide_all();
 }
@@ -1356,13 +1346,8 @@ virtual void on_init(KammoGUI::Widget *wid) {
 		connector = GnuVGConnector::create(cnvs);
 		livepad = GnuVGLivePad::create(cnvs);
 		main_menu = std::make_shared<MainMenu>(cnvs);
-		return_button = std::make_shared<GnuVGCornerButton>(
-			cnvs,
-			std::string(SVGLoader::get_svg_directory() + "/leftArrow.svg"),
-			GnuVGCornerButton::bottom_left);
 		pattern_editor->hide(false);
-		KnobEditor::hide();
-		return_button->hide();
+		knob_editor->hide();
 
 		plus_button->set_select_callback(
 			[]() {
@@ -1378,14 +1363,6 @@ virtual void on_init(KammoGUI::Widget *wid) {
 				}
 			});
 
-		return_button->set_select_callback(
-			[] {
-				SATAN_DEBUG("                  -> return_button() - ciao ciao!\n");
-				UIStack::pop();
-				SATAN_DEBUG("                  -> return_button() - woot!\n");
-				return_button->hide();
-				SATAN_DEBUG("                  -> return_button() - bella!\n");
-			});
 		main_menu->on_jam_event([] {
 				SATAN_DEBUG("                  -> on_jam_event()\n");
 				UIStack::clear();
