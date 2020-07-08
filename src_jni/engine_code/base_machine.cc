@@ -555,6 +555,8 @@ SERVER_N_CLIENT_CODE(
 SERVER_N_CLIENT_CODE(
 
 	std::vector<std::string> BaseMachine::get_socket_names(SocketType type) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+
 		auto f = [this](std::vector<std::shared_ptr<Socket> > sockets, std::vector<std::string> &result) {
 			for(auto socket : sockets) {
 				result.push_back(socket->name);
@@ -573,6 +575,8 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	std::vector<std::shared_ptr<Connection> > BaseMachine::get_connections_on_socket(SocketType type, const std::string& socket_name) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+
 		auto f = [this](std::vector<std::shared_ptr<Socket> > sockets,
 				const std::string& socket_name) -> std::vector<std::shared_ptr<Connection> >
 			{
@@ -597,10 +601,12 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	std::vector<std::string> BaseMachine::get_knob_groups() {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		return groups;
 	}
 
 	std::vector<std::shared_ptr<BaseMachine::Knob> > BaseMachine::get_knobs_for_group(const std::string& group_name) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		std::vector<std::shared_ptr<Knob> > retval;
 		for(auto knob : knobs) {
 			if(group_name == "")
@@ -616,14 +622,17 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	std::shared_ptr<BaseMachine> BaseMachine::get_machine_by_name(const std::string& name) {
+		std::lock_guard<std::mutex> lock_guard(base_machine_mutex);
 		if(name2machine.count(name))
 			return name2machine[name];
 		return nullptr;
 	}
 
+	std::mutex BaseMachine::base_machine_mutex;
 	std::map<std::string, std::shared_ptr<BaseMachine> > BaseMachine::name2machine;
 
 	void BaseMachine::register_by_name(std::shared_ptr<BaseMachine> bmchn) {
+		std::lock_guard<std::mutex> lock_guard(base_machine_mutex);
 		SATAN_DEBUG("[%s] register_by_name(%s)\n", CLIENTORSERVER_STRING, bmchn->name.c_str());
 		name2machine[bmchn->name] = bmchn;
 	}
@@ -642,17 +651,18 @@ SERVER_N_CLIENT_CODE(
 
 	void BaseMachine::add_connection(SocketType socket_type, const Connection& new_connection) {
 		auto f = [this](const Connection& new_connection, std::vector<std::shared_ptr<Socket> > &sockets, const std::string& socket_name) {
-			for(auto socket : sockets) {
-				if(socket->name == socket_name) {
-					for(auto connection : socket->connections) {
-						if(connection->equals(new_connection)) {
-							return;
-						}
-					}
-					socket->connections.push_back(std::make_shared<Connection>(new_connection));
-				}
-			}
-		};
+				 std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+				 for(auto socket : sockets) {
+					 if(socket->name == socket_name) {
+						 for(auto connection : socket->connections) {
+							 if(connection->equals(new_connection)) {
+								 return;
+							 }
+						 }
+						 socket->connections.push_back(std::make_shared<Connection>(new_connection));
+					 }
+				 }
+			 };
 		switch(socket_type) {
 		case InputSocket:
 		{
@@ -669,19 +679,20 @@ SERVER_N_CLIENT_CODE(
 
 	void BaseMachine::remove_connection(SocketType socket_type, const Connection& connection2remove) {
 		auto f = [this](const Connection& connection2remove, std::vector<std::shared_ptr<Socket> > &sockets, const std::string& socket_name) {
-			for(auto socket : sockets) {
-				if(socket->name == socket_name) {
-					for(auto cn = socket->connections.begin();
-					    cn != socket->connections.end();
-					    cn++) {
-						if((*cn)->equals(connection2remove)) {
-							socket->connections.erase(cn);
-							return;
-						}
-					}
-				}
-			}
-		};
+				 std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+				 for(auto socket : sockets) {
+					 if(socket->name == socket_name) {
+						 for(auto cn = socket->connections.begin();
+						     cn != socket->connections.end();
+						     cn++) {
+							 if((*cn)->equals(connection2remove)) {
+								 socket->connections.erase(cn);
+								 return;
+							 }
+						 }
+					 }
+				 }
+			 };
 		switch(socket_type) {
 		case InputSocket:
 		{
@@ -733,6 +744,7 @@ CLIENT_CODE(
 	}
 
 	void BaseMachine::handle_attachment_command(AttachmentOperation atop, const RemoteInterface::Message& msg) {
+		std::lock_guard<std::mutex> lock_guard(base_machine_mutex);
 		auto source_name = msg.get_value("src");
 		auto output = msg.get_value("oup");
 		auto destination_name = msg.get_value("dst");

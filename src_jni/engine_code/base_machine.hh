@@ -216,6 +216,7 @@ namespace RemoteInterface {
 			ON_CLIENT(
 				static void handle_attachment_command(AttachmentOperation atop, const RemoteInterface::Message& msg);
 				);
+			static std::mutex base_machine_mutex;
 			static std::map<std::string, std::shared_ptr<BaseMachine> > name2machine;
 
 			std::string name;
