@@ -202,8 +202,10 @@ namespace RemoteInterface {
 			std::vector<std::shared_ptr<Knob> > get_all_knobs();
 			static std::shared_ptr<BaseMachine> get_machine_by_name(const std::string& name);
 
-			void attach_input(std::shared_ptr<BaseMachine> source, const std::string& output_name, const std::string& input_name);
-			void connect_tightly(std::shared_ptr<BaseMachine> sibling);
+			ON_SERVER(
+				void attach_input(std::shared_ptr<BaseMachine> source, const std::string& output_name, const std::string& input_name);
+				void connect_tightly(std::shared_ptr<BaseMachine> sibling);
+				);
 
 		private:
 			enum AttachmentOperation {AttachInput, DetachInput};

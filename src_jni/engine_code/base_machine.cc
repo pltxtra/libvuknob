@@ -621,36 +621,6 @@ SERVER_N_CLIENT_CODE(
 		return nullptr;
 	}
 
-	void BaseMachine::attach_input(std::shared_ptr<BaseMachine> source,
-				       const std::string& output_name,
-				       const std::string& input_name) {
-		ON_SERVER(
-			auto src = source->machine_ptr.lock();
-			auto dst = machine_ptr.lock();
-			if(src && dst) {
-				dst->attach_input(src.get(), output_name, input_name);
-			}
-			);
-	}
-
-	void BaseMachine::connect_tightly(std::shared_ptr<BaseMachine> sibling) {
-		ON_SERVER(
-			auto w_sbl = sibling->machine_ptr;
-			auto w_slf = machine_ptr;
-			Machine::machine_operation_enqueue(
-				[w_sbl, w_slf]() {
-					auto sbl = w_sbl.lock();
-					auto slf = w_slf.lock();
-					if(sbl && slf) {
-						slf->tightly_connect(sbl.get());
-					} else {
-						SATAN_ERROR("BaseMachine::tightly_connect() failed to tightly connect machines.");
-					}
-				}
-				);
-			);
-	}
-
 	std::map<std::string, std::shared_ptr<BaseMachine> > BaseMachine::name2machine;
 
 	void BaseMachine::register_by_name(std::shared_ptr<BaseMachine> bmchn) {
@@ -829,6 +799,32 @@ CLIENT_CODE(
 	);
 
 SERVER_CODE(
+	void BaseMachine::attach_input(std::shared_ptr<BaseMachine> source,
+				       const std::string& output_name,
+				       const std::string& input_name) {
+		auto src = source->machine_ptr.lock();
+		auto dst = machine_ptr.lock();
+		if(src && dst) {
+			dst->attach_input(src.get(), output_name, input_name);
+		}
+	}
+
+	void BaseMachine::connect_tightly(std::shared_ptr<BaseMachine> sibling) {
+		auto w_sbl = sibling->machine_ptr;
+		auto w_slf = machine_ptr;
+		Machine::machine_operation_enqueue(
+			[w_sbl, w_slf]() {
+				auto sbl = w_sbl.lock();
+				auto slf = w_slf.lock();
+				if(sbl && slf) {
+					slf->tightly_connect(sbl.get());
+				} else {
+					SATAN_ERROR("BaseMachine::tightly_connect() failed to tightly connect machines.");
+				}
+			}
+			);
+	}
+
 	std::map<std::shared_ptr<Machine>, std::shared_ptr<BaseMachine> > BaseMachine::machine2basemachine;
 
 	void BaseMachine::handle_req_change_knob_value(RemoteInterface::Context *context,
