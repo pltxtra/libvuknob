@@ -27,6 +27,7 @@
 #endif
 
 #include <list>
+#include <tuple>
 
 #include "../common.hh"
 #include "../linked_list.hh"
@@ -59,6 +60,12 @@ namespace RemoteInterface {
 					&&
 					(input_name == other.input_name);
 			}
+
+			inline bool operator<(const Connection& rhs) const {
+				return std::tie(source_name, output_name, destination_name, input_name)
+					<
+					std::tie(rhs.source_name, rhs.output_name, rhs.destination_name, rhs.input_name);
+			}
 		};
 
 		class Socket {
@@ -68,7 +75,6 @@ namespace RemoteInterface {
 			void serderize(SerderClassT &serder);
 
 			std::string name;
-			std::vector<std::shared_ptr<Connection> > connections;
 		};
 
 		class BaseMachine
@@ -193,10 +199,25 @@ namespace RemoteInterface {
 				int coarse_controller = -1, fine_controller = -1;
 			};
 
+			ON_CLIENT(
+				class MachineStateListener {
+				public:
+					virtual void on_move() = 0;
+					virtual void on_attach(std::shared_ptr<BaseMachine> src_machine,
+							       const std::string src_output,
+							       const std::string dst_input) = 0;
+					virtual void on_detach(std::shared_ptr<BaseMachine> src_machine,
+							       const std::string src_output,
+							       const std::string dst_input) = 0;
+				};
+				// if the client side app wants to be notified when things in this machine changes
+				void set_state_change_listener(std::weak_ptr<MachineStateListener> state_listener);
+				);
+
 			std::string get_name() { return name; }
 			enum SocketType {InputSocket, OutputSocket};
 			std::vector<std::string> get_socket_names(SocketType type);
-			std::vector<std::shared_ptr<Connection> > get_connections_on_socket(SocketType type, const std::string& socket_name);
+			std::set<Connection> get_connections_on_socket(SocketType type, const std::string& socket_name);
 			std::vector<std::string> get_knob_groups();
 			std::vector<std::shared_ptr<Knob> > get_knobs_for_group(const std::string& group_name);
 			std::vector<std::shared_ptr<Knob> > get_all_knobs();
@@ -215,6 +236,10 @@ namespace RemoteInterface {
 				);
 			ON_CLIENT(
 				static void handle_attachment_command(AttachmentOperation atop, const RemoteInterface::Message& msg);
+				// used on client side when somethings changed server side
+				std::set<std::weak_ptr<MachineStateListener>,
+				std::owner_less<std::weak_ptr<MachineStateListener> > >state_listeners;
+				void call_state_listeners(std::function<void(std::shared_ptr<MachineStateListener> listener)> callback);
 				);
 			static std::mutex base_machine_mutex;
 			static std::map<std::string, std::shared_ptr<BaseMachine> > name2machine;
@@ -222,6 +247,7 @@ namespace RemoteInterface {
 			std::string name;
 			std::vector<std::string> groups;
 			std::vector<std::shared_ptr<Socket> > inputs, outputs;
+			std::set<Connection> input_connections, output_connections;
 			std::set<std::shared_ptr<Knob> > knobs;
 
 			void add_connection(SocketType socket_type, const Connection& connection);

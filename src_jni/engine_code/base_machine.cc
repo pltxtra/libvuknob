@@ -55,7 +55,6 @@ SERVER_N_CLIENT_CODE(
 	template <class SerderClassT>
 	void Socket::serderize(SerderClassT& iserder) {
 		iserder.process(name);
-		iserder.process(connections);
 		SATAN_DEBUG("Socket[%s]\n", name.c_str());
 	}
 
@@ -574,27 +573,24 @@ SERVER_N_CLIENT_CODE(
 		return result;
 	}
 
-	std::vector<std::shared_ptr<Connection> > BaseMachine::get_connections_on_socket(SocketType type, const std::string& socket_name) {
+	std::set<Connection> BaseMachine::get_connections_on_socket(SocketType type, const std::string& socket_name) {
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+		std::set<Connection> result;
 
-		auto f = [this](std::vector<std::shared_ptr<Socket> > sockets,
-				const std::string& socket_name) -> std::vector<std::shared_ptr<Connection> >
-			{
-			std::vector<std::shared_ptr<Connection> > result;
-			for(auto socket : sockets) {
-				if(socket->name == socket_name) {
-					result = socket->connections;
-				}
-			}
-			return result;
-		};
-		std::vector<std::shared_ptr<Connection> > result;
 		switch(type) {
 		case InputSocket:
-			result = f(inputs, socket_name);
+		{
+			for(auto connection : input_connections)
+				if(connection.input_name == socket_name)
+					result.insert(connection);
+		}
 			break;
 		case OutputSocket:
-			result = f(outputs, socket_name);
+		{
+			for(auto connection : output_connections)
+				if(connection.output_name == socket_name)
+					result.insert(connection);
+		}
 			break;
 		}
 		return result;
@@ -650,60 +646,24 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	void BaseMachine::add_connection(SocketType socket_type, const Connection& new_connection) {
-		auto f = [this](const Connection& new_connection, std::vector<std::shared_ptr<Socket> > &sockets, const std::string& socket_name) {
-				 std::lock_guard<std::mutex> lock_guard(base_object_mutex);
-				 for(auto socket : sockets) {
-					 if(socket->name == socket_name) {
-						 for(auto connection : socket->connections) {
-							 if(connection->equals(new_connection)) {
-								 return;
-							 }
-						 }
-						 socket->connections.push_back(std::make_shared<Connection>(new_connection));
-					 }
-				 }
-			 };
 		switch(socket_type) {
 		case InputSocket:
-		{
-			f(new_connection, inputs, new_connection.input_name);
-		}
-		break;
+			input_connections.insert(new_connection);
+			break;
 		case OutputSocket:
-			f(new_connection, outputs, new_connection.output_name);
-		{
-		}
-		break;
+			output_connections.insert(new_connection);
+			break;
 		}
 	}
 
 	void BaseMachine::remove_connection(SocketType socket_type, const Connection& connection2remove) {
-		auto f = [this](const Connection& connection2remove, std::vector<std::shared_ptr<Socket> > &sockets, const std::string& socket_name) {
-				 std::lock_guard<std::mutex> lock_guard(base_object_mutex);
-				 for(auto socket : sockets) {
-					 if(socket->name == socket_name) {
-						 for(auto cn = socket->connections.begin();
-						     cn != socket->connections.end();
-						     cn++) {
-							 if((*cn)->equals(connection2remove)) {
-								 socket->connections.erase(cn);
-								 return;
-							 }
-						 }
-					 }
-				 }
-			 };
 		switch(socket_type) {
 		case InputSocket:
-		{
-			f(connection2remove, inputs, connection2remove.input_name);
-		}
-		break;
+			input_connections.erase(connection2remove);
+			break;
 		case OutputSocket:
-			f(connection2remove, outputs, connection2remove.output_name);
-		{
-		}
-		break;
+			output_connections.erase(connection2remove);
+			break;
 		}
 	}
 
@@ -718,6 +678,14 @@ SERVER_N_CLIENT_CODE(
 			    cnxn.destination_name.c_str(),
 			    cnxn.input_name.c_str()
 			);
+
+		ON_CLIENT(
+			call_state_listeners(
+				[this, &source, &output, &input](std::shared_ptr<BaseMachine::MachineStateListener> listener) {
+					listener->on_attach(source, output, input);
+				}
+				);
+			);
 	}
 
 	void BaseMachine::delete_input_attachment(std::shared_ptr<BaseMachine> source, const std::string& output, const std::string& input) {
@@ -726,11 +694,60 @@ SERVER_N_CLIENT_CODE(
 		source->remove_connection(OutputSocket, cnxn);
 		this->remove_connection(InputSocket, cnxn);
 		SATAN_DEBUG("::delete_input_attachment() done.\n");
+
+		ON_CLIENT(
+			call_state_listeners(
+				[this, &source, &output, &input](std::shared_ptr<MachineStateListener> listener) {
+					listener->on_detach(source, output, input);
+				}
+				);
+			);
 	}
 
 	);
 
 CLIENT_CODE(
+	void BaseMachine::call_state_listeners(std::function<void(std::shared_ptr<MachineStateListener> listener)> callback) {
+		auto weak_listener = state_listeners.begin();
+		while(weak_listener != state_listeners.end()) {
+			if(auto listener = (*weak_listener).lock()) {
+				base_object_mutex.unlock();
+				callback(listener);
+				base_object_mutex.lock();
+				weak_listener++;
+			} else { // if we cannot lock, the listener doesn't exist so we remove it from the set.
+				weak_listener = state_listeners.erase(weak_listener);
+			}
+		}
+	}
+
+	void BaseMachine::set_state_change_listener(std::weak_ptr<MachineStateListener> state_listener) {
+		if(!check_object_is_valid()) throw ObjectWasDeleted();
+
+		context->post_action(
+			[this, state_listener]() {
+				// call all state listener callbacks
+				if(auto listener = state_listener.lock()) {
+					listener->on_move();
+
+					base_object_mutex.lock();
+					auto connection_data = input_connections;
+					base_object_mutex.unlock();
+
+					for(auto connection : connection_data) {
+						auto mch = get_machine_by_name(connection.source_name);
+						listener->on_attach(mch, connection.output_name, connection.input_name);
+					}
+				}
+
+				{
+					std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+					state_listeners.insert(state_listener);
+				}
+			}
+			);
+	}
+
 	void BaseMachine::handle_cmd_change_knob_value(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
@@ -766,6 +783,7 @@ CLIENT_CODE(
 				break;
 			}
 		}
+
 	}
 
 	void BaseMachine::handle_cmd_attach_input(RemoteInterface::Context *context,
