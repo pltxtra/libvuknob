@@ -571,8 +571,6 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		note_on(new_tone);
 		break;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
-		SATAN_DEBUG("event_current_x: %f\n", event_current_x);
-		SATAN_DEBUG("finger_position: %f\n", event_current_x);
 		if(new_tone != current_tone) {
 			note_off(new_tone);
 			new_tone = current_tone;
@@ -581,16 +579,21 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		break;
 	case KammoGUI::MotionEvent::ACTION_UP:
 		note_off(new_tone);
-		SATAN_DEBUG("new_tone: %d (%f -> %f)\n", new_tone, event_left_x, event_right_x);
+		SATAN_DEBUG("ADD a new_tone: %d (%f -> %f)\n", new_tone, event_left_x, event_right_x);
 
-		if(start_at_sequence_position != stop_at_sequence_position) {
-			ri_seq->add_note(
-				pattern_id,
-				0, 0, 0x7f,
-				new_tone,
-				start_at_sequence_position,
-				stop_at_sequence_position - start_at_sequence_position - (MACHINE_TICKS_PER_LINE >> 1)
-				);
+		if(ri_seq) {
+			SATAN_DEBUG("ri_seq was found at %p!\n", ri_seq.get());
+			if(start_at_sequence_position != stop_at_sequence_position) {
+				ri_seq->add_note(
+					pattern_id,
+					0, 0, 0x7f,
+					new_tone,
+					start_at_sequence_position,
+					stop_at_sequence_position - start_at_sequence_position - (MACHINE_TICKS_PER_LINE >> 1)
+					);
+			}
+		} else {
+			SATAN_DEBUG("ri_seq not to be found in %p!\n", this);
 		}
 
 		display_action = false;
@@ -620,10 +623,6 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 	if(stop_at_sequence_position - start_at_sequence_position == 0)
 		stop_at_sequence_position +=  MACHINE_TICKS_PER_LINE;
 
-	SATAN_DEBUG("Forced - Start: %d - Stop: %d\n",
-		    start_at_sequence_position,
-		    stop_at_sequence_position);
-
 	auto root_element = backdrop_reference.get_root();
 	auto new_piece_indicator = root_element.find_child_by_class("newPieceIndicator");
 
@@ -637,8 +636,6 @@ void PatternEditor::on_backdrop_event(const KammoGUI::MotionEvent &event) {
 		double lft = timelines_minor_spacing * stt + timelines_offset;
 		double rgt = timelines_minor_spacing * stp + timelines_offset;
 
-		SATAN_DEBUG("timeline_offset: %f\n", timelines_offset);
-		SATAN_DEBUG("b_x: %f, e_x: %f\n", lft, rgt);
 		double top = (finger_position + offset) * finger_height;
 		new_piece_indicator.set_rect_coords(lft, top, rgt - lft, finger_height);
 	}
@@ -649,7 +646,6 @@ void PatternEditor::pianoroll_scrolled_vertical(float pixels_changed) {
 	pianoroll_offset += ((double)pixels_changed) / finger_height;
 	if(pianoroll_offset < 0.0) pianoroll_offset = 0.0;
 	if(pianoroll_offset > 127.0) pianoroll_offset = 127.0;
-	SATAN_DEBUG("pianoroll offset: %f\n", pianoroll_offset);
 	refresh_note_graphics();
 }
 
@@ -702,10 +698,8 @@ void PatternEditor::on_pianorollscroll_event(const KammoGUI::MotionEvent &event)
 		pianoroll_tone = new_tone_index;
 		note_on(pianoroll_tone);
 
-		SATAN_DEBUG("event_start_x: %f\n", event_start_x);
 		break;
 	case KammoGUI::MotionEvent::ACTION_MOVE:
-		SATAN_DEBUG("event_current_x: %f\n", event_current_x);
 		{
 			auto diff = event_current_y - event_start_y;
 			pianoroll_scrolled_vertical(diff);
@@ -925,7 +919,6 @@ PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
 		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
 		       const KammoGUI::MotionEvent &event) {
 			on_backdrop_event(event);
-			SATAN_DEBUG("End backdrop event...\n");
 		}
 		);
 
@@ -935,7 +928,6 @@ PatternEditor::PatternEditor(KammoGUI::GnuVGCanvas* cnvs,
 		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
 		       const KammoGUI::MotionEvent &event) {
 			on_pianorollscroll_event(event);
-			SATAN_DEBUG("End backdrop event...\n");
 		}
 		);
 	pianoroll_reference = KammoGUI::GnuVGCanvas::ElementReference(this, "pianoroll");
@@ -945,13 +937,14 @@ PatternEditor::~PatternEditor() {
 	singleton = nullptr;
 }
 
-void PatternEditor::use_context(std::shared_ptr<RISequence> ri_seq, uint32_t pattern_id) {
-	if(ri_seq) {
-		use_sequence_and_pattern(ri_seq, pattern_id);
+void PatternEditor::use_context(std::shared_ptr<RISequence> _ri_seq, uint32_t _pattern_id) {
+	if(_ri_seq) {
+		use_sequence_and_pattern(_ri_seq, _pattern_id);
 	}
 }
 
 void PatternEditor::hide(bool hide_timelines) {
+	SATAN_DEBUG("PatternEditor::hide() called..\n");
 	PatternEditorMenu::hide();
 	cleanup_pattern_listening();
 
@@ -1101,7 +1094,7 @@ void PatternEditor::on_resize() {
 	tmp = canvas_h / ((double)canvas_height_fingers);
 	finger_height = tmp;
 
-	SATAN_ERROR("PatternEditor finger_height: %d\n", (int)finger_height);
+	SATAN_DEBUG("PatternEditor finger_height: %d\n", (int)finger_height);
 
 	// get document parameters
 	auto root = KammoGUI::GnuVGCanvas::ElementReference(this);
@@ -1135,6 +1128,7 @@ void PatternEditor::on_render() {
 
 void PatternEditor::cleanup_pattern_listening() {
 	if(ri_seq) {
+		SATAN_DEBUG("PatternEditor::cleanup_pattern_listening() -- %p, %p\n", this, ri_seq.get());
 		ri_seq->drop_pattern_listener(shared_from_this());
 		ri_seq.reset();
 	}
@@ -1144,6 +1138,7 @@ void PatternEditor::use_sequence_and_pattern(std::shared_ptr<RISequence> _ri_seq
 	cleanup_pattern_listening();
 	clear_note_graphics();
 	ri_seq = _ri_seq;
+	SATAN_DEBUG("TJINGALING PatternEditor::use_sequence_and_pattern(%p, %p) -> %p\n", this, _ri_seq.get(), ri_seq.get());
 	pattern_id = _pattern_id;
 	ri_seq->add_pattern_listener(pattern_id, shared_from_this());
 	PatternEditorMenu::set_pattern_id(pattern_id);

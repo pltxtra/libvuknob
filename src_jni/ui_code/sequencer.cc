@@ -1314,7 +1314,6 @@ void Sequencer::hide() {
 	timelines->hide_all();
 	loop_settings->hide();
 	plus_button->hide();
-	pattern_editor->hide();
 	hide_all();
 }
 
