@@ -641,7 +641,7 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	void BaseMachine::add_connection(SocketType socket_type, const Connection& new_connection) {
-		auto f = [this](const Connection& new_connection, std::vector<std::shared_ptr<Socket> > sockets, const std::string& socket_name) {
+		auto f = [this](const Connection& new_connection, std::vector<std::shared_ptr<Socket> > &sockets, const std::string& socket_name) {
 			for(auto socket : sockets) {
 				if(socket->name == socket_name) {
 					for(auto connection : socket->connections) {
@@ -668,7 +668,7 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	void BaseMachine::remove_connection(SocketType socket_type, const Connection& connection2remove) {
-		auto f = [this](const Connection& connection2remove, std::vector<std::shared_ptr<Socket> > sockets, const std::string& socket_name) {
+		auto f = [this](const Connection& connection2remove, std::vector<std::shared_ptr<Socket> > &sockets, const std::string& socket_name) {
 			for(auto socket : sockets) {
 				if(socket->name == socket_name) {
 					for(auto cn = socket->connections.begin();
