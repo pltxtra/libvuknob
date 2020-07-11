@@ -91,7 +91,7 @@ SERVER_CODE(
 
 		/**** end service objects data and logic ****/
 
-		class ClientAgent : public MessageHandler {
+		class ClientAgent : public BasicMessageHandler {
 		private:
 			int32_t id;
 			Server *server;

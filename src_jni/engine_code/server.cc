@@ -39,7 +39,7 @@ SERVER_CODE(
 	}
 
 	Server::ClientAgent::ClientAgent(int32_t _id, asio::ip::tcp::socket _socket, Server *_server)
-	: MessageHandler(std::move(_socket)), id(_id), server(_server) {
+	: BasicMessageHandler(std::move(_socket)), id(_id), server(_server) {
 	}
 
 	void Server::ClientAgent::start() {

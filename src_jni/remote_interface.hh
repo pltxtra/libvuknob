@@ -428,6 +428,13 @@ namespace RemoteInterface {
 	};
 
 	class MessageHandler : public std::enable_shared_from_this<MessageHandler> {
+	public:
+		virtual void deliver_message(std::shared_ptr<Message> &msg, bool via_udp = false) = 0;
+		virtual void on_message_received(const Message &msg) = 0;
+		virtual void on_connection_dropped() = 0;
+	};
+
+	class BasicMessageHandler : public MessageHandler {
 	private:
 		Message read_msg;
 		std::deque<std::shared_ptr<Message> > write_msgs;
@@ -444,21 +451,12 @@ namespace RemoteInterface {
 		asio::ip::udp::endpoint udp_target_endpoint;
 
 	public:
-		class OnlyForDelivery : public std::runtime_error {
-		public:
-			OnlyForDelivery() : runtime_error("MessageHandler object only intended for use with deliver_message().") {}
-			virtual ~OnlyForDelivery() {}
-		};
-
-		MessageHandler(asio::io_service &io_service);
-		MessageHandler(asio::ip::tcp::socket _socket);
+		BasicMessageHandler(asio::io_service &io_service);
+		BasicMessageHandler(asio::ip::tcp::socket _socket);
 
 		void start_receive();
 
-		virtual void deliver_message(std::shared_ptr<Message> &msg, bool via_udp = false);
-
-		virtual void on_message_received(const Message &msg) = 0;
-		virtual void on_connection_dropped() = 0;
+		virtual void deliver_message(std::shared_ptr<Message> &msg, bool via_udp = false) override;
 	};
 
 	class BaseObject : public std::enable_shared_from_this<BaseObject> {

@@ -38,7 +38,7 @@ CLIENT_CODE(
 	std::mutex Client::client_mutex;
 
 	Client::Client()
-	: MessageHandler(io_service)
+	: BasicMessageHandler(io_service)
 	, resolver(io_service)
 	, udp_resolver(io_service)
 	{

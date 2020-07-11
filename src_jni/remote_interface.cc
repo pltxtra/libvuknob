@@ -268,11 +268,11 @@ std::shared_ptr<RemoteInterface::Message> RemoteInterface::Context::acquire_repl
 
 /***************************
  *
- *  Class RemoteInterface::MessageHandler
+ *  Class RemoteInterface::BasicMessageHandler
  *
  ***************************/
 
-void RemoteInterface::MessageHandler::do_read_header() {
+void RemoteInterface::BasicMessageHandler::do_read_header() {
 	auto self(shared_from_this());
 	asio::async_read(
 		my_socket,
@@ -289,7 +289,7 @@ void RemoteInterface::MessageHandler::do_read_header() {
 		);
 }
 
-void RemoteInterface::MessageHandler::do_read_body() {
+void RemoteInterface::BasicMessageHandler::do_read_body() {
 	auto self(shared_from_this());
 	asio::async_read(
 		my_socket,
@@ -319,7 +319,7 @@ void RemoteInterface::MessageHandler::do_read_body() {
 		);
 }
 
-void RemoteInterface::MessageHandler::do_write() {
+void RemoteInterface::BasicMessageHandler::do_write() {
 	SATAN_DEBUG("MessageHandler::do_write()... queing async write..\n");
 	auto self(shared_from_this());
 	asio::async_write(
@@ -340,31 +340,30 @@ void RemoteInterface::MessageHandler::do_write() {
 	SATAN_DEBUG("MessageHandler::do_write()... async write queued..\n");
 }
 
-void RemoteInterface::MessageHandler::do_write_udp(std::shared_ptr<Message> &msg) {
+void RemoteInterface::BasicMessageHandler::do_write_udp(std::shared_ptr<Message> &msg) {
 	try {
 		my_udp_socket->send_to(msg->get_data(), udp_target_endpoint);
 	} catch(std::exception &exp) {
-		SATAN_ERROR("RemoteInterface::MessageHandler::do_write_udp() failed to deliver message: %s\n",
+		SATAN_ERROR("RemoteInterface::BasicMessageHandler::do_write_udp() failed to deliver message: %s\n",
 			    exp.what());
 	}
 }
 
-RemoteInterface::MessageHandler::MessageHandler(asio::io_service &io_service) : my_socket(io_service) {
+RemoteInterface::BasicMessageHandler::BasicMessageHandler(asio::io_service &io_service) : my_socket(io_service) {
 	my_udp_socket = std::make_shared<asio::ip::udp::socket>(io_service, asio::ip::udp::endpoint(asio::ip::udp::v4(), 0));
 }
 
-RemoteInterface::MessageHandler::MessageHandler(asio::ip::tcp::socket _socket) :
-	my_socket(std::move(_socket)) {
+RemoteInterface::BasicMessageHandler::BasicMessageHandler(asio::ip::tcp::socket _socket) : my_socket(std::move(_socket)) {
 }
 
-void RemoteInterface::MessageHandler::start_receive() {
+void RemoteInterface::BasicMessageHandler::start_receive() {
 	do_read_header();
 }
 
-void RemoteInterface::MessageHandler::deliver_message(std::shared_ptr<Message> &msg, bool via_udp) {
+void RemoteInterface::BasicMessageHandler::deliver_message(std::shared_ptr<Message> &msg, bool via_udp) {
 	msg->encode();
 
-	SATAN_DEBUG("MessageHandler::deliver_message() - msg encoded..\n");
+	SATAN_DEBUG("RemoteInterface::BasicMessageHandler::deliver_message() - msg encoded..\n");
 
 	if(via_udp && my_udp_socket &&
 	   (msg->get_body_length() <= VUKNOB_MAX_UDP_SIZE)) {
@@ -606,17 +605,17 @@ namespace RemoteInterface {
 		command2function[command_id] = handler;
 	}
 
-	class SimpleHandler : public MessageHandler{
+	class ServerSideOnlyMessageHandler : public MessageHandler{
 	private:
-		asio::io_service io_service;
 		std::function<void(const Message *reply_message)> callback;
 	public:
-		SimpleHandler(std::function<void(const Message *reply_message)> _cb)
-			: MessageHandler(io_service)
-			, callback(_cb)
+		ServerSideOnlyMessageHandler(std::function<void(const Message *reply_message)> _cb)
+			: callback(_cb)
 			{}
-		SimpleHandler()
-			: MessageHandler(io_service)
+		ServerSideOnlyMessageHandler()
+			: callback([](const Message *reply_message) {
+					   SATAN_ERROR("Calling ServerSideOnlyMessageHandler::deliver_message() without a defined callback.");
+				   })
 			{}
 
 		virtual void deliver_message(std::shared_ptr<Message> &msg, bool via_udp = false) override {
@@ -657,7 +656,7 @@ namespace RemoteInterface {
 					msg2send->set_value("commandid", command_id);
 					create_msg_callback(msg2send);
 
-					SimpleHandler sh(reply_received_callback);
+					ServerSideOnlyMessageHandler sh(reply_received_callback);
 					auto fnc = command2function.find(command_id);
 					const Message& m2s = *(msg2send.get());
 					if(fnc != command2function.end())
@@ -693,6 +692,7 @@ namespace RemoteInterface {
 		if(!check_object_is_valid()) throw ObjectWasDeleted();
 
 		if(is_server_side()) {
+			SATAN_DEBUG("::send_message_to_server() - already on server...\n");
 			// if we already are server side - shortcut the process
 			context->post_action(
 				[this, command_id, create_msg_callback]() {
@@ -700,16 +700,22 @@ namespace RemoteInterface {
 
 					msg2send->set_value("id", std::to_string(get_obj_id()));
 					msg2send->set_value("commandid", command_id);
+					SATAN_DEBUG("::send_message_to_server(): Calling create_msg_callback()...\n");
 					create_msg_callback(msg2send);
 
-					SimpleHandler sh;
+					SATAN_DEBUG("::send_message_to_server(): Creating handler...\n");
+					ServerSideOnlyMessageHandler sh;
+					SATAN_DEBUG("::send_message_to_server(): Finding function...\n");
 					auto fnc = command2function.find(command_id);
 					const Message& m2s = *(msg2send.get());
-					if(fnc != command2function.end())
+					if(fnc != command2function.end()) {
+						SATAN_DEBUG("::send_message_to_server(): Calling function...\n");
 						fnc->second(context, &sh, m2s);
+					}
 				}, true
 				);
 		} else {
+			SATAN_DEBUG("::send_message_to_server() - not on server...\n");
 			send_object_message(
 				[command_id, create_msg_callback](std::shared_ptr<Message> &msg_to_send) {
 					msg_to_send->set_value("commandid", command_id);
