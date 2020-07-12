@@ -435,10 +435,12 @@ SERVER_CODE(
 				Server::create_object<Sequence>(
 					[sibling](std::shared_ptr<Sequence> seq) {
 						seq->init_from_machine_ptr(seq, seq);
-						sibling->attach_input(
+						SATAN_DEBUG("Sequence::create_sequence_for_machine() attach input for sibling. A\n");
+						sibling->attach_machine_input(
 							seq,
 							MACHINE_SEQUENCER_MIDI_OUTPUT_NAME,
 							MACHINE_SEQUENCER_MIDI_INPUT_NAME);
+						SATAN_DEBUG("Sequence::create_sequence_for_machine() attach input for sibling. B\n");
 						seq->sequence_name = sibling->get_name();
 
 						SATAN_DEBUG("    ***   \n");

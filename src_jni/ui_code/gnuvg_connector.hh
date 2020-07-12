@@ -30,11 +30,16 @@
 #include "gnuvg_listview.hh"
 #include "gnuvg_corner_button.hh"
 #include "gnuvg_connection_list.hh"
+#include "engine_code/base_machine.hh"
+#include "engine_code/machine_api.hh"
+
+typedef RemoteInterface::ClientSpace::MachineAPI RIMachine;
+typedef RemoteInterface::ClientSpace::BaseMachine BaseMachine;
 
 class GnuVGConnector
 	: public KammoGUI::GnuVGCanvas::SVGDocument
 	, public KammoGUI::ScaleGestureDetector::OnScaleGestureListener
-	, public RemoteInterface::Context::ObjectSetListener<RemoteInterface::RIMachine>
+	, public RemoteInterface::Context::ObjectSetListener<RIMachine>
 {
 
 private:
@@ -107,11 +112,11 @@ private:
 
 	class MachineGraphic
 		: public KammoGUI::GnuVGCanvas::ElementReference
-		, public RemoteInterface::RIMachine::RIMachineStateListener
+		, public BaseMachine::MachineStateListener
 		, public std::enable_shared_from_this<MachineGraphic>
 	{
 	private:
-		static std::map<std::shared_ptr<RemoteInterface::RIMachine>, std::weak_ptr<MachineGraphic> > mch2grph;
+		static std::map<std::shared_ptr<RIMachine>, std::weak_ptr<MachineGraphic> > mch2grph;
 		static std::pair<std::weak_ptr<MachineGraphic>, std::string> *current_output;
 
 		class Transition : public KammoGUI::Animation {
@@ -175,7 +180,7 @@ private:
 		std::vector<IOSocket *> inputs;
 		std::vector<IOSocket *> outputs;
 
-		std::shared_ptr<RemoteInterface::RIMachine>machine;
+		std::shared_ptr<RIMachine>machine;
 		GnuVGConnector *context;
 
 		SelectionAnimation *selected_animation; // if this is set, then this machine is selected
@@ -209,23 +214,23 @@ private:
 		std::string name_copy;
 
 	public:
-		MachineGraphic(GnuVGConnector *context, const std::string &svg_id, std::shared_ptr<RemoteInterface::RIMachine> machine);
+		MachineGraphic(GnuVGConnector *context, const std::string &svg_id, std::shared_ptr<RIMachine> machine);
 		~MachineGraphic();
 
 		void debug_print();
 
 		virtual void on_move() override;
-		virtual void on_attach(std::shared_ptr<RemoteInterface::RIMachine> src_machine,
+		virtual void on_attach(std::shared_ptr<BaseMachine> src_machine,
 				       const std::string src_output,
 				       const std::string dst_input) override;
-		virtual void on_detach(std::shared_ptr<RemoteInterface::RIMachine> src_machine,
+		virtual void on_detach(std::shared_ptr<BaseMachine> src_machine,
 				       const std::string src_output,
 				       const std::string dst_input) override;
 
-		bool matches_ri_machine(std::shared_ptr<RemoteInterface::RIMachine> ri_machine);
-		std::shared_ptr<RemoteInterface::RIMachine> get_ri_machine();
+		bool matches_ri_machine(std::shared_ptr<RIMachine> ri_machine);
+		std::shared_ptr<RIMachine> get_ri_machine();
 
-		static std::shared_ptr<MachineGraphic> create(GnuVGConnector *context, std::shared_ptr<RemoteInterface::RIMachine> machine);
+		static std::shared_ptr<MachineGraphic> create(GnuVGConnector *context, std::shared_ptr<RIMachine> machine);
 
 		void hide();
 		void show();
@@ -296,15 +301,15 @@ public:
 	double get_scaling();
 
 	void show_connection_list(double x_pos, double y_pos,
-				  std::shared_ptr<RemoteInterface::RIMachine> src,
-				  std::shared_ptr<RemoteInterface::RIMachine> dst,
+				  std::shared_ptr<RIMachine> src,
+				  std::shared_ptr<RIMachine> dst,
 				  std::set<std::pair<std::string, std::string> > output2input_names);
 
 	void zoom_in_at(std::shared_ptr<MachineGraphic> selected, double x_pos, double y_pos);
 	void zoom_restore();
 
-	virtual void object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
-	virtual void object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) override;
+	virtual void object_registered(std::shared_ptr<RIMachine> ri_machine) override;
+	virtual void object_unregistered(std::shared_ptr<RIMachine> ri_machine) override;
 
 	void show();
 	void hide();

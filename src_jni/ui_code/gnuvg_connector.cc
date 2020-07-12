@@ -271,7 +271,7 @@ void GnuVGConnector::MachineGraphic::Transition::on_touch_event() { /* ignored *
 // we have to scale the positional data of a machine by this scaling factor to make they appear nicely
 #define MACHINE_POS_SCALING 2000.0
 
-std::map<std::shared_ptr<RemoteInterface::RIMachine>, std::weak_ptr<GnuVGConnector::MachineGraphic> > GnuVGConnector::MachineGraphic::mch2grph;
+std::map<std::shared_ptr<RIMachine>, std::weak_ptr<GnuVGConnector::MachineGraphic> > GnuVGConnector::MachineGraphic::mch2grph;
 std::pair<std::weak_ptr<GnuVGConnector::MachineGraphic>, std::string>* GnuVGConnector::MachineGraphic::current_output = NULL;
 
 GnuVGConnector::MachineGraphic::IOSocket::IOSocket(KammoGUI::GnuVGCanvas::ElementReference original,
@@ -287,7 +287,7 @@ void GnuVGConnector::MachineGraphic::debug_print() {
 
 GnuVGConnector::MachineGraphic::MachineGraphic(
 	GnuVGConnector *_context, const std::string &svg_id,
-	std::shared_ptr<RemoteInterface::RIMachine> _machine)
+	std::shared_ptr<RIMachine> _machine)
 	: KammoGUI::GnuVGCanvas::ElementReference(_context, svg_id)
 	, tilt_x(0.0)
 	, detailed_mode(false)
@@ -313,8 +313,8 @@ GnuVGConnector::MachineGraphic::MachineGraphic(
 		KammoGUI::GnuVGCanvas::ElementReference input_template = KammoGUI::GnuVGCanvas::ElementReference(context, "inputIndicatorTemplate");
 		KammoGUI::GnuVGCanvas::ElementReference output_template = KammoGUI::GnuVGCanvas::ElementReference(context, "outputIndicatorTemplate");
 
-		create_sockets(inputs, machine->get_input_names(), input_template, on_input_socket_event);
-		create_sockets(outputs, machine->get_output_names(), output_template, on_output_socket_event);
+		create_sockets(inputs, machine->get_socket_names(RIMachine::InputSocket), input_template, on_input_socket_event);
+		create_sockets(outputs, machine->get_socket_names(RIMachine::OutputSocket), output_template, on_output_socket_event);
 	}
 	{ // move the graphic into position
 
@@ -357,11 +357,10 @@ void GnuVGConnector::MachineGraphic::on_move() {
 		);
 }
 
-void GnuVGConnector::MachineGraphic::on_attach(std::shared_ptr<RemoteInterface::RIMachine> src_machine,
+void GnuVGConnector::MachineGraphic::on_attach(std::shared_ptr<BaseMachine> base_src_machine,
 					  const std::string src_output,
 					  const std::string dst_input) {
-	if(src_machine->get_machine_type() == "MachineSequencer") return; // we can skip this case right away
-
+	auto src_machine = std::dynamic_pointer_cast<RIMachine>(base_src_machine);
 	SATAN_DEBUG("---->     (%d) MachineGraphic() -- attached [%s] @ %s ---> [%s] @ %s\n",
 		    gettid(),
 		    src_machine->get_name().c_str(), src_output.c_str(),
@@ -414,9 +413,10 @@ void GnuVGConnector::MachineGraphic::on_attach(std::shared_ptr<RemoteInterface::
 		);
 }
 
-void GnuVGConnector::MachineGraphic::on_detach(std::shared_ptr<RemoteInterface::RIMachine> src_machine,
+void GnuVGConnector::MachineGraphic::on_detach(std::shared_ptr<BaseMachine> base_src_machine,
 					  const std::string src_output,
 					  const std::string dst_input) {
+	auto src_machine = std::dynamic_pointer_cast<RIMachine>(base_src_machine);
 	auto thiz = shared_from_this();
 	KammoGUI::run_on_GUI_thread(
 		[this, thiz,src_machine, src_output, dst_input]() {
@@ -439,11 +439,11 @@ void GnuVGConnector::MachineGraphic::on_detach(std::shared_ptr<RemoteInterface::
 		);
 }
 
-bool GnuVGConnector::MachineGraphic::matches_ri_machine(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
+bool GnuVGConnector::MachineGraphic::matches_ri_machine(std::shared_ptr<RIMachine> ri_machine) {
 	return (ri_machine == machine) ? true : false;
 }
 
-std::shared_ptr<RemoteInterface::RIMachine> GnuVGConnector::MachineGraphic::get_ri_machine() {
+std::shared_ptr<RIMachine> GnuVGConnector::MachineGraphic::get_ri_machine() {
 	return machine;
 }
 
@@ -670,7 +670,7 @@ void GnuVGConnector::MachineGraphic::on_input_socket_event(KammoGUI::GnuVGCanvas
 			auto s = crnt->get_ri_machine();
 			auto d = io_sock->owner->get_ri_machine();
 
-			d->attach_input(s, current_output->second, io_sock->name);
+			d->attach_machine_input(s, current_output->second, io_sock->name);
 
 			crnt->deselect();
 		}
@@ -682,7 +682,7 @@ void GnuVGConnector::MachineGraphic::on_input_socket_event(KammoGUI::GnuVGCanvas
 
 std::shared_ptr<GnuVGConnector::MachineGraphic> GnuVGConnector::MachineGraphic::create(
 	GnuVGConnector *context,
-	std::shared_ptr<RemoteInterface::RIMachine> machine)
+	std::shared_ptr<RIMachine> machine)
 {
 	std::stringstream id_stream;
 	id_stream << "graphic_" << (void *)machine.get();
@@ -1043,8 +1043,8 @@ double GnuVGConnector::get_scaling() {return scaling;}
 
 
 void GnuVGConnector::show_connection_list(double x_pos, double y_pos,
-				     std::shared_ptr<RemoteInterface::RIMachine> src,
-				     std::shared_ptr<RemoteInterface::RIMachine> dst,
+				     std::shared_ptr<RIMachine> src,
+				     std::shared_ptr<RIMachine> dst,
 				     std::set<std::pair<std::string, std::string> > output2input_names) {
 
 	{ // bring out the connection list
@@ -1055,7 +1055,7 @@ void GnuVGConnector::show_connection_list(double x_pos, double y_pos,
 			connection_list->add(o2i.first, o2i.second,
 					     [src, dst, output, input](){
 						     SATAN_DEBUG(" will call remote interface detach.\n");
-						     dst->detach_input(src, output, input);
+						     dst->detach_machine_input(src, output, input);
 					     }
 				);
 		}
@@ -1115,9 +1115,7 @@ void GnuVGConnector::zoom_restore() {
 	settings_button.hide();
 }
 
-void GnuVGConnector::object_registered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
-	if(ri_machine->get_machine_type() == "MachineSequencer") return; // we don't want to show the MachineSequencers in the connector view..
-
+void GnuVGConnector::object_registered(std::shared_ptr<RIMachine> ri_machine) {
 	SATAN_DEBUG("---->     --- (%d) will create MachineGraphic for %s\n", gettid(), ri_machine->get_name().c_str());
 
 	KammoGUI::run_on_GUI_thread(
@@ -1129,9 +1127,7 @@ void GnuVGConnector::object_registered(std::shared_ptr<RemoteInterface::RIMachin
 		);
 }
 
-void GnuVGConnector::object_unregistered(std::shared_ptr<RemoteInterface::RIMachine> ri_machine) {
-	if(ri_machine->get_machine_type() == "MachineSequencer") return; // we don't know any MachineSequencer machines..
-
+void GnuVGConnector::object_unregistered(std::shared_ptr<RIMachine> ri_machine) {
 	KammoGUI::run_on_GUI_thread(
 		[this, ri_machine]() {
 			auto iterator = graphics.begin();
@@ -1169,7 +1165,7 @@ void GnuVGConnector::hide() {
 
 std::shared_ptr<GnuVGConnector> GnuVGConnector::create(KammoGUI::GnuVGCanvas *cnvs) {
 	auto connector_ui = std::make_shared<GnuVGConnector>(cnvs);
-	RemoteInterface::ClientSpace::Client::register_object_set_listener<RemoteInterface::RIMachine>(connector_ui);
+	RemoteInterface::ClientSpace::Client::register_object_set_listener<RIMachine>(connector_ui);
 	connector_ui->hide();
 	return connector_ui;
 }

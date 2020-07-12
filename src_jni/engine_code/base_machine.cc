@@ -641,6 +641,10 @@ SERVER_N_CLIENT_CODE(
 		iserder.process(knobs);
 		iserder.process(inputs);
 		iserder.process(outputs);
+		iserder.process(input_connections);
+		iserder.process(output_connections);
+		iserder.process(x_position);
+		iserder.process(y_position);
 		SATAN_DEBUG("serderize_base_machine() -- base_machine_name: %s\n",
 			    name.c_str());
 	}
@@ -704,6 +708,40 @@ SERVER_N_CLIENT_CODE(
 			);
 	}
 
+	void BaseMachine::attach_machine_input(std::shared_ptr<BaseMachine> source,
+					       const std::string& output_name,
+					       const std::string& input_name) {
+		auto source_name = source->get_name();
+
+		send_message_to_server(
+			req_attach_input,
+			[source_name, output_name, input_name]
+			(std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				SATAN_DEBUG("BaseMachine::attach_machine_input() filling in...\n");
+				msg2send->set_value("src", source_name);
+				msg2send->set_value("oup", output_name);
+				msg2send->set_value("inp", input_name);
+				SATAN_DEBUG("BaseMachine::attach_machine_input() filled in!\n");
+			}
+		);
+	}
+
+	void BaseMachine::detach_machine_input(std::shared_ptr<BaseMachine> source,
+					       const std::string& output_name,
+					       const std::string& input_name) {
+		auto source_name = source->get_name();
+
+		send_message_to_server(
+			req_detach_input,
+			[source_name, output_name, input_name]
+			(std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				msg2send->set_value("src", source_name);
+				msg2send->set_value("oup", output_name);
+				msg2send->set_value("inp", input_name);
+			}
+		);
+	}
+
 	);
 
 CLIENT_CODE(
@@ -751,6 +789,7 @@ CLIENT_CODE(
 	void BaseMachine::handle_cmd_change_knob_value(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
+		std::lock_guard<std::mutex> lock_guard(base_machine_mutex);
 		int kid = std::stoi(msg.get_value("knb_id"));
 		std::string value = msg.get_value("value");
 		SATAN_DEBUG("handle_cmd_change_knob_valu(%d, %s)\n", kid, value.c_str());
@@ -764,22 +803,20 @@ CLIENT_CODE(
 		std::lock_guard<std::mutex> lock_guard(base_machine_mutex);
 		auto source_name = msg.get_value("src");
 		auto output = msg.get_value("oup");
-		auto destination_name = msg.get_value("dst");
 		auto input = msg.get_value("inp");
 		SATAN_ERROR("[%d] handle_cmd_attach([%s:%s] -> [%s:%s]\n",
 			    name2machine.size(),
-			    source_name.c_str(), output.c_str(), destination_name.c_str(), input.c_str());
+			    source_name.c_str(), output.c_str(), name.c_str(), input.c_str());
 
-		if(name2machine.count(source_name) && name2machine.count(destination_name)) {
+		if(name2machine.count(source_name)) {
 			auto source = name2machine[source_name];
-			auto destination = name2machine[destination_name];
-			SATAN_ERROR("  -> found source (%p) and destination (%p)\n", source.get(), destination.get());
+			SATAN_ERROR("  -> found source (%p) and destination (%p)\n", source.get(), this);
 			switch(atop) {
 			case AttachInput:
-				destination->create_input_attachment(source, output, input);
+				create_input_attachment(source, output, input);
 				break;
 			case DetachInput:
-				destination->delete_input_attachment(source, output, input);
+				delete_input_attachment(source, output, input);
 				break;
 			}
 		}
@@ -796,6 +833,19 @@ CLIENT_CODE(
 						  RemoteInterface::MessageHandler *src,
 						  const RemoteInterface::Message& msg) {
 		handle_attachment_command(DetachInput, msg);
+	}
+
+	void BaseMachine::handle_cmd_set_position(RemoteInterface::Context *context,
+						  RemoteInterface::MessageHandler *src,
+						  const RemoteInterface::Message& msg) {
+		std::lock_guard<std::mutex> lock_guard(base_machine_mutex);
+		auto xpos = std::stod(msg.get_value("xpos"));
+		auto ypos = std::stod(msg.get_value("ypos"));
+
+		SATAN_DEBUG("handle_cmd_set_position(%f, %f)\n", xpos, ypos);
+
+		x_position = xpos;
+		y_position = ypos;
 	}
 
 	BaseMachine::BaseMachine(const Factory *factory, const RemoteInterface::Message &serialized)
@@ -826,19 +876,37 @@ CLIENT_CODE(
 		}
 	}
 
+	double BaseMachine::get_x_position() {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+		return x_position;
+	}
+
+	double BaseMachine::get_y_position() {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+		return y_position;
+	}
+
+	void BaseMachine::set_position(double xpos, double ypos) {
+		send_message_to_server(
+			req_set_position,
+			[xpos, ypos]
+			(std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				msg2send->set_value("xpos", std::to_string(xpos));
+				msg2send->set_value("ypos", std::to_string(ypos));
+			}
+		);
+	}
+
+	void BaseMachine::delete_machine() {
+		send_message_to_server(
+			req_delete_machine,
+			[](std::shared_ptr<RemoteInterface::Message> &msg2send) {}
+		);
+	}
+
 	);
 
 SERVER_CODE(
-	void BaseMachine::attach_input(std::shared_ptr<BaseMachine> source,
-				       const std::string& output_name,
-				       const std::string& input_name) {
-		auto src = source->machine_ptr.lock();
-		auto dst = machine_ptr.lock();
-		if(src && dst) {
-			dst->attach_input(src.get(), output_name, input_name);
-		}
-	}
-
 	void BaseMachine::connect_tightly(std::shared_ptr<BaseMachine> sibling) {
 		auto w_sbl = sibling->machine_ptr;
 		auto w_slf = machine_ptr;
@@ -857,33 +925,81 @@ SERVER_CODE(
 
 	std::map<std::shared_ptr<Machine>, std::shared_ptr<BaseMachine> > BaseMachine::machine2basemachine;
 
+	void BaseMachine::handle_req_delete_machine(RemoteInterface::Context *context,
+						    RemoteInterface::MessageHandler *src,
+						    const RemoteInterface::Message& msg) {
+		if(auto real_machine_ptr = machine_ptr.lock())
+			Machine::disconnect_and_destroy(real_machine_ptr.get());
+	}
+
 	void BaseMachine::handle_req_change_knob_value(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
+		std::lock_guard<std::mutex> lock_guard(base_machine_mutex);
 		int kid = std::stoi(msg.get_value("knb_id"));
 		std::string value = msg.get_value("value");
 		SATAN_DEBUG("        -- handle_req_change_knob_value(%d, %s)\n", kid, value.c_str());
 		auto knob = Knob::get_knob(knobs, kid);
 		if(knob) {
 			knob->update_value_from_message_value(value);
+			send_message(
+				cmd_change_knob_value,
+				[kid, value](std::shared_ptr<Message> &msg_to_send) {
+					msg_to_send->set_value("knb_id", std::to_string(kid));
+					msg_to_send->set_value("value", value);
+				}
+				);
 		}
-		send_message(
-			cmd_change_knob_value,
-			[kid, value](std::shared_ptr<Message> &msg_to_send) {
-				msg_to_send->set_value("knb_id", std::to_string(kid));
-				msg_to_send->set_value("value", value);
-			}
-			);
 	}
 
 	void BaseMachine::handle_req_attach_input(RemoteInterface::Context *context,
-						  RemoteInterface::MessageHandler *src,
+						  RemoteInterface::MessageHandler *__src,
 						  const RemoteInterface::Message& msg) {
+		SATAN_DEBUG("BaseMachine::handle_req_attach_input()\n");
+		auto source_name = msg.get_value("src");
+		auto output_name = msg.get_value("oup");
+		auto input_name = msg.get_value("inp");
+		auto source = get_machine_by_name(source_name);
+
+		auto src = source->machine_ptr.lock();
+		auto dst = machine_ptr.lock();
+		if(src && dst) {
+			dst->attach_input(src.get(), output_name, input_name);
+		}
 	}
 
 	void BaseMachine::handle_req_detach_input(RemoteInterface::Context *context,
-						  RemoteInterface::MessageHandler *src,
+						  RemoteInterface::MessageHandler *__src,
 						  const RemoteInterface::Message& msg) {
+		auto source_name = msg.get_value("src");
+		auto output_name = msg.get_value("oup");
+		auto input_name = msg.get_value("inp");
+		auto source = get_machine_by_name(source_name);
+
+		auto src = source->machine_ptr.lock();
+		auto dst = machine_ptr.lock();
+		if(src && dst) {
+			dst->detach_input(src.get(), output_name, input_name);
+		}
+	}
+
+	void BaseMachine::handle_req_set_position(RemoteInterface::Context *context,
+						  RemoteInterface::MessageHandler *__src,
+						  const RemoteInterface::Message& msg) {
+		auto xpos = std::stod(msg.get_value("xpos"));
+		auto ypos = std::stod(msg.get_value("ypos"));
+
+		if(auto dst = machine_ptr.lock()) {
+			dst->set_position(xpos, ypos);
+			send_message_to_server(
+				cmd_set_position,
+				[xpos, ypos]
+				(std::shared_ptr<RemoteInterface::Message> &msg2send) {
+					msg2send->set_value("xpos", std::to_string(xpos));
+					msg2send->set_value("ypos", std::to_string(ypos));
+				}
+		);
+		}
 	}
 
 	BaseMachine::BaseMachine(int32_t new_obj_id, const Factory *factory)
@@ -951,12 +1067,10 @@ SERVER_CODE(
 		auto source = s->second;
 		auto destination = d->second;
 		auto source_name = source->name;
-		auto destination_name = destination->name;
 		auto f =
-			[source_name, output_name, destination_name, input_name](std::shared_ptr<Message> &msg_to_send) {
+			[source_name, output_name, input_name](std::shared_ptr<Message> &msg_to_send) {
 				msg_to_send->set_value("src", source_name);
 				msg_to_send->set_value("oup", output_name);
-				msg_to_send->set_value("dst", destination_name);
 				msg_to_send->set_value("inp", input_name);
 		};
 

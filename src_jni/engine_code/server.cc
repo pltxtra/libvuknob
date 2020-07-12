@@ -226,6 +226,7 @@ SERVER_CODE(
 		io_service.post(
 			[this, source, destination, output_name, input_name]()
 			{
+				BaseMachine::machine_input_detached(source, destination, output_name, input_name);
 				SATAN_DEBUG("!!! Signal detached [%s:%s] -> [%s:%s]\n",
 					    source->get_name().c_str(), output_name.c_str(),
 					    destination->get_name().c_str(), input_name.c_str());

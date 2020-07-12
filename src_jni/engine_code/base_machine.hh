@@ -222,9 +222,13 @@ namespace RemoteInterface {
 			std::vector<std::shared_ptr<Knob> > get_knobs_for_group(const std::string& group_name);
 			std::vector<std::shared_ptr<Knob> > get_all_knobs();
 			static std::shared_ptr<BaseMachine> get_machine_by_name(const std::string& name);
-
+			double get_x_position();
+			double get_y_position();
+			void set_position(double xpos, double ypos);
+			void attach_machine_input(std::shared_ptr<BaseMachine> source, const std::string& output_name, const std::string& input_name);
+			void detach_machine_input(std::shared_ptr<BaseMachine> source, const std::string& output_name, const std::string& input_name);
+			void delete_machine();
 			ON_SERVER(
-				void attach_input(std::shared_ptr<BaseMachine> source, const std::string& output_name, const std::string& input_name);
 				void connect_tightly(std::shared_ptr<BaseMachine> sibling);
 				);
 
@@ -235,7 +239,7 @@ namespace RemoteInterface {
 				static std::map<std::shared_ptr<Machine>, std::shared_ptr<BaseMachine> > machine2basemachine;
 				);
 			ON_CLIENT(
-				static void handle_attachment_command(AttachmentOperation atop, const RemoteInterface::Message& msg);
+				void handle_attachment_command(AttachmentOperation atop, const RemoteInterface::Message& msg);
 				// used on client side when somethings changed server side
 				std::set<std::weak_ptr<MachineStateListener>,
 				std::owner_less<std::weak_ptr<MachineStateListener> > >state_listeners;
@@ -249,6 +253,7 @@ namespace RemoteInterface {
 			std::vector<std::shared_ptr<Socket> > inputs, outputs;
 			std::set<Connection> input_connections, output_connections;
 			std::set<std::shared_ptr<Knob> > knobs;
+			double x_position, y_position;
 
 			void add_connection(SocketType socket_type, const Connection& connection);
 			void remove_connection(SocketType socket_type, const Connection& connection);
@@ -259,15 +264,19 @@ namespace RemoteInterface {
 			/* REQ means the client request the server to perform an operation */
 			/* CMD means the server commands the client to perform an operation */
 
+			SERVER_SIDE_HANDLER(req_delete_machine, "req_delete_machine");
 			SERVER_SIDE_HANDLER(req_change_knob_value, "req_change_knob_value");
 			SERVER_SIDE_HANDLER(req_attach_input, "req_attach_input");
 			SERVER_SIDE_HANDLER(req_detach_input, "req_detach_input");
+			SERVER_SIDE_HANDLER(req_set_position, "req_set_position");
 
 			CLIENT_SIDE_HANDLER(cmd_change_knob_value, "cmd_change_knob_value");
 			CLIENT_SIDE_HANDLER(cmd_attach_input, "cmd_attach_input");
 			CLIENT_SIDE_HANDLER(cmd_detach_input, "cmd_detach_input");
+			CLIENT_SIDE_HANDLER(cmd_set_position, "req_set_position");
 
 			void register_handlers() {
+				SERVER_REG_HANDLER(BaseMachine,req_delete_machine);
 				SERVER_REG_HANDLER(BaseMachine,req_change_knob_value);
 				SERVER_REG_HANDLER(BaseMachine,req_attach_input);
 				SERVER_REG_HANDLER(BaseMachine,req_detach_input);
