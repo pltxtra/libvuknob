@@ -30,6 +30,8 @@
 #include "svg_loader.hh"
 #include "machine.hh"
 #include "machine_sequencer.hh"
+#include "knob_editor.hh"
+#include "ui_stack.hh"
 #include "common.hh"
 
 #include "../engine_code/client.hh"
@@ -1018,19 +1020,10 @@ GnuVGConnector::GnuVGConnector(KammoGUI::GnuVGCanvas *cnvs)
 				selgraph->leave_detailed_mode();
 				zoom_restore();
 
-				auto name = strdup(selgraph->get_ri_machine()->get_name().c_str());
-				if(name) {
-					// show the ControlsContainer
-					static KammoGUI::UserEvent *ue = NULL;
-					KammoGUI::get_widget((KammoGUI::Widget **)&ue, "showControlsContainer");
-					if(ue != NULL) {
-						std::map<std::string, void *> args;
-						args["machine_to_control"] = name;
-						KammoGUI::EventHandler::trigger_user_event(ue, args);
-					} else {
-						free(name);
-					}
-				}
+				auto machine = selgraph->get_ri_machine();
+				auto knob_editor = KnobEditor::get_knob_editor(nullptr);
+				knob_editor->set_context(machine);
+				UIStack::push(knob_editor);
 			}
 		}
 		);
