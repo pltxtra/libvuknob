@@ -650,6 +650,7 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	void BaseMachine::add_connection(SocketType socket_type, const Connection& new_connection) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		switch(socket_type) {
 		case InputSocket:
 			input_connections.insert(new_connection);
@@ -661,6 +662,7 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	void BaseMachine::remove_connection(SocketType socket_type, const Connection& connection2remove) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		switch(socket_type) {
 		case InputSocket:
 			input_connections.erase(connection2remove);
@@ -684,11 +686,13 @@ SERVER_N_CLIENT_CODE(
 			);
 
 		ON_CLIENT(
+			SATAN_DEBUG("::create_input_attachment() - calling state listeners...\n");
 			call_state_listeners(
 				[this, &source, &output, &input](std::shared_ptr<BaseMachine::MachineStateListener> listener) {
 					listener->on_attach(source, output, input);
 				}
 				);
+			SATAN_DEBUG("::create_input_attachment() - state listeners called!\n");
 			);
 	}
 
@@ -746,16 +750,21 @@ SERVER_N_CLIENT_CODE(
 
 CLIENT_CODE(
 	void BaseMachine::call_state_listeners(std::function<void(std::shared_ptr<MachineStateListener> listener)> callback) {
-		auto weak_listener = state_listeners.begin();
-		while(weak_listener != state_listeners.end()) {
-			if(auto listener = (*weak_listener).lock()) {
-				base_object_mutex.unlock();
-				callback(listener);
-				base_object_mutex.lock();
-				weak_listener++;
-			} else { // if we cannot lock, the listener doesn't exist so we remove it from the set.
-				weak_listener = state_listeners.erase(weak_listener);
+		std::vector<std::shared_ptr<MachineStateListener> > listeners;
+		{
+			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+			auto weak_listener = state_listeners.begin();
+			while(weak_listener != state_listeners.end()) {
+				if(auto listener = (*weak_listener).lock()) {
+					listeners.push_back(listener);
+					weak_listener++;
+				} else { // if we cannot lock, the listener doesn't exist so we remove it from the set.
+					weak_listener = state_listeners.erase(weak_listener);
+				}
 			}
+		}
+		for(auto listener : listeners) {
+			callback(listener);
 		}
 	}
 
@@ -789,7 +798,6 @@ CLIENT_CODE(
 	void BaseMachine::handle_cmd_change_knob_value(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
-		std::lock_guard<std::mutex> lock_guard(base_machine_mutex);
 		int kid = std::stoi(msg.get_value("knb_id"));
 		std::string value = msg.get_value("value");
 		SATAN_DEBUG("handle_cmd_change_knob_valu(%d, %s)\n", kid, value.c_str());
@@ -800,7 +808,6 @@ CLIENT_CODE(
 	}
 
 	void BaseMachine::handle_attachment_command(AttachmentOperation atop, const RemoteInterface::Message& msg) {
-		std::lock_guard<std::mutex> lock_guard(base_machine_mutex);
 		auto source_name = msg.get_value("src");
 		auto output = msg.get_value("oup");
 		auto input = msg.get_value("inp");
@@ -808,8 +815,7 @@ CLIENT_CODE(
 			    name2machine.size(),
 			    source_name.c_str(), output.c_str(), name.c_str(), input.c_str());
 
-		if(name2machine.count(source_name)) {
-			auto source = name2machine[source_name];
+		if(auto source = get_machine_by_name(source_name)) {
 			SATAN_ERROR("  -> found source (%p) and destination (%p)\n", source.get(), this);
 			switch(atop) {
 			case AttachInput:
@@ -838,7 +844,7 @@ CLIENT_CODE(
 	void BaseMachine::handle_cmd_set_position(RemoteInterface::Context *context,
 						  RemoteInterface::MessageHandler *src,
 						  const RemoteInterface::Message& msg) {
-		std::lock_guard<std::mutex> lock_guard(base_machine_mutex);
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		auto xpos = std::stod(msg.get_value("xpos"));
 		auto ypos = std::stod(msg.get_value("ypos"));
 
@@ -935,7 +941,6 @@ SERVER_CODE(
 	void BaseMachine::handle_req_change_knob_value(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
-		std::lock_guard<std::mutex> lock_guard(base_machine_mutex);
 		int kid = std::stoi(msg.get_value("knb_id"));
 		std::string value = msg.get_value("value");
 		SATAN_DEBUG("        -- handle_req_change_knob_value(%d, %s)\n", kid, value.c_str());
