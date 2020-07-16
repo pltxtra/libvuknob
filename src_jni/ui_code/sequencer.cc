@@ -41,6 +41,7 @@
 #include "gnuvg_connector.hh"
 #include "gnuvg_livepad.hh"
 #include "ui_stack.hh"
+#include "gnuvg_machine_creator.hh"
 
 #include "../engine_code/sequence.hh"
 #include "../engine_code/client.hh"
@@ -1350,16 +1351,8 @@ virtual void on_init(KammoGUI::Widget *wid) {
 
 		plus_button->set_select_callback(
 			[]() {
-				static KammoGUI::UserEvent *ue = NULL;
-				static KammoGUI::UserEvent *callback_ue = NULL;
-				KammoGUI::get_widget((KammoGUI::Widget **)&ue, "showMachineTypeListScroller");
-				KammoGUI::get_widget((KammoGUI::Widget **)&callback_ue, "showComposeContainer");
-				if(ue != NULL && callback_ue != NULL) {
-					std::map<std::string, void *> args;
-					args["hint_match"] = strdup("generator");
-					args["callback_event"] = callback_ue;
-					KammoGUI::EventHandler::trigger_user_event(ue, args);
-				}
+				SATAN_DEBUG("Sequencer plus_button pressed.\n");
+				GnuVGMachineCreator::create_machine("generator", true);
 			});
 
 		main_menu->on_jam_event([] {

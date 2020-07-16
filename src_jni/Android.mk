@@ -185,6 +185,7 @@ LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 LOCAL_SRC_FILES := \
 termination_handler.cc \
 engine_code/global_control_object.cc engine_code/global_control_object.hh \
+engine_code/handle_list.cc engine_code/handle_list.hh \
 engine_code/sequence.cc engine_code/sequence.hh \
 engine_code/base_machine.cc engine_code/base_machine.hh \
 engine_code/machine_api.cc engine_code/machine_api.hh \
@@ -216,6 +217,7 @@ LOCAL_CFLAGS += -DLIBSVG_EXPAT -DCONFIG_DIR=\"/\" -I../../asio/include -DHAVE_CO
 LOCAL_CPPFLAGS += -DASIO_STANDALONE -std=c++11
 LOCAL_SRC_FILES := \
 engine_code/global_control_object.cc engine_code/global_control_object.hh \
+engine_code/handle_list.cc engine_code/handle_list.hh \
 engine_code/sequence.cc engine_code/sequence.hh \
 engine_code/base_machine.cc engine_code/base_machine.hh \
 engine_code/machine_api.cc engine_code/machine_api.hh \
@@ -259,6 +261,7 @@ ui_code/gnuvg_livepad.cc ui_code/gnuvg_livepad.hh \
 ui_code/machine_selector_ui.cc \
 ui_code/connector.cc ui_code/connector.hh \
 ui_code/gnuvg_listview.cc ui_code/gnuvg_listview.hh \
+ui_code/gnuvg_machine_creator.cc ui_code/gnuvg_machine_creator.hh \
 ui_code/gnuvg_connector.cc ui_code/gnuvg_connector.hh \
 ui_code/gnuvg_connection_list.cc ui_code/gnuvg_connection_list.hh \
 ui_code/pattern_editor.cc ui_code/pattern_editor.hh \
