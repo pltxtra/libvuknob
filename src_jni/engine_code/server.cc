@@ -58,6 +58,9 @@ SERVER_CODE(
 			server->route_incomming_message(this, msg);
 		} catch(Context::FailureResponse &fresp) {
 			resp_msg = fresp.response_message;
+		} catch(std::exception& e) {
+			SATAN_ERROR("Server::ClientAgent::on_message_received() failed: %s\n", e.what());
+			throw;
 		}
 
 		if(resp_msg.size() != 0) {

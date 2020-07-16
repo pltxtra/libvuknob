@@ -1146,7 +1146,7 @@ void PatternEditor::use_sequence_and_pattern(std::shared_ptr<RISequence> _ri_seq
 }
 
 void PatternEditor::note_added(uint32_t pattern_id, const RINote &note) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, note]() {
 			delete_note_graphic(note);
 			create_note_graphic(note);
@@ -1155,7 +1155,7 @@ void PatternEditor::note_added(uint32_t pattern_id, const RINote &note) {
 }
 
 void PatternEditor::note_deleted(uint32_t pattern_id, const RINote &note) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, note]() {
 			delete_note_graphic(note);
 		}
@@ -1163,7 +1163,7 @@ void PatternEditor::note_deleted(uint32_t pattern_id, const RINote &note) {
 }
 
 void PatternEditor::pattern_deleted(uint32_t pattern_id) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this]() {
 			PatternEditor::hide();
 		}

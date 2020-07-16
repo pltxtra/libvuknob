@@ -45,7 +45,7 @@ static TapDetector tap_detector;
 
 void MainMenu::object_registered(std::shared_ptr<GCO> _gco) {
 	SATAN_DEBUG("---------------------------------- MainMenu got gco object...\n");
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, _gco]() {
 			SATAN_DEBUG("-----------**************  MainMenu got gco object...\n");
 			gco_w = _gco;
@@ -58,7 +58,7 @@ void MainMenu::object_registered(std::shared_ptr<GCO> _gco) {
 }
 
 void MainMenu::object_unregistered(std::shared_ptr<GCO> _gco) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, _gco]() {
 		}
 		);
@@ -127,7 +127,7 @@ MainMenu::~MainMenu() {}
 
 void MainMenu::row_update(int new_row) {
 	SATAN_DEBUG("************ MainMenu::row_update(%d)\n", new_row);
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, new_row]() {
 			SATAN_DEBUG(" -- -- -- -- -- MainMenu::row_update(%d)\n", new_row);
 			current_row = new_row;
@@ -137,7 +137,7 @@ void MainMenu::row_update(int new_row) {
 }
 
 void MainMenu::playback_state_changed(bool playing) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, playing]() {
 			is_playing= playing;
 			refresh_playback_indicator();

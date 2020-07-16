@@ -41,7 +41,7 @@
 #include "scales.hh"
 #include "serialize.hh"
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 /***************************
@@ -290,11 +290,13 @@ void RemoteInterface::BasicMessageHandler::do_read_header() {
 }
 
 void RemoteInterface::BasicMessageHandler::do_read_body() {
+	SATAN_DEBUG("::do_read_body() - body length: %d\n", read_msg.get_body_length());
 	auto self(shared_from_this());
 	asio::async_read(
 		my_socket,
 		read_msg.prepare_buffer(read_msg.get_body_length()),
 		[this, self](std::error_code ec, std::size_t length) {
+			SATAN_DEBUG("::do_read_body()->async(%d)\n", length);
 			if(!ec) read_msg.commit_data(length);
 
 			if(!ec && read_msg.decode_body()) {
@@ -453,20 +455,25 @@ void RemoteInterface::BaseObject::request_delete_me() {
 }
 
 void RemoteInterface::BaseObject::send_object_message(std::function<void(std::shared_ptr<Message> &msg_to_send)> complete_message, bool via_udp) {
+	SATAN_DEBUG("::send_object_message() - A\n");
 	if(!check_object_is_valid()) throw ObjectWasDeleted();
 
+	SATAN_DEBUG("::send_object_message() - B\n");
 	context->post_action(
 		[this, via_udp, complete_message]() {
+			SATAN_DEBUG("::send_object_message() - C1\n");
 			std::shared_ptr<Message> msg2send = context->acquire_message();
 
 			{
 				// fill in object id header
 				msg2send->set_value("id", std::to_string(obj_id));
 			}
+			SATAN_DEBUG("::send_object_message() - C2\n");
 			{
 				// call complete message
 				complete_message(msg2send);
 			}
+			SATAN_DEBUG("::send_object_message() - C3\n");
 
 			try {
 				context->distribute_message(msg2send, via_udp);
@@ -479,23 +486,31 @@ void RemoteInterface::BaseObject::send_object_message(std::function<void(std::sh
 			}
 		}, true
 		);
+	SATAN_DEBUG("::send_object_message() - D\n");
 }
 
 void RemoteInterface::BaseObject::send_object_message(std::function<void(std::shared_ptr<Message> &msg_to_send)> complete_message,
 						      std::function<void(const Message *reply_msg)> reply_received_callback) {
+	SATAN_DEBUG("::send_object_message(v2) - A\n");
 	std::mutex mtx;
 	std::condition_variable cv;
 	bool ready = false;
 
+	SATAN_DEBUG("::send_object_message(v2) - B\n");
 	if(!check_object_is_valid()) throw ObjectWasDeleted();
+	SATAN_DEBUG("::send_object_message(v2) - C\n");
 
 	context->post_action(
 		[this, complete_message, reply_received_callback, &ready, &mtx, &cv]() {
+			SATAN_DEBUG("::send_object_message(v2) - 1\n");
 			std::shared_ptr<Message> msg2send = context->acquire_message();
+			SATAN_DEBUG("::send_object_message(v2) - 2\n");
 
 			{
 				// fill in object id header
+			SATAN_DEBUG("::send_object_message(v2) - 3\n");
 				msg2send->set_value("id", std::to_string(obj_id));
+			SATAN_DEBUG("::send_object_message(v2) - 4\n");
 				msg2send->set_reply_handler(
 					[reply_received_callback, &ready, &mtx, &cv](const Message *reply_msg) {
 						try {
@@ -516,18 +531,25 @@ void RemoteInterface::BaseObject::send_object_message(std::function<void(std::sh
 						cv.notify_all();
 					}
 					);
+			SATAN_DEBUG("::send_object_message(v2) - 5\n");
 			}
 			{
 				// call complete message
+			SATAN_DEBUG("::send_object_message(v2) - 6\n");
 				complete_message(msg2send);
+			SATAN_DEBUG("::send_object_message(v2) - 7\n");
 			}
 
+			SATAN_DEBUG("::send_object_message(v2) - 8\n");
 			context->distribute_message(msg2send, false);
+			SATAN_DEBUG("::send_object_message(v2) - 9\n");
 		}
 		);
+	SATAN_DEBUG("::send_object_message(v2) - D\n");
 
 	std::unique_lock<std::mutex> lck(mtx);
 	while (!ready) cv.wait(lck);
+	SATAN_DEBUG("::send_object_message(v2) - E\n");
 }
 
 int32_t RemoteInterface::BaseObject::get_obj_id() {
@@ -644,17 +666,22 @@ namespace RemoteInterface {
 		std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback,
 		std::function<void(const Message *reply_message)> reply_received_callback) {
 
+		SATAN_DEBUG("::send_message_to_server() - A\n");
 		if(!check_object_is_valid()) throw ObjectWasDeleted();
-
+		SATAN_DEBUG("::send_message_to_server() - B\n");
 		if(is_server_side()) {
+			SATAN_DEBUG("::send_message_to_server() - C\n");
 			// if we already are server side - shortcut the process
 			context->post_action(
 				[this, command_id, create_msg_callback, reply_received_callback]() {
+					SATAN_DEBUG("::send_message_to_server() - D\n");
 					std::shared_ptr<Message> msg2send = context->acquire_message();
+					SATAN_DEBUG("::send_message_to_server() - E\n");
 
 					msg2send->set_value("id", std::to_string(get_obj_id()));
 					msg2send->set_value("commandid", command_id);
 					create_msg_callback(msg2send);
+					SATAN_DEBUG("::send_message_to_server() - F\n");
 
 					ServerSideOnlyMessageHandler sh(reply_received_callback);
 					auto fnc = command2function.find(command_id);
@@ -664,12 +691,16 @@ namespace RemoteInterface {
 				}, true
 				);
 		} else {
+			SATAN_DEBUG("::send_message_to_server() - C1\n");
 			send_object_message(
 				[command_id, create_msg_callback](std::shared_ptr<Message> &msg_to_send) {
+					SATAN_DEBUG("::send_message_to_server() - C1A\n");
 					msg_to_send->set_value("commandid", command_id);
 					create_msg_callback(msg_to_send);
+					SATAN_DEBUG("::send_message_to_server() - C1B\n");
 				},
 				reply_received_callback);
+			SATAN_DEBUG("::send_message_to_server() - C3\n");
 		}
 	}
 

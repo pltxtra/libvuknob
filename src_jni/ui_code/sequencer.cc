@@ -417,7 +417,7 @@ std::shared_ptr<Sequencer::PatternInstance> Sequencer::Sequence::get_pattern_ins
 }
 
 void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, instance]() {
 			auto event_callback = [this, instance](const InstanceEvent &e) {
 				switch(e.type) {
@@ -476,7 +476,7 @@ void Sequencer::Sequence::instance_added(const RIPatternInstance& instance){
 
 void Sequencer::Sequence::instance_deleted(const RIPatternInstance& original_i) {
 	RIPatternInstance instance = original_i;
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, instance]() {
 			SATAN_DEBUG("::instance_deleted()\n");
 
@@ -1271,7 +1271,7 @@ void Sequencer::on_render() {
 }
 
 void Sequencer::object_registered(std::shared_ptr<RemoteInterface::ClientSpace::Sequence> ri_seq) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, ri_seq]() {
 			int new_offset = (int)machine2sequence.size();
 			SATAN_DEBUG("new_offset is %d\n", new_offset);
@@ -1290,7 +1290,7 @@ void Sequencer::object_registered(std::shared_ptr<RemoteInterface::ClientSpace::
 }
 
 void Sequencer::object_unregistered(std::shared_ptr<RemoteInterface::ClientSpace::Sequence> ri_seq) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, ri_seq]() {
 			auto seq = machine2sequence.find(ri_seq);
 			if(seq != machine2sequence.end()) {

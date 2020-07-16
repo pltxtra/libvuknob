@@ -180,10 +180,14 @@ void GnuVGLivePad::select_arp_pattern() {
 }
 
 void GnuVGLivePad::refresh_scale_key_names() {
+	SATAN_DEBUG("GnuVGLivePad::refresh_scale_key_names() - A\n");
 	auto scalo = Scales::get_scales_object();
+	SATAN_DEBUG("GnuVGLivePad::refresh_scale_key_names() - B\n");
 	if(!scalo) return;
+	SATAN_DEBUG("GnuVGLivePad::refresh_scale_key_names() - C\n");
 
 	if(auto gco = RemoteInterface::GlobalControlObject::get_global_control_object()) {
+		SATAN_DEBUG("GnuVGLivePad::refresh_scale_key_names() - D\n");
 		std::vector<int> keys = scalo->get_scale_keys(scale_name);
 		SATAN_DEBUG("keys[%s].size() = %d\n", scale_name.c_str(), keys.size());
 		for(int n = 0; n < 8; n++) {
@@ -383,14 +387,18 @@ void GnuVGLivePad::refresh_controller_indicator() {
 }
 
 void GnuVGLivePad::refresh_machine_settings() {
+	SATAN_DEBUG("GnuVGLivePad::refresh_machine_settings() - A\n");
 	refresh_scale_key_names();
+	SATAN_DEBUG("GnuVGLivePad::refresh_machine_settings() - B\n");
 
 	if(!is_playing && arp_direction != RISequence::arp_off) {
 		jInformer::inform("Press the play button before using arpeggio.");
 		arp_direction = RISequence::arp_off;
 	}
+	SATAN_DEBUG("GnuVGLivePad::refresh_machine_settings() - C\n");
 
 	selectArpPattern_element.set_display(arp_direction == RISequence::arp_off ? "none" : "inline");
+	SATAN_DEBUG("GnuVGLivePad::refresh_machine_settings() - D\n");
 
 	std::string name = "mchn";
 	SATAN_DEBUG("Refresh machine settings, mseq\n");
@@ -710,7 +718,7 @@ void GnuVGLivePad::graphArea_on_event(KammoGUI::GnuVGCanvas::SVGDocument *source
 }
 
 void GnuVGLivePad::playback_state_changed(bool _is_playing) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, _is_playing]() {
 			is_playing = _is_playing;
 			refresh_machine_settings();
@@ -719,7 +727,7 @@ void GnuVGLivePad::playback_state_changed(bool _is_playing) {
 }
 
 void GnuVGLivePad::recording_state_changed(bool _is_recording) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, _is_recording]() {
 			is_recording = _is_recording;
 		}
@@ -856,13 +864,15 @@ void GnuVGLivePad::switch_MachineSequencer(std::shared_ptr<RISequence> m) {
 
 	if(mseq) {
 		pitch_bend_controller = "[none]";
+		SATAN_DEBUG("GnuVGLivePad::switch_MachineSequencer() A\n");
 		for(auto ctrl : mseq->available_midi_controllers()) {
 			if(ctrl.find("pitch_bend") != std::string::npos) {
 				pitch_bend_controller = ctrl;
 			}
 		}
-
+		SATAN_DEBUG("GnuVGLivePad::switch_MachineSequencer() B\n");
 		refresh_machine_settings();
+		SATAN_DEBUG("GnuVGLivePad::switch_MachineSequencer() C\n");
 	}
 }
 
@@ -889,16 +899,19 @@ void GnuVGLivePad::hide() {
 void GnuVGLivePad::object_registered(std::shared_ptr<RISequence> ri_sequence) {
 	SATAN_DEBUG("GnuVGLivePad::ri_sequence_registered\n");
 
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, ri_sequence]() {
+			SATAN_DEBUG("GnuVGLivePad::ri_sequence_registered A\n");
 			msequencers.insert(ri_sequence);
+			SATAN_DEBUG("GnuVGLivePad::ri_sequence_registered B\n");
 			if(!mseq) switch_MachineSequencer(ri_sequence);
+			SATAN_DEBUG("GnuVGLivePad::ri_sequence_registered C\n");
 		}
 		);
 }
 
 void GnuVGLivePad::object_unregistered(std::shared_ptr<RISequence> ri_sequence) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, ri_sequence]() {
 			if(mseq == ri_sequence)
 				mseq.reset();

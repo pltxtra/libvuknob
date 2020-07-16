@@ -346,7 +346,7 @@ void TimeLines::request_new_loop_settings(int new_loop_start, int new_loop_lengt
 }
 
 void TimeLines::loop_start_changed(int new_start) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, new_start]() {
 			SATAN_DEBUG("TimeLines::loop_start_changed(%d)\n", new_start);
 			loop_start = new_start;
@@ -355,7 +355,7 @@ void TimeLines::loop_start_changed(int new_start) {
 }
 
 void TimeLines::loop_length_changed(int new_length) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, new_length]() {
 			SATAN_DEBUG("TimeLines::loop_length_changed(%d)\n", new_length);
 			loop_length = new_length;
@@ -364,7 +364,7 @@ void TimeLines::loop_length_changed(int new_length) {
 }
 
 void TimeLines::lpb_changed(int new_lpb) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, new_lpb]() {
 			SATAN_DEBUG("TimeLines::lpb_changed(%d)\n", new_lpb);
 			lpb = new_lpb;
@@ -696,7 +696,7 @@ TimeLines::~TimeLines() {
 }
 
 void TimeLines::object_registered(std::shared_ptr<GCO> _gco) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, _gco]() {
 			SATAN_DEBUG("TimeLines got gco object...\n");
 			gco_w = _gco;
@@ -709,7 +709,7 @@ void TimeLines::object_registered(std::shared_ptr<GCO> _gco) {
 }
 
 void TimeLines::object_unregistered(std::shared_ptr<GCO> _gco) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, _gco]() {
 		}
 		);

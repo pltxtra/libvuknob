@@ -22,6 +22,9 @@
 
 #include "scales.hh"
 
+#define __DO_SATAN_DEBUG
+#include "satan_debug.hh"
+
 static bool scales_library_initialized = false;
 
 struct ScaleEntry {
@@ -231,25 +234,32 @@ void Scales::handle_get_scale_names(
 void Scales::handle_get_scale_keys(
 	RemoteInterface::Context *context, RemoteInterface::MessageHandler *src, const RemoteInterface::Message& msg)
 {
+	SATAN_DEBUG("Scales::handle_get_scale_keys() - A\n");
 	if(is_server_side()) {
+		SATAN_DEBUG("Scales::handle_get_scale_keys() - B\n");
 		initialize_scales();
+		SATAN_DEBUG("Scales::handle_get_scale_keys() - C\n");
 
 		auto scale_name = msg.get_value("name");
 		std::vector<int> keys = {0, 2, 4, 5, 7, 9, 11};
 
+		SATAN_DEBUG("Scales::handle_get_scale_keys() - D\n");
 		for(auto scale : scales) {
 			if(scale->name == scale_name) {
 				for(auto k = 0; k < 7; k++)
 					keys[k] = scale->keys[k];
 			}
 		}
+		SATAN_DEBUG("Scales::handle_get_scale_keys() - E\n");
 
 		Serialize::ItemSerializer iser;
 		iser.process(keys);
 
+		SATAN_DEBUG("Scales::handle_get_scale_keys() - F\n");
 		std::shared_ptr<RemoteInterface::Message> reply = context->acquire_reply(msg);
 		reply->set_value("keys", iser.result());
 		src->deliver_message(reply);
+		SATAN_DEBUG("Scales::handle_get_scale_keys() - G\n");
 	}
 }
 
@@ -349,17 +359,24 @@ std::vector<std::string> Scales::get_scale_names() {
 std::vector<int> Scales::get_scale_keys(const std::string &scale_name) {
 	std::vector<int> retval = {0, 2, 4, 5, 7, 9, 11};
 
+	SATAN_DEBUG("Scales::get_scale_keys() - A\n");
 	send_message_to_server(
 		CMD_GET_SCALE_KEYS,
 
 		[&scale_name](std::shared_ptr<RemoteInterface::Message> &msg2send) {
+			SATAN_DEBUG("Scales::get_scale_keys() - B\n");
 			msg2send->set_value("name", scale_name);
+			SATAN_DEBUG("Scales::get_scale_keys() - C\n");
 		},
 
 		[this, &retval](const RemoteInterface::Message *reply_message) {
+			SATAN_DEBUG("Scales::get_scale_keys() - D\n");
 			if(reply_message) {
+				SATAN_DEBUG("Scales::get_scale_keys() - E\n");
 				Serialize::ItemDeserializer serder(reply_message->get_value("keys"));
+				SATAN_DEBUG("Scales::get_scale_keys() - F\n");
 				serder.process(retval);
+				SATAN_DEBUG("Scales::get_scale_keys() - G\n");
 			}
 		}
 		);

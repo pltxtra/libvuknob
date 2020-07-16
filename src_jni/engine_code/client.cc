@@ -29,7 +29,7 @@
 
 #include "client.hh"
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 CLIENT_CODE(
@@ -140,6 +140,7 @@ CLIENT_CODE(
 
 		case __MSG_FLUSH_ALL_OBJECTS:
 		{
+			SATAN_DEBUG("Client - will flush all objects...\n");
 			flush_all_objects();
 		}
 		break;
@@ -162,6 +163,7 @@ CLIENT_CODE(
 
 		case __MSG_DELETE_OBJECT:
 		{
+			SATAN_DEBUG("Client - will delete object...\n");
 			auto obj_iterator = all_objects.find(std::stol(msg.get_value("objid")));
 			if(obj_iterator != all_objects.end()) {
 				unlink_object(obj_iterator->second);
@@ -172,16 +174,20 @@ CLIENT_CODE(
 
 		case __MSG_FAILURE_RESPONSE:
 		{
+			SATAN_DEBUG("Client - failure response...\n");
 			failure_response_callback(msg.get_value("response"));
 		}
 		break;
 
 		default:
 		{
+			SATAN_DEBUG("Client - default...\n");
 			auto obj_iterator = all_objects.find(identifier);
 			if(obj_iterator == all_objects.end()) throw BaseObject::NoSuchObject();
 
+			SATAN_DEBUG("Client -> calling process_message_client() ...\n");
 			obj_iterator->second->process_message_client(this, this, msg);
+			SATAN_DEBUG("Client -> completed process_message_client()!!!\n");
 		}
 		break;
 		}

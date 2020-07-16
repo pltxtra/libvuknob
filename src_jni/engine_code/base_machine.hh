@@ -34,7 +34,7 @@
 #include "../remote_interface.hh"
 #include "../serialize.hh"
 
-#ifdef __RI_SERVER_SIDE
+#ifdef __RI__SERVER_SIDE
 #include "../machine.hh"
 #endif
 

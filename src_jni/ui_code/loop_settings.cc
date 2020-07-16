@@ -191,7 +191,7 @@ void LoopSettings::hide() {
 }
 
 void LoopSettings::loop_state_changed(bool new_state) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, new_state]() {
 			loop_state = new_state;
 			refresh_loop_state_icons();
@@ -200,7 +200,7 @@ void LoopSettings::loop_state_changed(bool new_state) {
 }
 
 void LoopSettings::object_registered(std::shared_ptr<GCO> _gco) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, _gco]() {
 			SATAN_DEBUG("LoopSettings got gco object...\n");
 			gco_w = _gco;
@@ -213,7 +213,7 @@ void LoopSettings::object_registered(std::shared_ptr<GCO> _gco) {
 }
 
 void LoopSettings::object_unregistered(std::shared_ptr<GCO> _gco) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, _gco]() {
 		}
 		);

@@ -1,4 +1,3 @@
-
 /*
  * VuKNOB
  * (C) 2015 by Anton Persson
@@ -350,7 +349,7 @@ GnuVGConnector::MachineGraphic::~MachineGraphic() {
 }
 
 void GnuVGConnector::MachineGraphic::on_move() {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this]() {
 			pos_x = machine->get_x_position() * MACHINE_POS_SCALING;
 			pos_y = machine->get_y_position() * MACHINE_POS_SCALING;
@@ -369,7 +368,7 @@ void GnuVGConnector::MachineGraphic::on_attach(std::shared_ptr<BaseMachine> base
 		    machine->get_name().c_str(), dst_input.c_str());
 
 	auto thiz = shared_from_this();
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, thiz,src_machine, src_output, dst_input]() {
 			SATAN_DEBUG("(%d) MachineGraphic() -- attached [%s] @ %s ---> [%s] @ %s\n",
 				    gettid(),
@@ -420,7 +419,7 @@ void GnuVGConnector::MachineGraphic::on_detach(std::shared_ptr<BaseMachine> base
 					  const std::string dst_input) {
 	auto src_machine = std::dynamic_pointer_cast<RIMachine>(base_src_machine);
 	auto thiz = shared_from_this();
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, thiz,src_machine, src_output, dst_input]() {
 			SATAN_DEBUG("MachineGraphic() -- detached [%s] @ %s ---> [%s] @ %s\n",
 				    src_machine->get_name().c_str(), src_output.c_str(),
@@ -1111,7 +1110,7 @@ void GnuVGConnector::zoom_restore() {
 void GnuVGConnector::object_registered(std::shared_ptr<RIMachine> ri_machine) {
 	SATAN_DEBUG("---->     --- (%d) will create MachineGraphic for %s\n", gettid(), ri_machine->get_name().c_str());
 
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, ri_machine]() {
 			graphics.push_back(MachineGraphic::create(this, ri_machine));
 			SATAN_DEBUG("  --- (%d) CREATED MachineGraphic for %s\n", gettid(), ri_machine->get_name().c_str());
@@ -1121,7 +1120,7 @@ void GnuVGConnector::object_registered(std::shared_ptr<RIMachine> ri_machine) {
 }
 
 void GnuVGConnector::object_unregistered(std::shared_ptr<RIMachine> ri_machine) {
-	KammoGUI::run_on_GUI_thread(
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, ri_machine]() {
 			auto iterator = graphics.begin();
 			for(; iterator != graphics.end(); iterator++) {
