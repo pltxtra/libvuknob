@@ -562,6 +562,11 @@ void GnuVGConnector::MachineGraphic::refresh_position(double temp_x, double temp
 
 	KammoGUI::GnuVGCanvas::SVGMatrix move_t = base_t;
 	move_t.translate(appear_at_x, appear_at_y);
+	SATAN_DEBUG("pos: %f, %f  --- tilt: %f\n", pos_x, pos_y, tilt_x);
+	SATAN_DEBUG("temp: %f, %f\n", temp_x, temp_y);
+	SATAN_DEBUG("appear_at: %f, %f\n", appear_at_x, appear_at_y);
+	SATAN_DEBUG("%f, %f, %f\n", move_t.a, move_t.c, move_t.e);
+	SATAN_DEBUG("%f, %f, %f\n", move_t.b, move_t.d, move_t.f);
 	set_transform(move_t);
 
 	for(auto weak_con : connections) {

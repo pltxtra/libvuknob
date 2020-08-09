@@ -162,8 +162,8 @@ private:
 
 		// positional data
 		KammoGUI::GnuVGCanvas::SVGMatrix base_t;
-		double pos_x, pos_y, tilt_x;
-		double appear_at_x, appear_at_y;
+		double pos_x = 0.0, pos_y = 0.0, tilt_x = 0.0;
+		double appear_at_x = 0.0, appear_at_y = 0.0;
 
 		// event data
 		double first_selection_x, first_selection_y;

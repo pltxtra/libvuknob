@@ -1024,6 +1024,8 @@ SERVER_CODE(
 		machine_ptr = m_ptr;
 		name = m_ptr->get_name();
 		machine2basemachine[m_ptr] = bmchn;
+		x_position = m_ptr->get_x_position();
+		y_position = m_ptr->get_y_position();
 		register_by_name(bmchn);
 
 		groups = m_ptr->get_controller_groups();

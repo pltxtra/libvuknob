@@ -45,7 +45,7 @@ private:
 
 	double x, y, width, height; // the viewport which we should squeeze the document into (animate TO)
 	double initial_x, initial_y, initial_width, initial_height; // the viewport which we animate FROM
-	double translate_x, translate_y, scale; // current translation and scale
+	double translate_x = 0.0, translate_y = 0.0, scale = 1.0; // current translation and scale
 
 	double last_y;
 
