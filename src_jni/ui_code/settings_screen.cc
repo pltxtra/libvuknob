@@ -37,7 +37,7 @@ static TapDetector tap_detector;
 SettingsScreen::KnobInstance::KnobInstance(
 	KammoGUI::GnuVGCanvas::ElementReference &elref,
 	int _offset,
-	std::shared_ptr<BMKnob> _knob
+	std::shared_ptr<AbstractKnob> _knob
 	)
 	: svg_reference(elref)
 	, knob(_knob)
@@ -85,7 +85,7 @@ SettingsScreen::KnobInstance::~KnobInstance()
 }
 
 auto SettingsScreen::KnobInstance::create_knob_instance(
-	std::shared_ptr<BMKnob> knob,
+	std::shared_ptr<AbstractKnob> knob,
 	KammoGUI::GnuVGCanvas::ElementReference &container,
 	KammoGUI::GnuVGCanvas::ElementReference &knob_template,
 	int offset) -> std::shared_ptr<KnobInstance> {

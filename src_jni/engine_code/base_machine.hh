@@ -119,7 +119,7 @@ namespace RemoteInterface {
 							     >  _send_obj_message
 						);
 
-					void set_callback(std::function<void()>);
+					virtual void set_callback(std::function<void()>) override;
 
 					virtual void set_value_as_double(double new_value) override; // this converts numerical values to the correct type automatic
 					void set_value(int val);

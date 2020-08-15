@@ -28,6 +28,7 @@ namespace RemoteInterface {
 		class AbstractKnob {
 		public:
 			ON_CLIENT(
+				virtual void set_callback(std::function<void()>) {};
 				virtual void set_value_as_double(double new_value_d) = 0;
 				);
 			virtual double get_value() = 0;
