@@ -25,6 +25,7 @@
 #include "../common.hh"
 #include "../engine_code/global_control_object.hh"
 #include "../engine_code/abstract_knob.hh"
+#include "knob_instance.hh"
 
 typedef RemoteInterface::ClientSpace::GlobalControlObject GCO;
 typedef RemoteInterface::ClientSpace::AbstractKnob AbstractKnob;
@@ -93,43 +94,6 @@ private:
 			ss <<  i_value;
 			return ss.str();
 		}
-	};
-
-	class KnobInstance
-		: public std::enable_shared_from_this<KnobInstance>
-	{
-	private:
-		KammoGUI::GnuVGCanvas::ElementReference svg_reference;
-		KammoGUI::GnuVGCanvas::ElementReference value_text;
-		KammoGUI::GnuVGCanvas::ElementReference value_decrease_button;
-		KammoGUI::GnuVGCanvas::ElementReference value_increase_button;
-		KammoGUI::GnuVGCanvas::ElementReference value_base_bar;
-		KammoGUI::GnuVGCanvas::ElementReference value_actual_bar;
-		KammoGUI::GnuVGCanvas::ElementReference value_slider_knob;
-
-		std::shared_ptr<AbstractKnob> knob;
-		int offset;
-
-		double min, max, step;
-		double canvas_width, finger_width, finger_height;
-
-		void refresh_value_indicators();
-	public:
-		KnobInstance(
-			KammoGUI::GnuVGCanvas::ElementReference &elref,
-			int _offset,
-			std::shared_ptr<AbstractKnob> _knob
-			);
-
-		virtual ~KnobInstance();
-
-		void refresh_transformation(double canvas_width, double finger_width, double finger_height);
-
-		static std::shared_ptr<KnobInstance> create_knob_instance(
-			std::shared_ptr<AbstractKnob> knob,
-			KammoGUI::GnuVGCanvas::ElementReference &container,
-			KammoGUI::GnuVGCanvas::ElementReference &knob_template,
-			int offset);
 	};
 
 	std::weak_ptr<GCO> gco_w;

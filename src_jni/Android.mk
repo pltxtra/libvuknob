@@ -265,6 +265,7 @@ ui_code/gnuvg_machine_creator.cc ui_code/gnuvg_machine_creator.hh \
 ui_code/gnuvg_connector.cc ui_code/gnuvg_connector.hh \
 ui_code/gnuvg_connection_list.cc ui_code/gnuvg_connection_list.hh \
 ui_code/pattern_editor.cc ui_code/pattern_editor.hh \
+ui_code/knob_instance.cc ui_code/knob_instance.hh \
 ui_code/knob_editor.cc ui_code/knob_editor.hh \
 ui_code/timelines.cc ui_code/timelines.hh \
 ui_code/popup_window.cc ui_code/popup_window.hh \
