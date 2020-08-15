@@ -1614,7 +1614,7 @@ Machine::Signal *Machine::get_output(const std::string &name) {
  *
  */
 jThread::Monitor *Machine::machine_space_lock = new jThread::Monitor(true); // true == allow recursive lock in single thread
-int Machine::shuffle_factor = 0;
+int Machine::__shuffle_factor = 0;
 int Machine::__loop_start = 0;
 int Machine::__loop_stop = 64;
 bool Machine::__do_loop = true;
@@ -1797,7 +1797,7 @@ void Machine::calculate_samples_per_tick() {
 		// calculate shuffle offset
 		samples_per_tick_shuffle = samples_per_tick >> 3;
 		samples_per_tick_shuffle =
-			(shuffle_factor * 3 * samples_per_tick_shuffle) / SHUFFLE_FACTOR_DIVISOR;
+			(__shuffle_factor * 3 * samples_per_tick_shuffle) / SHUFFLE_FACTOR_DIVISOR;
 		__samples_per_tick_shuffle[d] = samples_per_tick_shuffle;
 	}
 
@@ -2041,12 +2041,13 @@ void Machine::register_playback_state_listener(std::weak_ptr<PlaybackStateListen
 			auto l_do = __do_loop;
 			auto bpm = __bpm;
 			auto lpb = __lpb;
+			auto shuffle_factor = __shuffle_factor;
 			auto is_playing = __is_playing;
 			auto is_recording = __is_recording;
 
 			SATAN_ERROR("::register_playback_state_listener() machine operation will run async function...\n");
 			Machine::run_async_function(
-				[pstate_listener,l_start, l_stop, l_do, bpm, lpb, is_playing, is_recording]() {
+				[pstate_listener,l_start, l_stop, l_do, bpm, lpb, shuffle_factor, is_playing, is_recording]() {
 					SATAN_ERROR("::register_playback_state_listener() async begin\n");
 					if(auto plist = pstate_listener.lock()) {
 						SATAN_ERROR("::register_playback_state_listener() async locked...\n");
@@ -2058,6 +2059,7 @@ void Machine::register_playback_state_listener(std::weak_ptr<PlaybackStateListen
 						plist->record_state_changed(is_recording);
 						plist->bpm_changed(bpm);
 						plist->lpb_changed(lpb);
+						plist->shuffle_factor_changed(shuffle_factor);
 					}
 				}
 				);
@@ -2106,16 +2108,25 @@ bool Machine::get_low_latency_mode() {
 }
 
 int Machine::get_shuffle_factor() {
-	return shuffle_factor;
+	return __shuffle_factor;
 }
 
 void Machine::set_shuffle_factor(int _nf) {
 	if(_nf < __MIN_SHUFFLE__ || _nf > __MAX_SHUFFLE__) throw ParameterOutOfSpec();
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			shuffle_factor = *((int *)d);
+		[_nf] () {
+			__shuffle_factor = _nf;
+			for(auto w_plist : playback_state_listeners) {
+				if(auto plist = w_plist.lock()) {
+					Machine::run_async_function(
+						[plist, _nf]() {
+							plist->shuffle_factor_changed(_nf);
+						}
+						);
+				}
+			}
 		},
-		&_nf, true);
+		true);
 }
 
 bool Machine::get_loop_state() {

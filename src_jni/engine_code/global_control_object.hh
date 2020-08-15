@@ -59,6 +59,7 @@ namespace RemoteInterface {
 					virtual void record_state_changed(bool recording) {};
 					virtual void bpm_changed(int bpm) {};
 					virtual void lpb_changed(int lpb) {};
+					virtual void shuffle_factor_changed(int shuffle_factor) {};
 					virtual void row_update(int row) {};
 				};
 
@@ -77,9 +78,11 @@ namespace RemoteInterface {
 
 				void set_bpm(int bpm);
 				void set_lpb(int lpb);
+				void set_shuffle_factor(int shuffle_factor);
 
 				int get_bpm();
 				int get_lpb();
+				int get_shuffle_factor();
 				);
 
 			GlobalControlObject(const Factory *factory, const RemoteInterface::Message &serialized);
@@ -96,6 +99,7 @@ namespace RemoteInterface {
 				virtual void record_state_changed(bool recording) override;
 				virtual void bpm_changed(int bpm) override;
 				virtual void lpb_changed(int lbp) override;
+				virtual void shuffle_factor_changed(int shuffle_factor) override;
 				)
 
 			virtual void on_delete(RemoteInterface::Context* context) override {
@@ -104,7 +108,7 @@ namespace RemoteInterface {
 
 		private:
 			bool loop_state, playing, record;
-			int loop_start, loop_length, bpm, lpb;
+			int loop_start, loop_length, bpm, lpb, shuffle_factor;
 
 			ON_CLIENT(
 				std::set<std::shared_ptr<GlobalControlListener> > gco_listeners;
@@ -124,6 +128,7 @@ namespace RemoteInterface {
 			SERVER_SIDE_HANDLER(req_set_record_state, "req_set_record_state");
 			SERVER_SIDE_HANDLER(req_set_bpm, "req_set_bpm");
 			SERVER_SIDE_HANDLER(req_set_lpb, "req_set_lpb");
+			SERVER_SIDE_HANDLER(req_set_sf, "req_set_sf");
 			SERVER_SIDE_HANDLER(req_jump_to, "req_jump_to");
 
 			CLIENT_SIDE_HANDLER(cmd_set_loop_state, "cmd_set_loop_state");
@@ -133,6 +138,7 @@ namespace RemoteInterface {
 			CLIENT_SIDE_HANDLER(cmd_set_record_state, "cmd_set_record_state");
 			CLIENT_SIDE_HANDLER(cmd_set_bpm, "cmd_set_bpm");
 			CLIENT_SIDE_HANDLER(cmd_set_lpb, "cmd_set_lpb");
+			CLIENT_SIDE_HANDLER(cmd_set_sf, "cmd_set_sf");
 			CLIENT_SIDE_HANDLER(cmd_per_upd, "cmd_per_upd");
 
 			void register_handlers() {
@@ -143,6 +149,7 @@ namespace RemoteInterface {
 				SERVER_REG_HANDLER(GlobalControlObject,req_set_record_state);
 				SERVER_REG_HANDLER(GlobalControlObject,req_set_bpm);
 				SERVER_REG_HANDLER(GlobalControlObject,req_set_lpb);
+				SERVER_REG_HANDLER(GlobalControlObject,req_set_sf);
 				SERVER_REG_HANDLER(GlobalControlObject,req_jump_to);
 
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_loop_state);
@@ -152,6 +159,7 @@ namespace RemoteInterface {
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_record_state);
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_bpm);
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_lpb);
+				CLIENT_REG_HANDLER(GlobalControlObject,cmd_set_sf);
 				CLIENT_REG_HANDLER(GlobalControlObject,cmd_per_upd);
 			}
 

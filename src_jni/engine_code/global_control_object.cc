@@ -128,6 +128,21 @@ SERVER_CODE(
 			);
 	}
 
+	void GlobalControlObject::shuffle_factor_changed(int _sf) {
+		SATAN_ERROR("GlobalControlObject::shuffle_factor_changed() --- %d\n", _sf);
+		{
+			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+			shuffle_factor = _sf;
+		}
+		send_message(
+			cmd_set_sf,
+			[_sf](std::shared_ptr<Message> &msg_to_send) {
+				msg_to_send->set_value("sf", std::to_string(_sf));
+				SATAN_ERROR("GlobalControlObject::shuffle_factor_changed() sending command... %d\n", _sf);
+			}
+			);
+	}
+
 	void GlobalControlObject::send_periodic_update(int row) {
 		send_message(
 			cmd_per_upd,
@@ -208,6 +223,16 @@ SERVER_CODE(
 		SATAN_ERROR("GlobalControlObject::handle_req_set_lpb() --- %d\n", _lpb);
 		try {
 			Machine::set_lpb(_lpb);
+		} catch(...) { /* ignore */ }
+	}
+
+	void GlobalControlObject::handle_req_set_sf(RemoteInterface::Context *context,
+						    RemoteInterface::MessageHandler *src,
+						    const RemoteInterface::Message& msg) {
+		int _sf = std::stoi(msg.get_value("sf"));
+		SATAN_ERROR("GlobalControlObject::handle_req_set_sf() --- %d\n", _sf);
+		try {
+			Machine::set_shuffle_factor(_sf);
 		} catch(...) { /* ignore */ }
 	}
 
@@ -345,6 +370,17 @@ CLIENT_CODE(
 		);
 	}
 
+	void GlobalControlObject::set_shuffle_factor(int new_sf) {
+		SATAN_ERROR("GlobalControlObject::set_shuffle_factor(%d)\n", new_sf);
+		send_message_to_server(
+			req_set_sf,
+			[new_sf](std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				SATAN_ERROR("GlobalControlObject::set_shuffle_factor() sending new sf value: %d\n", new_sf);
+				msg2send->set_value("sf", std::to_string(new_sf));
+			}
+		);
+	}
+
 	int GlobalControlObject::get_bpm() {
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		return bpm;
@@ -353,6 +389,11 @@ CLIENT_CODE(
 	int GlobalControlObject::get_lpb() {
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		return lpb;
+	}
+
+	int GlobalControlObject::get_shuffle_factor() {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+		return shuffle_factor;
 	}
 
 	void GlobalControlObject::handle_cmd_set_loop_state(RemoteInterface::Context *context,
@@ -474,6 +515,23 @@ CLIENT_CODE(
 			glol->lpb_changed(_lpb);
 	}
 
+	void GlobalControlObject::handle_cmd_set_sf(RemoteInterface::Context *context,
+						    RemoteInterface::MessageHandler *src,
+						    const RemoteInterface::Message& msg) {
+		std::set<std::shared_ptr<GlobalControlListener> > _gco_listeners;
+		int _sf = std::stoi(msg.get_value("sf"));
+		{
+			std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+			shuffle_factor = _sf;
+			_gco_listeners = gco_listeners;
+		}
+
+		SATAN_ERROR("(client) ::handle_cmd_set_sf() -- %d\n", gco_listeners.size());
+
+		for(auto glol : _gco_listeners)
+			glol->shuffle_factor_changed(_sf);
+	}
+
 	void GlobalControlObject::handle_cmd_per_upd(RemoteInterface::Context *context,
 						     RemoteInterface::MessageHandler *src,
 						     const RemoteInterface::Message& msg) {
@@ -503,6 +561,7 @@ SERVER_N_CLIENT_CODE(
 		iserder.process(loop_length);
 		iserder.process(bpm);
 		iserder.process(lpb);
+		iserder.process(shuffle_factor);
 	}
 
 	GlobalControlObject::GlobalControlObject(const Factory *factory, const RemoteInterface::Message &serialized)

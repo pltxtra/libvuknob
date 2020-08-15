@@ -141,7 +141,8 @@ public:
 		virtual void record_state_changed(bool recording) = 0;
 
 		virtual void bpm_changed(int bpm) = 0;
-		virtual void lpb_changed(int bpm) = 0;
+		virtual void lpb_changed(int lpb) = 0;
+		virtual void shuffle_factor_changed(int shuffle_factor) = 0;
 	};
 
 	class Controller {
@@ -742,7 +743,7 @@ private:
 
 private:
 #define SHUFFLE_FACTOR_DIVISOR 100
-	static int shuffle_factor; // a value in the range [0..SHUFFLE_FACTOR_DIVISOR)
+	static int __shuffle_factor; // a value in the range [0..SHUFFLE_FACTOR_DIVISOR)
 
 	static int __loop_start, __loop_stop;
 	static bool __do_loop;

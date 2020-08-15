@@ -176,10 +176,16 @@ SettingsScreen::SettingsScreen(KammoGUI::GnuVGCanvas* cnvs)
 		std::make_shared<BMKnob>(
 			__MIN_BPM__, __MAX_BPM__, "BPM",
 			[this](double new_bpm) {
+				if(auto gco = gco_w.lock()) {
+					gco->set_bpm(new_bpm);
+				}
 				SATAN_DEBUG("Should set BPM now to: %f\n", new_bpm);
 			},
 			[this]() -> double {
 				double value = 120.0;
+				if(auto gco = gco_w.lock()) {
+					value = (double)gco->get_bpm();
+				}
 				SATAN_DEBUG("Will return BPM here: %f\n", value);
 				return value;
 			}
@@ -189,10 +195,16 @@ SettingsScreen::SettingsScreen(KammoGUI::GnuVGCanvas* cnvs)
 		std::make_shared<BMKnob>(
 			__MIN_LPB__, __MAX_LPB__, "LPB",
 			[this](double new_lpb) {
+				if(auto gco = gco_w.lock()) {
+					gco->set_lpb(new_lpb);
+				}
 				SATAN_DEBUG("Should set LPB now to: %f\n", new_lpb);
 			},
 			[this]() -> double {
 				double value = 4.0;
+				if(auto gco = gco_w.lock()) {
+					value = (double)gco->get_lpb();
+				}
 				SATAN_DEBUG("Will return LPB here: %f\n", value);
 				return value;
 			}
@@ -203,9 +215,16 @@ SettingsScreen::SettingsScreen(KammoGUI::GnuVGCanvas* cnvs)
 			__MIN_SHUFFLE__, __MAX_SHUFFLE__, "Shuffle",
 			[this](double new_shuffle) {
 				SATAN_DEBUG("Should set shuffle now to: %f\n", new_shuffle);
+				if(auto gco = gco_w.lock()) {
+					SATAN_DEBUG("Got GCO - will set shuffle now to: %f\n", new_shuffle);
+					gco->set_shuffle_factor(new_shuffle);
+				}
 			},
 			[this]() -> double {
 				double value = 0.0;
+				if(auto gco = gco_w.lock()) {
+					value = (double)gco->get_shuffle_factor();
+				}
 				SATAN_DEBUG("Will return shuffle here: %f\n", value);
 				return value;
 			}
@@ -255,6 +274,54 @@ void SettingsScreen::on_resize() {
 }
 
 void SettingsScreen::on_render() {
+}
+
+void SettingsScreen::object_registered(std::shared_ptr<GCO> _gco) {
+	SATAN_DEBUG("---------------------------------- SettingsScreen got gco object...\n");
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
+		[this, _gco]() {
+			SATAN_DEBUG("-----------**************  SettingsScreen got gco object...\n");
+			gco_w = _gco;
+			if(auto gco = gco_w.lock()) {
+				SATAN_DEBUG("-------------**************  SettingsScreen locked gco object...\n");
+				gco->add_global_control_listener(shared_from_this());
+			}
+		}
+		);
+}
+
+void SettingsScreen::object_unregistered(std::shared_ptr<GCO> _gco) {
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
+		[this, _gco]() {
+			gco_w.reset();
+		}
+		);
+}
+
+void SettingsScreen::bpm_changed(int bpm) {
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
+		[this]() {
+			refresh_knobs();
+		}
+		);
+}
+
+void SettingsScreen::lpb_changed(int lpm) {
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
+		[this]() {
+			refresh_knobs();
+		}
+		);
+}
+
+void SettingsScreen::shuffle_factor_changed(int shuffle_factor) {
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(
+		__PRETTY_FUNCTION__,
+		[this, shuffle_factor]() {
+			SATAN_ERROR("SettingsScreen::shuffle_factor_changed(%d)\n", shuffle_factor);
+			refresh_knobs();
+		}
+		);
 }
 
 std::shared_ptr<SettingsScreen> SettingsScreen::get_settings_screen(KammoGUI::GnuVGCanvas* cnvs) {

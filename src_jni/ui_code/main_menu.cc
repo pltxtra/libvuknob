@@ -60,6 +60,7 @@ void MainMenu::object_registered(std::shared_ptr<GCO> _gco) {
 void MainMenu::object_unregistered(std::shared_ptr<GCO> _gco) {
 	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, _gco]() {
+			gco_w.reset();
 		}
 		);
 }

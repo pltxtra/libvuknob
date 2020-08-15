@@ -23,9 +23,14 @@
 #include <map>
 #include <gnuVGcanvas.hh>
 #include "../common.hh"
+#include "../engine_code/global_control_object.hh"
+
+typedef RemoteInterface::ClientSpace::GlobalControlObject GCO;
 
 class SettingsScreen
 	: public KammoGUI::GnuVGCanvas::SVGDocument
+	, public RemoteInterface::Context::ObjectSetListener<GCO>
+	, public RemoteInterface::ClientSpace::GlobalControlObject::GlobalControlListener
 	, public std::enable_shared_from_this<SettingsScreen>
 {
 
@@ -125,6 +130,7 @@ private:
 			int offset);
 	};
 
+	std::weak_ptr<GCO> gco_w;
 	KammoGUI::GnuVGCanvas::ElementReference root, knob_container, knob_template, button_container;
 	KammoGUI::GnuVGCanvas::ElementReference new_button, load_button, save_button;
 	KammoGUI::GnuVGCanvas::ElementReference export_button, samples_button, demo_button;
@@ -147,6 +153,13 @@ public:
 
 	virtual void on_resize() override;
 	virtual void on_render() override;
+
+	virtual void object_registered(std::shared_ptr<GCO> gco) override;
+	virtual void object_unregistered(std::shared_ptr<GCO> gco) override;
+
+	virtual void bpm_changed(int bpm) override;
+	virtual void lpb_changed(int lpb) override;
+	virtual void shuffle_factor_changed(int shuffle_factor) override;
 
 	static std::shared_ptr<SettingsScreen> get_settings_screen(KammoGUI::GnuVGCanvas* cnvs);
 

@@ -41,7 +41,7 @@
 #include "scales.hh"
 #include "serialize.hh"
 
-#define __DO_SATAN_DEBUG
+//#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 /***************************
