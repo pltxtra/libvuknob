@@ -24,8 +24,10 @@
 #include <gnuVGcanvas.hh>
 #include "../common.hh"
 #include "../engine_code/global_control_object.hh"
+#include "../engine_code/abstract_knob.hh"
 
 typedef RemoteInterface::ClientSpace::GlobalControlObject GCO;
+typedef RemoteInterface::ClientSpace::AbstractKnob AbstractKnob;
 
 class SettingsScreen
 	: public KammoGUI::GnuVGCanvas::SVGDocument
@@ -40,7 +42,7 @@ private:
 	/* This is a hack class for letting me copy
 	 * code from the KnobEditor class...
 	 */
-	class BMKnob {
+	class BMKnob : public AbstractKnob {
 	private:
 		double min, max;
 		std::string title;
@@ -58,32 +60,32 @@ private:
 			, get_value_callback(_get_value_callback)
 			{}
 
-		void set_value_as_double(double new_value_d) {
+		virtual void set_value_as_double(double new_value_d) override {
 			int new_value = (int)new_value_d;
 			if(set_value_callback)
 				set_value_callback(new_value);
 		}
-		double get_value() {
+		virtual double get_value() {
 			if(get_value_callback)
 				return get_value_callback();
 			else
 				return min;
 		}
-		double get_min() {
+		virtual double get_min() {
 			return min;
 		}
-		double get_max() {
+		virtual double get_max() {
 			return max;
 		}
-		double get_step() {
+		virtual double get_step() {
 			return 1;
 		}
 
-		std::string get_title() {
+		virtual std::string get_title() {
 			return title;
 		}
 
-		std::string get_value_as_text() {
+		virtual std::string get_value_as_text() {
 			int i_value = 0;
 			if(get_value_callback)
 				i_value = get_value_callback();

@@ -24,6 +24,7 @@
 #include <gnuVGcanvas.hh>
 
 #include "../engine_code/base_machine.hh"
+#include "../engine_code/abstract_knob.hh"
 #include "gnuvg_corner_button.hh"
 
 typedef RemoteInterface::ClientSpace::BaseMachine       BMachine;

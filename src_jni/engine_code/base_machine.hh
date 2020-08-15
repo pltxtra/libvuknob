@@ -29,6 +29,8 @@
 #include <list>
 #include <tuple>
 
+#include "abstract_knob.hh"
+
 #include "../common.hh"
 #include "../linked_list.hh"
 #include "../remote_interface.hh"
@@ -81,7 +83,7 @@ namespace RemoteInterface {
 			: public RemoteInterface::SimpleBaseObject
 		{
 		public:
-			class Knob {
+			class Knob : public AbstractKnob {
 			public:
 				static constexpr const char* serialize_identifier = "BaseMachine::Knob";
 				template <class SerderClassT>
@@ -119,7 +121,7 @@ namespace RemoteInterface {
 
 					void set_callback(std::function<void()>);
 
-					void set_value_as_double(double new_value); // this converts numerical values to the correct type automatic
+					virtual void set_value_as_double(double new_value) override; // this converts numerical values to the correct type automatic
 					void set_value(int val);
 					void set_value(float val);
 					void set_value(double val);
@@ -131,16 +133,16 @@ namespace RemoteInterface {
 				bool has_midi_controller(int &coarse_controller, int &fine_controller);
 				std::string get_group(); // the group to which the controller belongs
 				std::string get_name(); // name of the control
-				std::string get_title(); // user displayable title
+				virtual std::string get_title() override; // user displayable title
 
 				Type get_type();
 
 				// get data automatically mapped to doubles (i.e bool->double, int->double, float->double)
 				// string type knobs will return 0.0 for all..
-				double get_value();
-				double get_min();
-				double get_max();
-				double get_step();
+				virtual double get_value() override;
+				virtual double get_min() override;
+				virtual double get_max() override;
+				virtual double get_step() override;
 
 				void get_min(float &val);
 				void get_max(float &val);
@@ -158,7 +160,7 @@ namespace RemoteInterface {
 				void get_value(bool &val);
 				void get_value(std::string &val);
 
-				std::string get_value_as_text();
+				virtual std::string get_value_as_text() override;
 
 				std::string get_value_name(int val);
 
