@@ -49,6 +49,7 @@ private:
 		std::string title;
 		std::function<void(double new_value)> set_value_callback;
 		std::function<double()> get_value_callback;
+		std::function<void()> new_value_callback;
 	public:
 		BMKnob(double _min, double _max,
 		       std::string _title,
@@ -61,32 +62,41 @@ private:
 			, get_value_callback(_get_value_callback)
 			{}
 
+		void new_value_exists() {
+			if(new_value_callback)
+				new_value_callback();
+		}
+
+		virtual void set_callback(std::function<void()> cb) override {
+			new_value_callback = cb;
+		}
+
 		virtual void set_value_as_double(double new_value_d) override {
 			int new_value = (int)new_value_d;
 			if(set_value_callback)
 				set_value_callback(new_value);
 		}
-		virtual double get_value() {
+		virtual double get_value() override {
 			if(get_value_callback)
 				return get_value_callback();
 			else
 				return min;
 		}
-		virtual double get_min() {
+		virtual double get_min() override {
 			return min;
 		}
-		virtual double get_max() {
+		virtual double get_max() override {
 			return max;
 		}
-		virtual double get_step() {
+		virtual double get_step() override {
 			return 1;
 		}
 
-		virtual std::string get_title() {
+		virtual std::string get_title() override {
 			return title;
 		}
 
-		virtual std::string get_value_as_text() {
+		virtual std::string get_value_as_text() override {
 			int i_value = 0;
 			if(get_value_callback)
 				i_value = get_value_callback();
@@ -112,7 +122,7 @@ private:
 	std::vector<std::shared_ptr<BMKnob>> knobs;
 	std::vector<std::shared_ptr<KnobInstance> > knob_instances;
 
-	void refresh_knobs();
+	void create_knobs();
 	void internal_show();
 public:
 	SettingsScreen(KammoGUI::GnuVGCanvas* cnvs);

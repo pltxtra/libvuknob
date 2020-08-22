@@ -40,10 +40,14 @@ private:
 	std::shared_ptr<AbstractKnob> knob;
 	int offset;
 
+	double snapped_position_offset;
+
 	double min, max, step;
 	double canvas_width, finger_width, finger_height;
 
+	double calculate_snapped_position(double value);
 	void refresh_value_indicators();
+	void handle_slide_event(const KammoGUI::MotionEvent &event);
 public:
 	KnobInstance(
 		KammoGUI::GnuVGCanvas::ElementReference &elref,

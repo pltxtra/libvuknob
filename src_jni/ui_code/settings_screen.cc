@@ -34,7 +34,7 @@ static TapDetector tap_detector;
  *
  ***************************/
 
-void SettingsScreen::refresh_knobs() {
+void SettingsScreen::create_knobs() {
 	knob_instances.clear();
 	int k = 0;
 	for(auto knob : knobs) {
@@ -50,7 +50,7 @@ void SettingsScreen::refresh_knobs() {
 
 void SettingsScreen::internal_show() {
 	root.set_display("inline");
-	refresh_knobs();
+	create_knobs();
 }
 
 SettingsScreen::SettingsScreen(KammoGUI::GnuVGCanvas* cnvs)
@@ -185,7 +185,9 @@ void SettingsScreen::object_unregistered(std::shared_ptr<GCO> _gco) {
 void SettingsScreen::bpm_changed(int bpm) {
 	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this]() {
-			refresh_knobs();
+			for(auto knob : knobs)
+				if(knob->get_title() == "BPM")
+					knob->new_value_exists();
 		}
 		);
 }
@@ -193,7 +195,9 @@ void SettingsScreen::bpm_changed(int bpm) {
 void SettingsScreen::lpb_changed(int lpm) {
 	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this]() {
-			refresh_knobs();
+			for(auto knob : knobs)
+				if(knob->get_title() == "LPB")
+					knob->new_value_exists();
 		}
 		);
 }
@@ -203,7 +207,9 @@ void SettingsScreen::shuffle_factor_changed(int shuffle_factor) {
 		__PRETTY_FUNCTION__,
 		[this, shuffle_factor]() {
 			SATAN_ERROR("SettingsScreen::shuffle_factor_changed(%d)\n", shuffle_factor);
-			refresh_knobs();
+			for(auto knob : knobs)
+				if(knob->get_title() == "Shuffle")
+					knob->new_value_exists();
 		}
 		);
 }

@@ -30,12 +30,10 @@ void KnobInstance::refresh_value_indicators() {
 	snprintf(bfr, 128, "%s: [%s]", knob->get_title().c_str(), knob->get_value_as_text().c_str());
 	value_text.set_text_content(bfr);
 
-	auto value_as_percentage = knob->get_value() / max;
-	auto value_width = value_as_percentage * (canvas_width - 2.0 * (1.5 * finger_width));
-
+	auto snapped_position = calculate_snapped_position(knob->get_value());
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	transform_t.init_identity();
-	transform_t.translate(1.5 * finger_width + value_width, finger_height * 0.5);
+	transform_t.translate(snapped_position, finger_height * 0.5);
 	value_slider_knob.set_transform(transform_t);
 
 	double thickness = finger_height / 20.0;
@@ -47,9 +45,46 @@ void KnobInstance::refresh_value_indicators() {
 	thickness *= 3.0;
 	value_actual_bar.set_rect_coords(
 		1.5 * finger_width, finger_height * 0.5 - 0.5 * thickness,
-		value_width,
+		snapped_position - 1.5 * finger_width,
 		thickness
 		);
+}
+
+double KnobInstance::calculate_snapped_position(double value) {
+	auto value_as_percentage = value / max;
+	auto value_width = value_as_percentage * (canvas_width - 2.0 * (1.5 * finger_width));
+	return 1.5 * finger_width + value_width;
+}
+
+void KnobInstance::handle_slide_event(const KammoGUI::MotionEvent &event) {
+	double now_position = event.get_x();
+	double snapped_position = calculate_snapped_position(knob->get_value());
+
+	switch(event.get_action()) {
+	case KammoGUI::MotionEvent::ACTION_CANCEL:
+	case KammoGUI::MotionEvent::ACTION_OUTSIDE:
+	case KammoGUI::MotionEvent::ACTION_POINTER_DOWN:
+	case KammoGUI::MotionEvent::ACTION_POINTER_UP:
+	case KammoGUI::MotionEvent::ACTION_MOVE:
+	{
+		now_position -= snapped_position_offset;
+		now_position -= 1.5 * finger_width;
+		auto new_value_as_percentage = now_position / (canvas_width - 2.0 * (1.5 * finger_width));
+		auto new_value = new_value_as_percentage * max;
+		auto snapped_new_value = step * floor(new_value / step);
+
+		auto trapped_value = snapped_new_value >= min ? snapped_new_value : min;
+		trapped_value = trapped_value <= max ? trapped_value : max;
+
+		knob->set_value_as_double(trapped_value);
+	}
+		break;
+	case KammoGUI::MotionEvent::ACTION_DOWN:
+		snapped_position_offset = now_position - snapped_position;
+		break;
+	case KammoGUI::MotionEvent::ACTION_UP:
+		break;
+	}
 }
 
 KnobInstance::KnobInstance(
@@ -93,6 +128,16 @@ KnobInstance::KnobInstance(
 				auto new_value = knob->get_value() + step;
 				knob->set_value_as_double(new_value <= max ? new_value : max);
 			}
+		}
+		);
+
+	value_slider_knob.set_event_handler(
+		[this](KammoGUI::GnuVGCanvas::SVGDocument *NOT_USED(source),
+		       KammoGUI::GnuVGCanvas::ElementReference *NOT_USED(e_ref),
+		       const KammoGUI::MotionEvent &event) {
+			SATAN_DEBUG(" slider knob for %p [%s]\n", this, knob->get_title().c_str());
+			handle_slide_event(event);
+			SATAN_DEBUG(" howdy!\n");
 		}
 		);
 
