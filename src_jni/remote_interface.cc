@@ -115,15 +115,6 @@ void RemoteInterface::Message::recycle() {
 	clear_msg_content();
 }
 
-bool RemoteInterface::Message::decode_client_id() {
-	std::istream is(&sbuf);
-	std::string header;
-	is >> header;
-	sscanf(header.c_str(), "%08x", &client_id);
-
-	return true;
-}
-
 bool RemoteInterface::Message::decode_header() {
 	std::istream is(&sbuf);
 	std::string header;
@@ -342,17 +333,7 @@ void RemoteInterface::BasicMessageHandler::do_write() {
 	SATAN_DEBUG("MessageHandler::do_write()... async write queued..\n");
 }
 
-void RemoteInterface::BasicMessageHandler::do_write_udp(std::shared_ptr<Message> &msg) {
-	try {
-		my_udp_socket->send_to(msg->get_data(), udp_target_endpoint);
-	} catch(std::exception &exp) {
-		SATAN_ERROR("RemoteInterface::BasicMessageHandler::do_write_udp() failed to deliver message: %s\n",
-			    exp.what());
-	}
-}
-
 RemoteInterface::BasicMessageHandler::BasicMessageHandler(asio::io_service &io_service) : my_socket(io_service) {
-	my_udp_socket = std::make_shared<asio::ip::udp::socket>(io_service, asio::ip::udp::endpoint(asio::ip::udp::v4(), 0));
 }
 
 RemoteInterface::BasicMessageHandler::BasicMessageHandler(asio::ip::tcp::socket _socket) : my_socket(std::move(_socket)) {
@@ -362,20 +343,15 @@ void RemoteInterface::BasicMessageHandler::start_receive() {
 	do_read_header();
 }
 
-void RemoteInterface::BasicMessageHandler::deliver_message(std::shared_ptr<Message> &msg, bool via_udp) {
+void RemoteInterface::BasicMessageHandler::deliver_message(std::shared_ptr<Message> &msg) {
 	msg->encode();
 
 	SATAN_DEBUG("RemoteInterface::BasicMessageHandler::deliver_message() - msg encoded..\n");
 
-	if(via_udp && my_udp_socket &&
-	   (msg->get_body_length() <= VUKNOB_MAX_UDP_SIZE)) {
-		do_write_udp(msg);
-	} else {
-		bool write_in_progress = !write_msgs.empty();
-		write_msgs.push_back(msg);
-		if (!write_in_progress){
-			do_write();
-		}
+	bool write_in_progress = !write_msgs.empty();
+	write_msgs.push_back(msg);
+	if (!write_in_progress){
+		do_write();
 	}
 }
 
@@ -454,13 +430,13 @@ void RemoteInterface::BaseObject::request_delete_me() {
 		);
 }
 
-void RemoteInterface::BaseObject::send_object_message(std::function<void(std::shared_ptr<Message> &msg_to_send)> complete_message, bool via_udp) {
+void RemoteInterface::BaseObject::send_object_message(std::function<void(std::shared_ptr<Message> &msg_to_send)> complete_message) {
 	SATAN_DEBUG("::send_object_message() - A\n");
 	if(!check_object_is_valid()) throw ObjectWasDeleted();
 
 	SATAN_DEBUG("::send_object_message() - B\n");
 	context->post_action(
-		[this, via_udp, complete_message]() {
+		[this, complete_message]() {
 			SATAN_DEBUG("::send_object_message() - C1\n");
 			std::shared_ptr<Message> msg2send = context->acquire_message();
 
@@ -476,7 +452,7 @@ void RemoteInterface::BaseObject::send_object_message(std::function<void(std::sh
 			SATAN_DEBUG("::send_object_message() - C3\n");
 
 			try {
-				context->distribute_message(msg2send, via_udp);
+				context->distribute_message(msg2send);
 			} catch(std::exception& e) {
 				SATAN_ERROR("RemoteInterface::BaseObject::send_object_message() caught an exception: %s\n", e.what());
 				throw;
@@ -541,7 +517,7 @@ void RemoteInterface::BaseObject::send_object_message(std::function<void(std::sh
 			}
 
 			SATAN_DEBUG("::send_object_message(v2) - 8\n");
-			context->distribute_message(msg2send, false);
+			context->distribute_message(msg2send);
 			SATAN_DEBUG("::send_object_message(v2) - 9\n");
 		}
 		);
@@ -640,7 +616,7 @@ namespace RemoteInterface {
 				   })
 			{}
 
-		virtual void deliver_message(std::shared_ptr<Message> &msg, bool via_udp = false) override {
+		virtual void deliver_message(std::shared_ptr<Message> &msg) override {
 			callback(msg.get());
 		}
 
@@ -2410,13 +2386,7 @@ void RemoteInterface::RIMachine::pad_enqueue_event(int finger, PadEvent_t event_
 			msg2send->set_value("xp", std::to_string(xp));
 			msg2send->set_value("yp", std::to_string(yp));
 			msg2send->set_value("zp", std::to_string(zp));
-		},
-
-#if defined(VUKNOB_UDP_SUPPORT) && defined(VUKNOB_UDP_USE)
-		true  // send via UDP
-#else
-		false  // don't send via UDP
-#endif
+		}
 		);
 }
 

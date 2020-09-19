@@ -40,7 +40,6 @@ CLIENT_CODE(
 	Client::Client()
 	: BasicMessageHandler(io_service)
 	, resolver(io_service)
-	, udp_resolver(io_service)
 	{
 		// create some "work" to keep the service alive
 		io_workit = std::make_shared<asio::io_service::work>(io_service);
@@ -67,9 +66,6 @@ CLIENT_CODE(
 				    }
 			);
 
-		udp_target_endpoint = *udp_resolver.resolve(
-			{asio::ip::udp::v4(), server_host, std::to_string(server_port) }
-			);
 	}
 
 	void Client::disconnect() {
@@ -104,7 +100,7 @@ CLIENT_CODE(
 		auto msg = acquire_message();
 		msg->set_value("id", std::to_string(__MSG_DELETE_OBJECT));
 		msg->set_value("objid", std::to_string(objid));
-		distribute_message(msg, false);
+		distribute_message(msg);
 	}
 
 	void Client::on_message_received(const Message &msg) {
@@ -120,12 +116,6 @@ CLIENT_CODE(
 				failure_response_callback("Server is to new - you must upgrade before you can connect.");
 				disconnect();
 			}
-		}
-		break;
-
-		case __MSG_CLIENT_ID:
-		{
-			client_id = std::stol(msg.get_value("clid"));
 		}
 		break;
 
@@ -283,7 +273,7 @@ CLIENT_CODE(
 		client.reset();
 	}
 
-	void Client::distribute_message(std::shared_ptr<Message> &msg, bool via_udp) {
+	void Client::distribute_message(std::shared_ptr<Message> &msg) {
 		SATAN_DEBUG("Client::distribute_message()...\n");
 		if(msg->is_awaiting_reply()) {
 			if(msg_waiting_for_reply.find(next_reply_id) != msg_waiting_for_reply.end()) {
@@ -295,10 +285,10 @@ CLIENT_CODE(
 				// add the msg to our set of messages waiting for a reply
 				msg_waiting_for_reply[next_reply_id++] = msg;
 				// deliver it
-				deliver_message(msg, via_udp);
+				deliver_message(msg);
 			}
 		} else {
-			deliver_message(msg, via_udp);
+			deliver_message(msg);
 		}
 	}
 

@@ -57,7 +57,7 @@ SERVER_CODE(
 			std::shared_ptr<Message> create_object_message = acquire_message();
 			add_create_object_header(create_object_message, new_obj);
 			new_obj->serialize(create_object_message);
-			distribute_message(create_object_message, false);
+			distribute_message(create_object_message);
 		}
 
 		template <typename T>
@@ -93,17 +93,15 @@ SERVER_CODE(
 
 		class ClientAgent : public BasicMessageHandler {
 		private:
-			int32_t id;
 			Server *server;
-
-			void send_handler_message();
+			Session *session;
 		public:
-			ClientAgent(int32_t id, asio::ip::tcp::socket _socket, Server *server);
+			ClientAgent(Session *session, Server *server);
+			virtual ~ClientAgent();
+
 			void start();
 
 			void disconnect();
-
-			int32_t get_id() { return id; }
 
 			virtual void on_message_received(const Message &msg) override;
 			virtual void on_connection_dropped() override;
@@ -111,27 +109,20 @@ SERVER_CODE(
 		friend class ClientAgent;
 
 		typedef std::shared_ptr<ClientAgent> ClientAgent_ptr;
-		std::map<int32_t, ClientAgent_ptr> client_agents;
+		std::set<ClientAgent_ptr> client_agents;
 		int32_t next_client_agent_id = 0;
 
 		asio::ip::tcp::acceptor acceptor;
-		asio::ip::tcp::socket acceptor_socket;
 		int current_port;
-
-		std::shared_ptr<asio::ip::udp::socket> udp_socket;
-		Message udp_read_msg;
-		asio::ip::udp::endpoint udp_endpoint;
 
 		void do_accept();
 		void drop_client(std::shared_ptr<ClientAgent> client_agent);
-		void do_udp_receive();
 
 		void disconnect_clients();
 		void create_service_objects();
 		void add_create_object_header(std::shared_ptr<Message> &target, std::shared_ptr<BaseObject> obj);
 		void add_destroy_object_header(std::shared_ptr<Message> &target, std::shared_ptr<BaseObject> obj);
 		void send_protocol_version_to_new_client(std::shared_ptr<MessageHandler> client_agent);
-		void send_client_id_to_new_client(std::shared_ptr<ClientAgent> client_agent);
 		void send_all_objects_to_new_client(std::shared_ptr<MessageHandler> client_agent);
 
 		int get_port();
@@ -169,7 +160,7 @@ SERVER_CODE(
 		static bool is_running();
 		static void stop_server();
 
-		virtual void distribute_message(std::shared_ptr<Message> &msg, bool via_udp = false) override;
+		virtual void distribute_message(std::shared_ptr<Message> &msg) override;
 		virtual std::shared_ptr<BaseObject> get_object(int32_t objid) override;
 	};
 

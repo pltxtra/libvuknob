@@ -32,8 +32,6 @@ namespace RemoteInterface {
 			std::shared_ptr<asio::io_service::work> io_workit;
 			std::map<int32_t, std::shared_ptr<BaseObject> > all_objects;
 
-			int32_t client_id = -1;
-
 			// code for handling messages waiting for a reply
 			int32_t next_reply_id = 0;
 			std::map<int32_t, std::shared_ptr<Message> > msg_waiting_for_reply;
@@ -41,7 +39,6 @@ namespace RemoteInterface {
 			std::map<std::string, std::string> handle2hint;
 
 			asio::ip::tcp::resolver resolver;
-			asio::ip::udp::resolver udp_resolver;
 			std::function<void()> disconnect_callback;
 			std::function<void(const std::string &fresp)> failure_response_callback;
 
@@ -93,7 +90,7 @@ namespace RemoteInterface {
 			virtual void on_message_received(const Message &msg) override;
 			virtual void on_connection_dropped() override;
 
-			virtual void distribute_message(std::shared_ptr<Message> &msg, bool via_udp) override;
+			virtual void distribute_message(std::shared_ptr<Message> &msg) override;
 			virtual std::shared_ptr<BaseObject> get_object(int32_t objid) override;
 		};
 	};

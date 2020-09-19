@@ -35,15 +35,15 @@
 
 SERVER_CODE(
 
-	void Server::ClientAgent::send_handler_message() {
+	Server::ClientAgent::ClientAgent(Session *session, Server *_server)
+	: BasicMessageHandler(std::move(session->get_socket())), server(_server) {
 	}
 
-	Server::ClientAgent::ClientAgent(int32_t _id, asio::ip::tcp::socket _socket, Server *_server)
-	: BasicMessageHandler(std::move(_socket)), id(_id), server(_server) {
+	Server::ClientAgent::~ClientAgent() {
+		delete session;
 	}
 
 	void Server::ClientAgent::start() {
-		send_handler_message();
 		start_receive();
 	}
 
@@ -100,7 +100,7 @@ SERVER_CODE(
 
 				std::shared_ptr<Message> destroy_object_message = acquire_message();
 				add_destroy_object_header(destroy_object_message, obj2delete);
-				distribute_message(destroy_object_message, false);
+				distribute_message(destroy_object_message);
 				invalidate_object(obj2delete); /* unlink from this context */
 				all_objects.erase(obj);
 				return;
@@ -244,8 +244,9 @@ SERVER_CODE(
 			);
 	}
 
-	Server::Server(const asio::ip::tcp::endpoint& endpoint) : last_obj_id(-1), acceptor(io_service, endpoint),
-	acceptor_socket(io_service)
+	Server::Server(const asio::ip::tcp::endpoint& endpoint)
+	: last_obj_id(-1)
+	, acceptor(io_service, endpoint)
 	{
 		acceptor.listen();
 
@@ -254,11 +255,6 @@ SERVER_CODE(
 		SATAN_DEBUG("Server::Server() current ip: %s, port: %d\n",
 			    acceptor.local_endpoint().address().to_string().c_str(),
 			    current_port);
-
-#ifdef VUKNOB_UDP_SUPPORT
-		udp_socket = std::make_shared<asio::ip::udp::socket>(io_service,
-								     asio::ip::udp::endpoint(asio::ip::udp::v4(), current_port));
-#endif
 
 		io_service.post(
 			[this]()
@@ -271,9 +267,6 @@ SERVER_CODE(
 			});
 
 		do_accept();
-#ifdef VUKNOB_UDP_SUPPORT
-		do_udp_receive();
-#endif
 	}
 
 	int Server::get_port() {
@@ -281,90 +274,33 @@ SERVER_CODE(
 	}
 
 	void Server::do_accept() {
+		auto new_session = new Session(io_service);
 		acceptor.async_accept(
-			acceptor_socket,
-			[this](std::error_code ec) {
-
+			new_session->get_socket(),
+			[this, new_session](std::error_code ec) {
 				if (!ec) {
-					auto new_id = next_client_agent_id++;
+					new_session->initialize(
+						io_service,
+						[this, new_session]() {
+							std::shared_ptr<ClientAgent> new_client_agent =
+								std::make_shared<ClientAgent>(new_session, this);
 
-					std::shared_ptr<ClientAgent> new_client_agent =
-						std::make_shared<ClientAgent>(new_id,
-									      std::move(acceptor_socket),
-									      this);
+							client_agents.insert(new_client_agent);
 
-					client_agents[new_id] = new_client_agent;
+							send_protocol_version_to_new_client(new_client_agent);
+							send_all_objects_to_new_client(new_client_agent);
 
-					send_protocol_version_to_new_client(new_client_agent);
-					send_client_id_to_new_client(new_client_agent);
-					send_all_objects_to_new_client(new_client_agent);
-
-					new_client_agent->start();
+							new_client_agent->start();
+						}
+						);
 				}
-
 				do_accept();
 			}
 			);
 	}
 
-	void Server::do_udp_receive() {
-		udp_socket->async_receive_from(
-			//asio::buffer(udp_buffer),
-			udp_read_msg.prepare_buffer(VUKNOB_MAX_UDP_SIZE),
-			udp_endpoint,
-			[this](std::error_code ec,
-			       std::size_t bytes_transferred) {
-//			if(!ec) udp_read_msg.commit_data(bytes_transferred);
-
-				if((!ec) && udp_read_msg.decode_client_id()) {
-					if(udp_read_msg.decode_header()) {
-						if(udp_read_msg.decode_body()) {
-							// make sure body length matches what we received
-							if(bytes_transferred == 16 + udp_read_msg.get_body_length()) {
-								try {
-									auto udp_client_agent = client_agents.find(udp_read_msg.get_client_id());
-									if(udp_client_agent != client_agents.end()) {
-										udp_client_agent->second->on_message_received(udp_read_msg);
-									} else {
-										SATAN_ERROR("RemoteInterface::Server::do_udp_receive()"
-											    " received an udp message from %s with an"
-											    " unkown client id %d.\n",
-											    udp_endpoint.address().to_string().c_str(),
-											    udp_read_msg.get_client_id());
-									}
-								} catch (std::exception& e) {
-									SATAN_ERROR("RemoteInterface::Server::do_udp_receive() caught an exception (%s)"
-										    " when processing an incomming message.\n",
-										    e.what());
-								}
-							} else {
-								SATAN_ERROR("RemoteInterface::Server::do_udp_receive() received an"
-									    " udp message from %s of the wrong size (%d != %d).\n",
-									    udp_endpoint.address().to_string().c_str(),
-									    bytes_transferred - 16, udp_read_msg.get_body_length());
-							}
-						} else {
-							SATAN_ERROR("RemoteInterface::Server::do_udp_receive() received an"
-								    " udp message from %s with a malformed body.\n",
-								    udp_endpoint.address().to_string().c_str());
-						}
-					} else {
-						SATAN_ERROR("RemoteInterface::Server::do_udp_receive() received an"
-							    " udp message from %s with a malformed header.\n",
-							    udp_endpoint.address().to_string().c_str());
-					}
-				} else {
-					SATAN_ERROR("RemoteInterface::Server::do_udp_receive() received a malformed udp message from %s.\n",
-						    udp_endpoint.address().to_string().c_str());
-				}
-
-				do_udp_receive();
-			}
-			);
-	}
-
 	void Server::drop_client(std::shared_ptr<ClientAgent> client_agent) {
-		auto client_iterator = client_agents.find(client_agent->get_id());
+		auto client_iterator = client_agents.find(client_agent);
 		if(client_iterator != client_agents.end()) {
 			client_agents.erase(client_iterator);
 		}
@@ -386,13 +322,6 @@ SERVER_CODE(
 		std::shared_ptr<Message> pv_message = acquire_message();
 		pv_message->set_value("id", std::to_string(__MSG_PROTOCOL_VERSION));
 		pv_message->set_value("pversion", std::to_string(__VUKNOB_PROTOCOL_VERSION__));
-		client_agent->deliver_message(pv_message);
-	}
-
-	void Server::send_client_id_to_new_client(std::shared_ptr<ClientAgent> client_agent) {
-		std::shared_ptr<Message> pv_message = acquire_message();
-		pv_message->set_value("id", std::to_string(__MSG_CLIENT_ID));
-		pv_message->set_value("clid", std::to_string(client_agent->get_id()));
 		client_agent->deliver_message(pv_message);
 	}
 
@@ -425,7 +354,7 @@ SERVER_CODE(
 
 	void Server::disconnect_clients() {
 		for(auto client_agent : client_agents) {
-			client_agent.second->disconnect();
+			client_agent->disconnect();
 		}
 	}
 
@@ -547,10 +476,10 @@ SERVER_CODE(
 		}
 	}
 
-	void Server::distribute_message(std::shared_ptr<Message> &msg, bool via_udp) {
+	void Server::distribute_message(std::shared_ptr<Message> &msg) {
 		for(auto client_agent : client_agents) {
 			SATAN_DEBUG("Server::distribute_message() - deliver_message() called.\n");
-			client_agent.second->deliver_message(msg, via_udp);
+			client_agent->deliver_message(msg);
 		}
 	}
 

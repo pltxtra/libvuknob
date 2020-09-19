@@ -131,15 +131,12 @@
  *
  ***************************/
 
-#define VUKNOB_MAX_UDP_SIZE 512
-
 #define __MSG_CREATE_OBJECT -1
 #define __MSG_FLUSH_ALL_OBJECTS -2
 #define __MSG_DELETE_OBJECT -3
 #define __MSG_FAILURE_RESPONSE -4
 #define __MSG_PROTOCOL_VERSION -5
 #define __MSG_REPLY -6
-#define __MSG_CLIENT_ID -7
 
 // Factory names
 #define __FCT_HANDLELIST		"HandleList"
@@ -147,10 +144,7 @@
 #define __FCT_RIMACHINE			"RIMachine"
 #define __FCT_SAMPLEBANK	        "SampleBank"
 
-#define __VUKNOB_PROTOCOL_VERSION__ 9
-
-//#define VUKNOB_UDP_SUPPORT
-//#define VUKNOB_UDP_USE
+#define __VUKNOB_PROTOCOL_VERSION__ 10
 
 namespace RemoteInterface {
 	class MessageHandler;
@@ -197,6 +191,22 @@ namespace RemoteInterface {
 			offset++;
 		}
 	}
+
+	class Session {
+	private:
+		asio::ip::tcp::socket socket;
+
+	public:
+		Session(asio::io_service& io_service) : socket(io_service) {}
+
+		asio::ip::tcp::socket& get_socket() {
+			return socket;
+		}
+
+		void initialize(asio::io_service& io_service, std::function<void()> on_completion) {
+			io_service.post(on_completion);
+		}
+	};
 
 	class Message {
 	public:
@@ -255,7 +265,6 @@ namespace RemoteInterface {
 
 		mutable bool encoded;
 		mutable uint32_t body_length;
-		mutable int32_t client_id;
 		mutable asio::streambuf sbuf;
 		mutable std::ostream ostrm;
 		mutable int data2send;
@@ -271,9 +280,7 @@ namespace RemoteInterface {
 		void recycle();
 
 		inline uint32_t get_body_length() { return body_length; }
-		inline int32_t get_client_id() { return client_id; }
 
-		bool decode_client_id(); // only for messages arriving via UDP
 		bool decode_header();
 		bool decode_body();
 
@@ -414,7 +421,7 @@ namespace RemoteInterface {
 		};
 
 		~Context();
-		virtual void distribute_message(std::shared_ptr<Message> &msg, bool via_udp) = 0;
+		virtual void distribute_message(std::shared_ptr<Message> &msg) = 0;
 		virtual std::shared_ptr<BaseObject> get_object(int32_t objid) = 0;
 
 		virtual void post_action(std::function<void()> f, bool do_synch = false);
@@ -429,7 +436,7 @@ namespace RemoteInterface {
 
 	class MessageHandler : public std::enable_shared_from_this<MessageHandler> {
 	public:
-		virtual void deliver_message(std::shared_ptr<Message> &msg, bool via_udp = false) = 0;
+		virtual void deliver_message(std::shared_ptr<Message> &msg) = 0;
 		virtual void on_message_received(const Message &msg) = 0;
 		virtual void on_connection_dropped() = 0;
 	};
@@ -442,13 +449,9 @@ namespace RemoteInterface {
 		void do_read_header();
 		void do_read_body();
 		void do_write();
-		void do_write_udp(std::shared_ptr<Message> &msg);
 
 	protected:
 		asio::ip::tcp::socket my_socket;
-
-		std::shared_ptr<asio::ip::udp::socket> my_udp_socket;
-		asio::ip::udp::endpoint udp_target_endpoint;
 
 	public:
 		BasicMessageHandler(asio::io_service &io_service);
@@ -456,7 +459,7 @@ namespace RemoteInterface {
 
 		void start_receive();
 
-		virtual void deliver_message(std::shared_ptr<Message> &msg, bool via_udp = false) override;
+		virtual void deliver_message(std::shared_ptr<Message> &msg) override;
 	};
 
 	class BaseObject : public std::enable_shared_from_this<BaseObject> {
@@ -612,7 +615,7 @@ namespace RemoteInterface {
 
 		void request_delete_me();
 
-		void send_object_message(std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback, bool via_udp = false);
+		void send_object_message(std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback);
 		void send_object_message(std::function<void(std::shared_ptr<Message> &msg_to_send)> create_msg_callback,
 					 std::function<void(const Message *reply_message)> reply_received_callback);
 
