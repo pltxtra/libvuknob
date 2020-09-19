@@ -29,6 +29,8 @@ namespace RemoteInterface {
 	namespace __RI__CURRENT_NAMESPACE {
 		class Client : public Context, public BasicMessageHandler {
 		private:
+			Session *session;
+
 			std::shared_ptr<asio::io_service::work> io_workit;
 			std::map<int32_t, std::shared_ptr<BaseObject> > all_objects;
 

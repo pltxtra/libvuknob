@@ -52,14 +52,20 @@ CLIENT_CODE(
 		failure_response_callback = _failure_response_cb;
 		disconnect_callback = _disconnect_cb;
 		auto endpoint_iterator = resolver.resolve({server_host, std::to_string(server_port) });
-
-		asio::async_connect(my_socket, endpoint_iterator,
+		session = new Session(io_service);
+		asio::async_connect(session->get_socket(), endpoint_iterator,
 				    [this](std::error_code ec, asio::ip::tcp::resolver::iterator)
 				    {
 					    if (!ec)
 					    {
 						    SATAN_ERROR("Client::connect() calling start_receive()\n");
-						    start_receive();
+						    session->initialize(
+							    io_service,
+							    [this]() {
+								    my_socket = std::move(session->get_socket());
+								    start_receive();
+							    }
+							    );
 					    } else {
 						    SATAN_ERROR("Failed to connect to server.\n");
 					    }

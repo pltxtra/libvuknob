@@ -46,6 +46,22 @@
 
 /***************************
  *
+ *  Class RemoteInterface::Session
+ *
+ ***************************/
+
+void RemoteInterface::Session::initialize(asio::io_service& io_service, std::function<void()> on_completion) {
+	const char *my_introduction = "HELLO";
+	char peer_introduction[6];
+
+	asio::write(socket, asio::buffer(my_introduction, 5));
+	asio::read(socket, asio::buffer(peer_introduction, 5));
+
+	io_service.post(on_completion);
+}
+
+/***************************
+ *
  *  Class RemoteInterface::Message
  *
  ***************************/

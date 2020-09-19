@@ -203,9 +203,7 @@ namespace RemoteInterface {
 			return socket;
 		}
 
-		void initialize(asio::io_service& io_service, std::function<void()> on_completion) {
-			io_service.post(on_completion);
-		}
+		void initialize(asio::io_service& io_service, std::function<void()> on_completion);
 	};
 
 	class Message {
