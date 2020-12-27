@@ -39,7 +39,7 @@ void GnuVGMachineCreator::create_machine(const std::string& hint, bool autoconne
 	}
 
 	if(items.size() > 0) {
-		SATAN_DEBUG("GnuVGMachineCreator::create_machine() - bringing up menu with %d items\n", items.size());
+		SATAN_DEBUG("GnuVGMachineCreator::create_machine() - bringing up menu with %zu items\n", items.size());
 		PopupMenu::show_menu(
 			items,
 			[items, autoconnect](int selection) {

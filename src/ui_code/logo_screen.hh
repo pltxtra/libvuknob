@@ -34,7 +34,7 @@
 
 #include "gnuvg_listview.hh"
 
-class LogoScreen : public KammoGUI::SVGCanvas::SVGDocument {
+class LogoScreen : public KammoGUI::GnuVGCanvas::SVGDocument {
 private:
 	class ThumpAnimation : public KammoGUI::Animation {
 	private:
@@ -56,27 +56,27 @@ private:
 	double thump_offset = 0.0;
 
 	bool logo_base_got = false;
-	KammoGUI::SVGCanvas::SVGMatrix knob_base_t;
+	KammoGUI::GnuVGCanvas::SVGMatrix knob_base_t;
 
-	KammoGUI::SVGCanvas::SVGMatrix transform_m;
+	KammoGUI::GnuVGCanvas::SVGMatrix transform_m;
 
-	KammoGUI::SVGCanvas::ElementReference *knobBody_element;
-	KammoGUI::SVGCanvas::ElementReference *google_element;
-	KammoGUI::SVGCanvas::ElementReference *start_element;
-	KammoGUI::SVGCanvas::ElementReference *network_element;
+	KammoGUI::GnuVGCanvas::ElementReference *knobBody_element;
+	KammoGUI::GnuVGCanvas::ElementReference *google_element;
+	KammoGUI::GnuVGCanvas::ElementReference *start_element;
+	KammoGUI::GnuVGCanvas::ElementReference *network_element;
 
 	std::string selected_server = "localhost";
 	int selected_port = -1;
 
-	ListView server_list;
+	GnuVGListView server_list;
 
 	void start_vuknob(bool start_with_jam_view);
 	void select_server(std::function<void()> on_select_callback);
 
-	static void element_on_event(KammoGUI::SVGCanvas::SVGDocument *source, KammoGUI::SVGCanvas::ElementReference *e_ref,
+	static void element_on_event(KammoGUI::GnuVGCanvas::SVGDocument *source, KammoGUI::GnuVGCanvas::ElementReference *e_ref,
 				     const KammoGUI::MotionEvent &event);
 public:
-	LogoScreen(bool hide_network_element, KammoGUI::SVGCanvas *cnv, std::string file_name);
+	LogoScreen(bool hide_network_element, KammoGUI::GnuVGCanvas *cnv, std::string file_name);
 
 	virtual void on_resize();
 	virtual void on_render();

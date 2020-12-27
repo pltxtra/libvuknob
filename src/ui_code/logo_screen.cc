@@ -45,11 +45,8 @@ using namespace std;
 #include "svg_loader.hh"
 #include "../engine_code/server.hh"
 #include "../engine_code/client.hh"
-#include "controller_handler.hh"
 
-#ifdef ANDROID
-#include "android_java_interface.hh"
-#endif
+#include "generic_platform_interface.hh"
 
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
@@ -92,15 +89,15 @@ void LogoScreen::ThumpAnimation::on_touch_event() { /* ignore touch */ }
  ***************************/
 
 void LogoScreen::on_resize() {
-	KammoGUI::SVGCanvas::SVGRect document_size;
-	KammoGUI::SVGCanvas::ElementReference root(this);
+	KammoGUI::GnuVGCanvas::SVGRect document_size;
+	KammoGUI::GnuVGCanvas::ElementReference root(this);
 	root.get_viewport(document_size);
 
+	auto canvas = get_canvas();
 	int pixel_w, pixel_h;
-	get_canvas_size(pixel_w, pixel_h);
-
 	float canvas_w_inches, canvas_h_inches;
-	get_canvas_size_inches(canvas_w_inches, canvas_h_inches);
+	canvas->get_size_pixels(pixel_w, pixel_h);
+	canvas->get_size_inches(canvas_w_inches, canvas_h_inches);
 
 	float w_fingers = canvas_w_inches / INCHES_PER_FINGER;
 	float h_fingers = canvas_h_inches / INCHES_PER_FINGER;
@@ -131,8 +128,8 @@ void LogoScreen::on_resize() {
 
 void LogoScreen::on_render() {
 	{ /* process thump */
-		KammoGUI::SVGCanvas::SVGMatrix logo_base_t;
-		KammoGUI::SVGCanvas::SVGMatrix logo_thump_t;
+		KammoGUI::GnuVGCanvas::SVGMatrix logo_base_t;
+		KammoGUI::GnuVGCanvas::SVGMatrix logo_thump_t;
 
 		logo_thump_t.translate(-250.0, -200.0);
 		logo_thump_t.scale(1.0 + 0.1 * thump_offset,
@@ -150,10 +147,10 @@ void LogoScreen::on_render() {
 		knobBody_element->set_transform(logo_base_t);
 	}
 
-	KammoGUI::SVGCanvas::ElementReference root_element(this);
+	KammoGUI::GnuVGCanvas::ElementReference root_element(this);
 	root_element.set_transform(transform_m);
 
-	KammoGUI::SVGCanvas::ElementReference(this, "versionString").set_text_content("v" VERSION_NAME);
+	KammoGUI::GnuVGCanvas::ElementReference(this, "versionString").set_text_content("v" VERSION_NAME);
 }
 
 void remote_interface_disconnected() {
@@ -173,13 +170,6 @@ void LogoScreen::start_vuknob(bool start_with_jam_view) {
 	if(selected_port == -1) {
 		selected_port = __RI_start_server();
 		selected_server = "localhost";
-	}
-
-	// the current sample bank editor (sample_editor_ng.cc) doesn't support
-	// remote operation - so we must disable access to it if we are connecting to
-	// a remote server.
-	if(selected_server != "localhost") {
-		ControllerHandler::disable_sample_editor_shortcut();
 	}
 
 	// connect to the selected server
@@ -210,8 +200,7 @@ void LogoScreen::select_server(std::function<void()> on_select_callback) {
 		server_list.add_row("localhost");
 	}
 
-#ifdef ANDROID
-	auto list_content = AndroidJavaInterface::list_services();
+	auto list_content = GenericPlatformInterface::list_services();
 	if(list_content.size() == 0) {
 		jInformer::inform("Please make sure there is a vuKNOB server running on the local network first...");
 		return;
@@ -220,7 +209,7 @@ void LogoScreen::select_server(std::function<void()> on_select_callback) {
 		SATAN_DEBUG("   SRVC ---> %s\n", srv.first.c_str());
 		server_list.add_row(srv.first);
 	}
-#endif
+
 	server_list.select_from_list("Select vuKNOB server", NULL,
 				     [this, list_content, on_select_callback](void *context, bool selected, int row_number, const std::string &row) {
 					     if(selected) {
@@ -241,8 +230,8 @@ void LogoScreen::select_server(std::function<void()> on_select_callback) {
 		);
 }
 
-void LogoScreen::element_on_event(KammoGUI::SVGCanvas::SVGDocument *source,
-				  KammoGUI::SVGCanvas::ElementReference *e_ref,
+void LogoScreen::element_on_event(KammoGUI::GnuVGCanvas::SVGDocument *source,
+				  KammoGUI::GnuVGCanvas::ElementReference *e_ref,
 				  const KammoGUI::MotionEvent &event) {
 	LogoScreen *ctx = (LogoScreen *)source;
 
@@ -306,24 +295,19 @@ static void ask_question(void *ignored) {
 
 #endif
 
-LogoScreen::LogoScreen(bool hide_network_element, KammoGUI::SVGCanvas *cnvs, std::string fname) : SVGDocument(fname, cnvs), logo_base_got(false), server_list(cnvs) {
-	google_element = new KammoGUI::SVGCanvas::ElementReference(this, "google");
+LogoScreen::LogoScreen(bool hide_network_element, KammoGUI::GnuVGCanvas *cnvs, std::string fname) : SVGDocument(fname, cnvs), logo_base_got(false), server_list(cnvs) {
+	google_element = new KammoGUI::GnuVGCanvas::ElementReference(this, "google");
 	google_element->set_event_handler(element_on_event);
-	start_element = new KammoGUI::SVGCanvas::ElementReference(this, "start");
+	start_element = new KammoGUI::GnuVGCanvas::ElementReference(this, "start");
 	start_element->set_event_handler(element_on_event);
 
-	network_element = new KammoGUI::SVGCanvas::ElementReference(this, "network");
+	network_element = new KammoGUI::GnuVGCanvas::ElementReference(this, "network");
 	network_element->set_event_handler(element_on_event);
 	SATAN_DEBUG("LogoScreen::LogoScreen() - hide_network_element = %s\n", hide_network_element ? "true" : "false");
 	if(hide_network_element) network_element->set_display("none");
 
-	knobBody_element = new KammoGUI::SVGCanvas::ElementReference(this, "knobBody");
+	knobBody_element = new KammoGUI::GnuVGCanvas::ElementReference(this, "knobBody");
 	knobBody_element->set_event_handler(element_on_event);
-
-#ifdef ANDROID
-//	KammoGUI::run_on_GUI_thread(ask_question, NULL);
-#endif
-
 }
 
 /***************************
@@ -335,25 +319,14 @@ LogoScreen::LogoScreen(bool hide_network_element, KammoGUI::SVGCanvas *cnvs, std
 KammoEventHandler_Declare(LogoScreenHandler,"logoScreen:logoScreenOld");
 
 virtual void on_init(KammoGUI::Widget *wid) {
-	KammoGUI::SVGCanvas *cnvs = (KammoGUI::SVGCanvas *)wid;
+	KammoGUI::GnuVGCanvas *cnvs = (KammoGUI::GnuVGCanvas *)wid;
 	cnvs->set_bg_color(1.0, 0.631373, 0.137254);
 
 	SATAN_DEBUG("init LogoScreen - id: %s\n", wid->get_id().c_str());
 
 	(void)new LogoScreen(true, cnvs, std::string(SVGLoader::get_svg_directory() + "/logoScreen.svg"));
 
-	// if using the OLD logo screen - start up local VuKNOB server here
-	if(wid->get_id() == "logoScreenOld") {
-		int port_number = __RI_start_server();
-#ifdef ANDROID
-		AndroidJavaInterface::announce_service(port_number);
-#endif
-	}
-
-#ifdef ANDROID
-	AndroidJavaInterface::discover_services();
-#endif
-
+	GenericPlatformInterface::discover_services();
 }
 
 KammoEventHandler_Instance(LogoScreenHandler);

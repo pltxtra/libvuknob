@@ -139,13 +139,13 @@ void LoopSettings::on_resize() {
 
 	double tmp;
 
-	tmp = canvas_w_inches / INCHES_PER_FINGER;
-	auto canvas_width_fingers = (int)tmp;
+	//tmp = canvas_w_inches / INCHES_PER_FINGER;
+	//auto canvas_width_fingers = (int)tmp;
 	tmp = canvas_h_inches / INCHES_PER_FINGER;
 	auto canvas_height_fingers = (int)tmp;
 
-	tmp = canvas_w / ((double)canvas_width_fingers);
-	auto finger_width = tmp;
+	//tmp = canvas_w / ((double)canvas_width_fingers);
+	//auto finger_width = tmp;
 	tmp = canvas_h / ((double)canvas_height_fingers);
 	auto finger_height = tmp;
 

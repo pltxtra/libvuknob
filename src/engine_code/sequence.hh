@@ -197,7 +197,7 @@ namespace RemoteInterface {
 				void pad_set_arpeggio_direction(ArpeggioDirection_t arp_direction);
 				void pad_clear();
 				void pad_enqueue_event(int finger, PadEvent_t event_type, float ev_x, float ev_y, float ev_z);
-				void enqueue_midi_data(size_t len, const char* data);
+				void enqueue_midi_data(size_t len, const unsigned char* data);
 				);
 
 			ON_CLIENT(

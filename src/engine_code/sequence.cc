@@ -982,7 +982,7 @@ CLIENT_CODE(
 			);
 	}
 
-	void Sequence::enqueue_midi_data(size_t len, const char* data) {
+	void Sequence::enqueue_midi_data(size_t len, const unsigned char* data) {
 		std::string encoded = encode_byte_array(len, data);
 		send_message_to_server(
 			req_enqueue_midi_data,

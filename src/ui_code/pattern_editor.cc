@@ -537,15 +537,15 @@ void PatternEditor::show_velocity_slider(NoteGraphic &ngph) {
 }
 
 void PatternEditor::note_on(int index) {
-	char midi_data[] = {
-		0x90, (char)(index), 0x7f
+	unsigned char midi_data[] = {
+		0x90, (unsigned char)(index), 0x7f
 	};
 	if(ri_seq) ri_seq->enqueue_midi_data(3, midi_data);
 };
 
 void PatternEditor::note_off(int index) {
-	char midi_data[] = {
-		0x80, (char)(index), 0x7f
+	unsigned char midi_data[] = {
+		0x80, (unsigned char)(index), 0x7f
 	};
 	if(ri_seq) ri_seq->enqueue_midi_data(3, midi_data);
 };

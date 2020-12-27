@@ -1,7 +1,7 @@
 AC_PREREQ([2.69])
 
 AC_INIT([libkamoflage], [1.0], [pltxtra@vuknob.com])
-AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects -Wno-portability])
 
 AM_PROG_AR
 LT_INIT

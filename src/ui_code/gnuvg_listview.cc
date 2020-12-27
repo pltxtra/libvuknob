@@ -82,7 +82,8 @@ void GnuVGListView::Row::on_event(KammoGUI::GnuVGCanvas::SVGDocument *source,
 			if(event.get_action() == KammoGUI::MotionEvent::ACTION_UP) {
 				x = x - start_x;
 				y = y - start_y;
-				if(x < 0) x = -x; if(y < 0) y = -y;
+				if(x < 0) x = -x;
+				if(y < 0) y = -y;
 				if(x < 10 && y < 10) {
 					row->parent->row_selected(row->row_index, row->text);
 				}

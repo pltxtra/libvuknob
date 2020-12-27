@@ -173,13 +173,13 @@ GnuVGScaleEditor::GnuVGScaleEditor(KammoGUI::GnuVGCanvas *cnv)
 
 	auto change_key = [this](bool note_on, int index) {
 		if(note_on) {
-			char midi_data[] = {
-				0x90, (char)(36 + index), 0x7f
+			unsigned char midi_data[] = {
+				0x90, (unsigned char)(36 + index), 0x7f
 			};
 			if(mseq) mseq->enqueue_midi_data(3, midi_data);
 		} else {
-			char midi_data[] = {
-				0x80, (char)(36 + index), 0x7f
+			unsigned char midi_data[] = {
+				0x80, (unsigned char)(36 + index), 0x7f
 			};
 			if(mseq) mseq->enqueue_midi_data(3, midi_data);
 			if(active_setting) {
@@ -192,13 +192,13 @@ GnuVGScaleEditor::GnuVGScaleEditor(KammoGUI::GnuVGCanvas *cnv)
 		if(!mseq) return;
 
 		if(note_on) {
-			char midi_data[] = {
-				0x90, (char)(36 + index), 0x7f
+			unsigned char midi_data[] = {
+				0x90, (unsigned char)(36 + index), 0x7f
 			};
 			mseq->enqueue_midi_data(3, midi_data);
 		} else {
-			char midi_data[] = {
-				0x80, (char)(36 + index), 0x7f
+			unsigned char midi_data[] = {
+				0x80, (unsigned char)(36 + index), 0x7f
 			};
 			mseq->enqueue_midi_data(3, midi_data);
 		}

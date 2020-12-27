@@ -43,23 +43,6 @@
 
 #include "common.hh"
 
-static void yes(void *ignored) {
-	static KammoGUI::UserEvent *ue = NULL;
-	static KammoGUI::UserEvent *callback_ue = NULL;
-	KammoGUI::get_widget((KammoGUI::Widget **)&ue, "showMachineTypeListScroller");
-	KammoGUI::get_widget((KammoGUI::Widget **)&callback_ue, "showComposeContainer");
-	if(ue != NULL && callback_ue != NULL) {
-		std::map<std::string, void *> args;
-		args["hint_match"] = strdup("generator");
-		args["callback_event"] = callback_ue;
-		KammoGUI::EventHandler::trigger_user_event(ue, args);
-	}
-}
-
-static void no(void *ignored) {
-	// do not do anything
-}
-
 static void ask_to_create_machine() {
 	SATAN_DEBUG("-------- Would ask for new machine here....\n");
 //	KammoGUI::ask_yes_no("Create machine?", "No machine available - do you want to create one now?",
@@ -189,7 +172,7 @@ void GnuVGLivePad::refresh_scale_key_names() {
 	if(auto gco = RemoteInterface::GlobalControlObject::get_global_control_object()) {
 		SATAN_DEBUG("GnuVGLivePad::refresh_scale_key_names() - D\n");
 		std::vector<int> keys = scalo->get_scale_keys(scale_name);
-		SATAN_DEBUG("keys[%s].size() = %d\n", scale_name.c_str(), keys.size());
+		SATAN_DEBUG("keys[%s].size() = %zu\n", scale_name.c_str(), keys.size());
 		for(int n = 0; n < 8; n++) {
 			std::stringstream key_name_id;
 			key_name_id << "key_name_" << n;
