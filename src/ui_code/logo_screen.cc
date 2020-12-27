@@ -38,7 +38,6 @@ using namespace std;
 #include <math.h>
 
 #include <jngldrum/jinformer.hh>
-#include <build_time_data.hh>
 
 #include "machine.hh"
 #include "satan_project_entry.hh"

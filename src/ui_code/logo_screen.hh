@@ -32,7 +32,7 @@
 
 #include <kamogui.hh>
 
-#include "listview.hh"
+#include "gnuvg_listview.hh"
 
 class LogoScreen : public KammoGUI::SVGCanvas::SVGDocument {
 private:

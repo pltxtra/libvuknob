@@ -26,7 +26,6 @@
  * Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  */
-
 #ifndef __SATAN_ERROR_HEADER
 #define __SATAN_ERROR_HEADER
 
@@ -38,7 +37,7 @@
 #else
 
 #include <stdio.h>
-#define SATAN_ERRROR(...)  printf(__VA_ARGS__)
+#define SATAN_ERROR(...)  printf(__VA_ARGS__)
 
 #endif
 
