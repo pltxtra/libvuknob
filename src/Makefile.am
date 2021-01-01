@@ -18,6 +18,7 @@ libvuknobclient_la_SOURCES = \
 generic_platform_interface.cc \
 generic_platform_interface.hh \
 engine_code/scales_control.cc engine_code/scales_control.hh \
+ui_code/sequencer.cc ui_code/sequencer.hh \
 ui_code/ui_stack.cc ui_code/ui_stack.hh \
 ui_code/gnuvg_corner_button.cc ui_code/gnuvg_corner_button.hh \
 ui_code/logo_screen.cc ui_code/logo_screen.hh \
