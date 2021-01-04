@@ -51,9 +51,11 @@ CLIENT_CODE(
 			     std::function<void(const std::string &failure_response)> _failure_response_cb) {
 		failure_response_callback = _failure_response_cb;
 		disconnect_callback = _disconnect_cb;
-		auto endpoint_iterator = resolver.resolve({server_host, std::to_string(server_port) });
+		auto results = resolver.resolve({server_host, std::to_string(server_port) });
 		session = new Session(io_service);
-		asio::async_connect(session->get_socket(), endpoint_iterator,
+		asio::async_connect(session->get_socket(),
+				    results.begin(),
+				    results.end(),
 				    [this](std::error_code ec, asio::ip::tcp::resolver::iterator)
 				    {
 					    if (!ec)

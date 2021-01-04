@@ -32,18 +32,27 @@
 #include "gnuvg_listview.hh"
 #include "gnuvg_scaleeditor.hh"
 #include "engine_code/sequence.hh"
+#include "engine_code/global_control_object.hh"
+#include "../engine_code/scales_control.hh"
 
 #define HZONES PAD_HZONES
 #define VZONES PAD_VZONES
 
 typedef RemoteInterface::ClientSpace::Sequence RISequence;
+typedef RemoteInterface::ClientSpace::GlobalControlObject GCO;
+typedef RemoteInterface::ClientSpace::ScalesControl ScalesControl;
 
 class GnuVGLivePad
 	: public KammoGUI::GnuVGCanvas::SVGDocument
 	, public RemoteInterface::Context::ObjectSetListener<RISequence>
-	, public RemoteInterface::GlobalControlObject::PlaybackStateListener
+	, public RemoteInterface::Context::ObjectSetListener<GCO>
+	, public RemoteInterface::Context::ObjectSetListener<ScalesControl>
+	, public GCO::GlobalControlListener
+	, public std::enable_shared_from_this<GnuVGLivePad>
 	, public KammoGUI::SensorEvent::Listener {
 private:
+	std::weak_ptr<GCO> gco_w;
+	std::weak_ptr<ScalesControl> scalo_w;
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_m;
 
 	// canvas coordinates for the actual LivePad part
@@ -140,11 +149,14 @@ public:
 
 	virtual void object_registered(std::shared_ptr<RISequence> ri_seq) override;
 	virtual void object_unregistered(std::shared_ptr<RISequence> ri_seq) override;
+	virtual void object_registered(std::shared_ptr<GCO> gco) override;
+	virtual void object_unregistered(std::shared_ptr<GCO> gco) override;
+	virtual void object_registered(std::shared_ptr<ScalesControl> scalo) override;
+	virtual void object_unregistered(std::shared_ptr<ScalesControl> scalo) override;
 
 	// RemoteInterface::GlobalControlObject::PlaybackStateListener
 	virtual void playback_state_changed(bool is_playing) override;
-	virtual void recording_state_changed(bool is_recording) override;
-	virtual void periodic_playback_update(int current_line) override { /* empty */ }
+	virtual void record_state_changed(bool is_recording) override;
 
 	virtual void on_sensor_event(std::shared_ptr<KammoGUI::SensorEvent> event) override;
 };

@@ -407,7 +407,7 @@ CLIENT_CODE(
 			_gco_listeners = gco_listeners;
 		}
 
-		SATAN_ERROR("(client) ::handle_cmd_set_loop_state() -- %d\n", gco_listeners.size());
+		SATAN_ERROR("(client) ::handle_cmd_set_loop_state() -- %zu\n", gco_listeners.size());
 
 		for(auto glol : _gco_listeners)
 			glol->loop_state_changed(_loop_state);
@@ -424,7 +424,7 @@ CLIENT_CODE(
 			_gco_listeners = gco_listeners;
 		}
 
-		SATAN_ERROR("(client) ::handle_cmd_set_loop_start() -- %d\n", gco_listeners.size());
+		SATAN_ERROR("(client) ::handle_cmd_set_loop_start() -- %zu\n", gco_listeners.size());
 
 		for(auto glol : _gco_listeners)
 			glol->loop_start_changed(_loop_start);
@@ -441,7 +441,7 @@ CLIENT_CODE(
 			_gco_listeners = gco_listeners;
 		}
 
-		SATAN_ERROR("(client) ::handle_cmd_set_loop_length() -- %d\n", gco_listeners.size());
+		SATAN_ERROR("(client) ::handle_cmd_set_loop_length() -- %zu\n", gco_listeners.size());
 
 		for(auto glol : _gco_listeners)
 			glol->loop_length_changed(_loop_length);
@@ -458,7 +458,7 @@ CLIENT_CODE(
 			_gco_listeners = gco_listeners;
 		}
 
-		SATAN_ERROR("(client) ::handle_cmd_set_playback_state() -- %d\n", gco_listeners.size());
+		SATAN_ERROR("(client) ::handle_cmd_set_playback_state() -- %zu\n", gco_listeners.size());
 
 		for(auto glol : _gco_listeners)
 			glol->playback_state_changed(_playing);
@@ -475,7 +475,7 @@ CLIENT_CODE(
 			_gco_listeners = gco_listeners;
 		}
 
-		SATAN_ERROR("(client) ::handle_cmd_set_record_state() -- %d\n", gco_listeners.size());
+		SATAN_ERROR("(client) ::handle_cmd_set_record_state() -- %zu\n", gco_listeners.size());
 
 		for(auto glol : _gco_listeners)
 			glol->record_state_changed(_record);
@@ -492,7 +492,7 @@ CLIENT_CODE(
 			_gco_listeners = gco_listeners;
 		}
 
-		SATAN_ERROR("(client) ::handle_cmd_set_bpm() -- %d\n", gco_listeners.size());
+		SATAN_ERROR("(client) ::handle_cmd_set_bpm() -- %zu\n", gco_listeners.size());
 
 		for(auto glol : _gco_listeners)
 			glol->bpm_changed(_bpm);
@@ -509,7 +509,7 @@ CLIENT_CODE(
 			_gco_listeners = gco_listeners;
 		}
 
-		SATAN_ERROR("(client) ::handle_cmd_set_lpb() -- %d\n", gco_listeners.size());
+		SATAN_ERROR("(client) ::handle_cmd_set_lpb() -- %zu\n", gco_listeners.size());
 
 		for(auto glol : _gco_listeners)
 			glol->lpb_changed(_lpb);
@@ -526,7 +526,7 @@ CLIENT_CODE(
 			_gco_listeners = gco_listeners;
 		}
 
-		SATAN_ERROR("(client) ::handle_cmd_set_sf() -- %d\n", gco_listeners.size());
+		SATAN_ERROR("(client) ::handle_cmd_set_sf() -- %zu\n", gco_listeners.size());
 
 		for(auto glol : _gco_listeners)
 			glol->shuffle_factor_changed(_sf);
@@ -542,7 +542,7 @@ CLIENT_CODE(
 			_gco_listeners = gco_listeners;
 		}
 
-		SATAN_DEBUG("(client) ::handle_cmd_row_upd(%d) -- %d\n", _row, gco_listeners.size());
+		SATAN_DEBUG("(client) ::handle_cmd_row_upd(%d) -- %zu\n", _row, gco_listeners.size());
 
 		for(auto glol : _gco_listeners)
 			glol->row_update(_row);

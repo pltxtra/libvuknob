@@ -29,7 +29,7 @@ SERVER_CODE(
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		auto content = msg->get_value("content");
 		Serialize::ItemDeserializer serder(content);
-		serder.process(*custom_scale);
+		serder.process(custom_scale);
 		send_message(
 			cmd_set_custom_scale,
 			[content](std::shared_ptr<Message> &msg_to_send) {
@@ -92,18 +92,18 @@ CLIENT_CODE(
 	}
 
 	void ScalesControl::set_custom_scale_keys(std::vector<int> new_custom_scale_values) {
-		std::shared_ptr<Scale> new_custom_scale = std::make_shared<Scale>();
-		int k = 0;
-		new_custom_scale->name = "custom";
-		for(auto v : new_custom_scale_values) {
-			new_custom_scale->keys[k++] = v;
+		Scale new_custom_scale;
+		new_custom_scale.name = "custom";
+		for(int k = 0; k < 7; k++) {
+			new_custom_scale.keys[k] = new_custom_scale_values[k];
 		}
+		Serialize::ItemSerializer iser;
+		iser.process(new_custom_scale);
+		auto iser_result = iser.result();
 		send_message_to_server(
 			req_set_custom_scale,
-			[new_custom_scale](std::shared_ptr<RemoteInterface::Message> &msg2send) {
-				Serialize::ItemSerializer iser;
-				iser.process(*new_custom_scale);
-				msg2send->set_value("content", iser.result());
+			[iser_result](std::shared_ptr<RemoteInterface::Message> &msg2send) {
+				msg2send->set_value("content", iser_result);
 			}
 			);
 	}

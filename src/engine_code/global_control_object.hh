@@ -83,6 +83,12 @@ namespace RemoteInterface {
 				int get_bpm();
 				int get_lpb();
 				int get_shuffle_factor();
+
+				std::vector<std::string> get_pad_arpeggio_patterns() {
+					std::vector<std::string> retval;
+					retval.push_back("not implemented in gco yet");
+					return retval;
+				}
 				);
 
 			GlobalControlObject(const Factory *factory, const RemoteInterface::Message &serialized);

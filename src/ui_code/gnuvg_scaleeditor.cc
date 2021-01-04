@@ -29,11 +29,28 @@
 
 #include "gnuvg_scaleeditor.hh"
 #include "svg_loader.hh"
-#include "scales.hh"
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 #include "common.hh"
+
+void GnuVGScaleEditor::object_registered(std::shared_ptr<ScalesControl> _scalo) {
+       SATAN_DEBUG("---------------------------------- GnuVGScaleEditor got scalo object...\n");
+       KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
+               [this, _scalo]() {
+                       SATAN_DEBUG("-----------**************  GnuVGScaleEditor got scalo object...\n");
+                       scalo_w = _scalo;
+               }
+               );
+}
+
+void GnuVGScaleEditor::object_unregistered(std::shared_ptr<ScalesControl> _scalo) {
+       KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
+               [this, _scalo]() {
+                       scalo_w.reset();
+               }
+               );
+}
 
 GnuVGScaleEditor::Key::Key(GnuVGScaleEditor *parent, const std::string &id,
 			   int index,
@@ -117,20 +134,15 @@ GnuVGScaleEditor::Setting::Setting(GnuVGScaleEditor *parent, int _offset, const 
 }
 
 void GnuVGScaleEditor::Setting::change_key(int key_index) {
-	if(auto scalo = Scales::get_scales_object()) {
+	SATAN_DEBUG("change_setting(%d) -- octave: %d\n", key_index, key_index / 12);
+	key = key_index;
 
-		SATAN_DEBUG("change_setting(%d) -- octave: %d\n", key_index, key_index / 12);
-		key = key_index;
-
-		std::string octave_text = ((key_index / 12) == 1) ? "2" : "1";
-		std::string key_text(scalo->get_key_text(key_index));
-		key_text = key_text + octave_text;
+	std::string octave_text = ((key_index / 12) == 1) ? "2" : "1";
+	std::string key_text(ScalesControl::get_key_text(key_index));
+	key_text = key_text + octave_text;
 
 //		SATAN_DEBUG("change_setting(%d) -- octave: %d -> %s\n", key_index, key_index / 12, key_text.c_str());
-		setting_text.set_text_content(key_text);
-	} else {
-		SATAN_ERROR("GnuVGScaleEditor::Setting::change_key() - failed to get Scales object from client.\n");
-	}
+	setting_text.set_text_content(key_text);
 }
 
 int GnuVGScaleEditor::Setting::get_key() {
@@ -248,10 +260,12 @@ GnuVGScaleEditor::GnuVGScaleEditor(KammoGUI::GnuVGCanvas *cnv)
 		       const KammoGUI::MotionEvent &event) {
 			if(event.get_action() != KammoGUI::MotionEvent::ACTION_UP) return;
 
-			if(auto scalo = Scales::get_scales_object()) {
+			if(auto scalo = scalo_w.lock()) {
+				std::vector<int> new_custom_scale;
 				for(auto sett : settings) {
-					scalo->set_custom_scale_key(sett->get_offset(), sett->get_key());
+					new_custom_scale.push_back(sett->get_key());
 				}
+				scalo->set_custom_scale_keys(new_custom_scale);
 			}
 			hide();
 		}
@@ -265,9 +279,10 @@ void GnuVGScaleEditor::show(std::shared_ptr<RISequence> _mseq) {
 	root_element.set_display("inline");
 	mseq = _mseq;
 
-	if(auto scalo = Scales::get_scales_object()) {
+	if(auto scalo = scalo_w.lock()) {
+		auto custom_scale = scalo->get_custom_scale_keys();
 		for(auto sett : settings) {
-			sett->change_key(scalo->get_custom_scale_key(sett->get_offset()));
+			sett->change_key(custom_scale[sett->get_offset()]);
 		}
 	}
 }

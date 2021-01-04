@@ -437,13 +437,6 @@ SERVER_N_CLIENT_CODE(
 		if(k_type == Knob::rik_sigid) {
 			std::string retval = "no file loaded";
 
-			auto global_sb = SampleBank::get_bank("");
-			if(global_sb) {
-				try {
-					retval = global_sb->get_sample_name(val);
-				} catch(SampleBank::NoSampleLoaded &e) { /* ignore */ }
-			}
-
 			return retval;
 		}
 
@@ -811,7 +804,7 @@ CLIENT_CODE(
 		auto source_name = msg.get_value("src");
 		auto output = msg.get_value("oup");
 		auto input = msg.get_value("inp");
-		SATAN_ERROR("[%d] handle_cmd_attach([%s:%s] -> [%s:%s]\n",
+		SATAN_ERROR("[%zu] handle_cmd_attach([%s:%s] -> [%s:%s]\n",
 			    name2machine.size(),
 			    source_name.c_str(), output.c_str(), name.c_str(), input.c_str());
 

@@ -34,9 +34,12 @@
 #include "common.hh"
 
 #include "../engine_code/client.hh"
+#include "../engine_code/handle_list.hh"
 
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
+
+typedef RemoteInterface::ClientSpace::HandleList HandleList;
 
 /***************************
  *
@@ -991,7 +994,7 @@ GnuVGConnector::GnuVGConnector(KammoGUI::GnuVGCanvas *cnvs)
 		[this]() {
 			list_view.clear();
 
-			for(auto handle2hint : RemoteInterface::HandleList::get_handles_and_hints()) {
+			for(auto handle2hint : HandleList::get_handles_and_hints()) {
 				list_view.add_row(handle2hint.first);
 			}
 
@@ -999,7 +1002,7 @@ GnuVGConnector::GnuVGConnector(KammoGUI::GnuVGCanvas *cnvs)
 						  [this](void *context, bool row_selected, int row_index, const std::string &text) {
 							  if(row_selected) {
 								  SATAN_DEBUG("plusbutton selected %s\n", text.c_str());
-								  RemoteInterface::HandleList::create_instance(
+								  HandleList::create_instance(
 									  text,
 									  position_x / MACHINE_POS_SCALING, position_y / MACHINE_POS_SCALING);
 							  }

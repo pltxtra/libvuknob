@@ -25,10 +25,15 @@
 #include <list>
 
 #include "engine_code/sequence.hh"
+#include "../engine_code/scales_control.hh"
 
 typedef RemoteInterface::ClientSpace::Sequence RISequence;
+typedef RemoteInterface::ClientSpace::ScalesControl ScalesControl;
 
-class GnuVGScaleEditor : public KammoGUI::GnuVGCanvas::SVGDocument {
+class GnuVGScaleEditor
+	: public KammoGUI::GnuVGCanvas::SVGDocument
+	, public RemoteInterface::Context::ObjectSetListener<ScalesControl>
+{
 private:
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t, shade_transform_t;
 
@@ -63,6 +68,7 @@ private:
 
 	std::list<Key> keys;
 	std::vector<Setting*> settings;
+	std::weak_ptr<ScalesControl> scalo_w;
 
 	Setting* active_setting = 0;
 
@@ -74,6 +80,9 @@ public:
 
 	virtual void on_resize() override;
 	virtual void on_render() override;
+
+	virtual void object_registered(std::shared_ptr<ScalesControl> scalo) override;
+	virtual void object_unregistered(std::shared_ptr<ScalesControl> scalo) override;
 
 	void hide();
 	void show(std::shared_ptr<RISequence> mseq);

@@ -34,7 +34,6 @@
 
 #include "gnuvg_livepad.hh"
 #include "svg_loader.hh"
-#include "scales.hh"
 
 #include "../engine_code/client.hh"
 
@@ -48,6 +47,46 @@ static void ask_to_create_machine() {
 //	KammoGUI::ask_yes_no("Create machine?", "No machine available - do you want to create one now?",
 //			     yes, NULL,
 //			     no, NULL);
+}
+
+void GnuVGLivePad::object_registered(std::shared_ptr<GCO> _gco) {
+	SATAN_DEBUG("---------------------------------- GnuVGLivePad got gco object...\n");
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
+		[this, _gco]() {
+			SATAN_DEBUG("-----------**************  GnuVGLivePad got gco object...\n");
+			gco_w = _gco;
+			if(auto gco = gco_w.lock()) {
+				SATAN_DEBUG("-------------**************  GnuVGLivePad locked gco object...\n");
+				gco->add_global_control_listener(shared_from_this());
+			}
+		}
+		);
+}
+
+void GnuVGLivePad::object_unregistered(std::shared_ptr<GCO> _gco) {
+	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
+		[this, _gco]() {
+			gco_w.reset();
+		}
+		);
+}
+
+void GnuVGLivePad::object_registered(std::shared_ptr<ScalesControl> _scalo) {
+       SATAN_DEBUG("---------------------------------- GnuVGLivePad got scalo object...\n");
+       KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
+               [this, _scalo]() {
+                       SATAN_DEBUG("-----------**************  GnuVGLivePad got scalo object...\n");
+                       scalo_w = _scalo;
+               }
+               );
+}
+
+void GnuVGLivePad::object_unregistered(std::shared_ptr<ScalesControl> _scalo) {
+       KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
+               [this, _scalo]() {
+                       scalo_w.reset();
+               }
+               );
 }
 
 void GnuVGLivePad::on_resize() {
@@ -145,7 +184,7 @@ void GnuVGLivePad::select_machine() {
 void GnuVGLivePad::select_arp_pattern() {
 	listView->clear();
 
-	if(auto gco = RemoteInterface::GlobalControlObject::get_global_control_object()) {
+	if(auto gco = gco_w.lock()) {
 		for(auto arpid :  gco->get_pad_arpeggio_patterns()) {
 			listView->add_row(arpid);
 		}
@@ -164,14 +203,14 @@ void GnuVGLivePad::select_arp_pattern() {
 
 void GnuVGLivePad::refresh_scale_key_names() {
 	SATAN_DEBUG("GnuVGLivePad::refresh_scale_key_names() - A\n");
-	auto scalo = Scales::get_scales_object();
+	auto scalo = scalo_w.lock();
 	SATAN_DEBUG("GnuVGLivePad::refresh_scale_key_names() - B\n");
 	if(!scalo) return;
 	SATAN_DEBUG("GnuVGLivePad::refresh_scale_key_names() - C\n");
 
-	if(auto gco = RemoteInterface::GlobalControlObject::get_global_control_object()) {
+	if(auto gco = gco_w.lock()) {
 		SATAN_DEBUG("GnuVGLivePad::refresh_scale_key_names() - D\n");
-		std::vector<int> keys = scalo->get_scale_keys(scale_name);
+		std::vector<int> keys = scalo->get_scale_keys(scale_index);
 		SATAN_DEBUG("keys[%s].size() = %zu\n", scale_name.c_str(), keys.size());
 		for(int n = 0; n < 8; n++) {
 			std::stringstream key_name_id;
@@ -192,8 +231,8 @@ void GnuVGLivePad::refresh_scale_key_names() {
 void GnuVGLivePad::select_scale() {
 	listView->clear();
 
-	if(auto gco = RemoteInterface::GlobalControlObject::get_global_control_object()) {
-		auto scalo = Scales::get_scales_object();
+	if(auto gco = gco_w.lock()) {
+		auto scalo = scalo_w.lock();
 		if(!scalo) return;
 
 		for(auto scale : scalo->get_scale_names()) {
@@ -207,8 +246,8 @@ void GnuVGLivePad::select_scale() {
 
 					   scale_name = row_text;
 
-					   if(auto gco = RemoteInterface::GlobalControlObject::get_global_control_object()) {
-						   auto scalo = Scales::get_scales_object();
+					   if(auto gco = gco_w.lock()) {
+						   auto scalo = scalo_w.lock();
 						   if(!scalo) return;
 
 						   int n = 0;
@@ -345,7 +384,7 @@ void GnuVGLivePad::refresh_quantize_indicator() {
 void GnuVGLivePad::refresh_scale_indicator() {
 	int n = 0;
 
-	if(auto scalo = Scales::get_scales_object()) {
+	if(auto scalo = scalo_w.lock()) {
 		for(auto scale : scalo->get_scale_names()) {
 			if(scale_index == n) {
 				selectScale_element.find_child_by_class("selectedText").set_text_content(scale);
@@ -709,7 +748,7 @@ void GnuVGLivePad::playback_state_changed(bool _is_playing) {
 		);
 }
 
-void GnuVGLivePad::recording_state_changed(bool _is_recording) {
+void GnuVGLivePad::record_state_changed(bool _is_recording) {
 	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,
 		[this, _is_recording]() {
 			is_recording = _is_recording;
@@ -920,7 +959,8 @@ void GnuVGLivePad::object_unregistered(std::shared_ptr<RISequence> ri_sequence) 
 std::shared_ptr<GnuVGLivePad> GnuVGLivePad::create(KammoGUI::GnuVGCanvas *cnvs) {
 	auto lpad = std::make_shared<GnuVGLivePad>(cnvs);
 	RemoteInterface::ClientSpace::Client::register_object_set_listener<RISequence>(lpad);
-	RemoteInterface::GlobalControlObject::register_playback_state_listener(lpad);
+	RemoteInterface::ClientSpace::Client::register_object_set_listener<GCO>(lpad);
+	RemoteInterface::ClientSpace::Client::register_object_set_listener<ScalesControl>(lpad);
 	KammoGUI::SensorEvent::register_listener(lpad);
 	lpad->hide();
 	return lpad;

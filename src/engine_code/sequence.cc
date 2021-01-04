@@ -55,7 +55,7 @@ SERVER_CODE(
 	void Sequence::handle_req_add_pattern_instance(RemoteInterface::Context *context,
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
-		uint32_t pattern_id = std::stoul(msg.get_value("pattern_id"));
+		uint32_t pattern_id = (uint32_t)std::stoul(msg.get_value("pattern_id"));
 		int start_at = std::stoi(msg.get_value("start_at"));
 		int loop_length = std::stoi(msg.get_value("loop_length"));
 		int stop_at = std::stoi(msg.get_value("stop_at"));
@@ -94,7 +94,7 @@ SERVER_CODE(
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
 		PatternInstance pattern_instance = {
-			.pattern_id = std::stoul(msg.get_value("pattern_id")),
+			.pattern_id = (uint32_t)std::stoul(msg.get_value("pattern_id")),
 			.start_at = std::stoi(msg.get_value("start_at")),
 			.loop_length = std::stoi(msg.get_value("loop_length")),
 			.stop_at = std::stoi(msg.get_value("stop_at")),
@@ -128,7 +128,7 @@ SERVER_CODE(
 	void Sequence::handle_req_add_note(RemoteInterface::Context *context,
 					   RemoteInterface::MessageHandler *src,
 					   const RemoteInterface::Message& msg) {
-		uint32_t pattern_id = std::stoul(msg.get_value("pattern_id"));
+		uint32_t pattern_id = (uint32_t)std::stoul(msg.get_value("pattern_id"));
 		int channel = std::stoi(msg.get_value("channel"));
 		int program = std::stoi(msg.get_value("program"));
 		int velocity = std::stoi(msg.get_value("velocity"));
@@ -188,7 +188,7 @@ SERVER_CODE(
 			.on_at = std::stoi(msg.get_value("on_at")),
 			.length = std::stoi(msg.get_value("length"))
 		};
-		uint32_t pattern_id = std::stoul(msg.get_value("pattern_id"));
+		uint32_t pattern_id = (uint32_t)std::stoul(msg.get_value("pattern_id"));
 
 		Machine::machine_operation_enqueue(
 			[this, pattern_id, note] {
@@ -693,7 +693,7 @@ CLIENT_CODE(
 						       RemoteInterface::MessageHandler *src,
 						       const RemoteInterface::Message& msg) {
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
-		auto pattern_id = std::stoul(msg.get_value("pattern_id"));
+		auto pattern_id = (uint32_t)std::stoul(msg.get_value("pattern_id"));
 		auto start_at = std::stoi(msg.get_value("start_at"));
 		auto loop_length = std::stoi(msg.get_value("loop_length"));
 		auto stop_at = std::stoi(msg.get_value("stop_at"));
@@ -714,7 +714,7 @@ CLIENT_CODE(
 						       const RemoteInterface::Message& msg) {
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		PatternInstance to_del = {
-			.pattern_id = std::stoul(msg.get_value("pattern_id")),
+			.pattern_id = (uint32_t)std::stoul(msg.get_value("pattern_id")),
 			.start_at = std::stoi(msg.get_value("start_at")),
 			.loop_length = std::stoi(msg.get_value("loop_length")),
 			.stop_at = std::stoi(msg.get_value("stop_at")),
@@ -731,7 +731,7 @@ CLIENT_CODE(
 					   RemoteInterface::MessageHandler *src,
 					   const RemoteInterface::Message& msg) {
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
-		auto pattern_id = std::stoul(msg.get_value("pattern_id"));
+		auto pattern_id = (uint32_t)std::stoul(msg.get_value("pattern_id"));
 		auto channel = std::stoi(msg.get_value("channel"));
 		auto program = std::stoi(msg.get_value("program"));
 		auto velocity = std::stoi(msg.get_value("velocity"));
@@ -770,7 +770,7 @@ CLIENT_CODE(
 			.on_at = std::stoi(msg.get_value("on_at")),
 			.length = std::stoi(msg.get_value("length"))
 		};
-		auto pattern_id = std::stoul(msg.get_value("pattern_id"));
+		auto pattern_id = (uint32_t)std::stoul(msg.get_value("pattern_id"));
 
 		if(patterns.find(pattern_id) == patterns.end())
 			return;
@@ -969,7 +969,6 @@ CLIENT_CODE(
 		int yp = ev_y;
 		int zp = ev_z;
 
-		auto thiz = std::dynamic_pointer_cast<RIMachine>(shared_from_this());
 		send_message_to_server(
 			req_pad_enqueue_event,
 			[xp, yp, zp, finger, event_type](std::shared_ptr<Message> &msg2send) {
@@ -1191,7 +1190,7 @@ SERVER_N_CLIENT_CODE(
 
 	template <class SerderClassT>
 	void Sequence::serderize_sequence(SerderClassT& iserder) {
-		SATAN_DEBUG("[%s] : ----- GOING IN %p, knob2midi.size(%d)\n", CLIENTORSERVER_STRING, this, knob2midi.size());
+		SATAN_DEBUG("[%s] : ----- GOING IN %p, knob2midi.size(%zu)\n", CLIENTORSERVER_STRING, this, knob2midi.size());
 		iserder.process(sequence_name);
 		SATAN_DEBUG("serderize_sequence() -- sequence_name: %s\n",
 			    sequence_name.c_str());
@@ -1199,7 +1198,7 @@ SERVER_N_CLIENT_CODE(
 		iserder.process(patterns);
 		iserder.process(knob2midi);
 
-		SATAN_DEBUG("[%s] : ----- (post %p) knob2midi.size(%d)\n", CLIENTORSERVER_STRING, this, knob2midi.size());
+		SATAN_DEBUG("[%s] : ----- (post %p) knob2midi.size(%zu)\n", CLIENTORSERVER_STRING, this, knob2midi.size());
 	}
 
 	std::shared_ptr<BaseObject> Sequence::SequenceFactory::create(

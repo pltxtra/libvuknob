@@ -162,16 +162,6 @@ void failure_response(const std::string &response) {
 }
 
 void LogoScreen::start_vuknob(bool start_with_jam_view) {
-	// clear everything and prepare for start
-	Machine::prepare_baseline();
-	SatanProjectEntry::clear_satan_project();
-
-	// if the selected port is equal to -1, default to the local host & port
-	if(selected_port == -1) {
-		selected_port = __RI_start_server();
-		selected_server = "localhost";
-	}
-
 	// connect to the selected server
 	RemoteInterface::ClientSpace::Client::connect_client(selected_server, selected_port,
 							     remote_interface_disconnected, failure_response);
@@ -196,10 +186,6 @@ void LogoScreen::start_vuknob(bool start_with_jam_view) {
 void LogoScreen::select_server(std::function<void()> on_select_callback) {
 	server_list.clear();
 
-	if(__RI_server_is_running()) {
-		server_list.add_row("localhost");
-	}
-
 	auto list_content = GenericPlatformInterface::list_services();
 	if(list_content.size() == 0) {
 		jInformer::inform("Please make sure there is a vuKNOB server running on the local network first...");
@@ -217,9 +203,6 @@ void LogoScreen::select_server(std::function<void()> on_select_callback) {
 						     if(srv != list_content.end()) {
 							     selected_server = srv->second.first;
 							     selected_port = srv->second.second;
-						     } else {
-							     selected_server = "localhost";
-							     selected_port = __RI_start_server(); // get the port number (the server is probably already started anyways..)
 						     }
 						     SATAN_DEBUG("Selected server ip/port: %s : %d",
 								 selected_server.c_str(), selected_port);
@@ -246,29 +229,18 @@ void LogoScreen::element_on_event(KammoGUI::GnuVGCanvas::SVGDocument *source,
 		} else if(e_ref == ctx->network_element) {
 			ctx->select_server([]{});
 		} else if(e_ref == ctx->start_element) {
-			if(__RI_server_is_running()) {
-				try {
-					ctx->start_vuknob(false);
-				} catch(const std::exception& e) {
-					SATAN_ERROR("Exception caught in start_vuknob(): %s\n", e.what());
-					throw;
-				} catch(...) {
-					SATAN_ERROR("Unknown exception caught in start_vuknob().\n");
-					throw;
-				}
-			} else {
-				ctx->select_server([ctx](){
-						try {
-							ctx->start_vuknob(true);
-						} catch(const std::exception& e) {
-							SATAN_ERROR("Exception caught in start_vuknob(): %s\n", e.what());
-							throw;
-						} catch(...) {
-							SATAN_ERROR("Unknown exception caught in start_vuknob().\n");
-							throw;
-						}
-					});
-			}
+			ctx->select_server(
+				[ctx](){
+					try {
+						ctx->start_vuknob(true);
+					} catch(const std::exception& e) {
+						SATAN_ERROR("Exception caught in start_vuknob(): %s\n", e.what());
+						throw;
+					} catch(...) {
+						SATAN_ERROR("Unknown exception caught in start_vuknob().\n");
+						throw;
+					}
+				});
 		}
 	}
 }
@@ -319,6 +291,8 @@ LogoScreen::LogoScreen(bool hide_network_element, KammoGUI::GnuVGCanvas *cnvs, s
 KammoEventHandler_Declare(LogoScreenHandler,"logoScreen:logoScreenOld");
 
 virtual void on_init(KammoGUI::Widget *wid) {
+	printf("Kallops\n");
+
 	KammoGUI::GnuVGCanvas *cnvs = (KammoGUI::GnuVGCanvas *)wid;
 	cnvs->set_bg_color(1.0, 0.631373, 0.137254);
 
@@ -327,6 +301,11 @@ virtual void on_init(KammoGUI::Widget *wid) {
 	(void)new LogoScreen(true, cnvs, std::string(SVGLoader::get_svg_directory() + "/logoScreen.svg"));
 
 	GenericPlatformInterface::discover_services();
+}
+
+public:
+void hit_me() {
+	printf("Dang it!\n");
 }
 
 KammoEventHandler_Instance(LogoScreenHandler);

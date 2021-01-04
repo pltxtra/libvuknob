@@ -17,8 +17,8 @@
  * Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef GLOBAL_CONTROL_OBJECT_HH
-#define GLOBAL_CONTROL_OBJECT_HH
+#ifndef SCALES_CONTROL_OBJECT_HH
+#define SCALES_CONTROL_OBJECT_HH
 
 #ifndef __RI__SERVER_SIDE
 #ifndef __RI__CLIENT_SIDE
@@ -43,7 +43,7 @@ namespace RemoteInterface {
 			static constexpr const char* FACTORY_NAME		= "ScalesControl";
 
 			ON_CLIENT(
-				const char* get_key_text(int key);
+				static const char* get_key_text(int key);
 
 				int get_number_of_scales();
 

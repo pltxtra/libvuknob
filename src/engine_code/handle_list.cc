@@ -79,7 +79,7 @@ SERVER_CODE(
 
 			// currently we are not smart enough to find matching sockets unless there are only one output and one input...
 			if(inputs.size() != 1 || outputs.size() != 1) {
-				SATAN_ERROR("BaseMachine::handle_req_create_machine_instance() - auto_connect: input.size() = %d, output.size() = %d.\n", inputs.size(), outputs.size());
+				SATAN_ERROR("BaseMachine::handle_req_create_machine_instance() - auto_connect: input.size() = %zu, output.size() = %zu.\n", inputs.size(), outputs.size());
 			} else {
 				// OK, so there is only one possible connection to make.. let's try!
 				try {
@@ -113,7 +113,7 @@ SERVER_N_CLIENT_CODE(
 	template <class SerderClassT>
 	void HandleList::serderize(SerderClassT& iserder) {
 		iserder.process(handle2hint);
-		SATAN_DEBUG("[%s] HandleList::serderize() handle2hint size: %d\n", CLIENTORSERVER_STRING, handle2hint.size());
+		SATAN_DEBUG("[%s] HandleList::serderize() handle2hint size: %zu\n", CLIENTORSERVER_STRING, handle2hint.size());
 	}
 
 	std::shared_ptr<BaseObject> HandleList::HandleListFactory::create(
@@ -138,7 +138,7 @@ SERVER_N_CLIENT_CODE(
 			auto hl = std::make_shared<HandleList>(new_obj_id, this);
 			DynamicMachine::refresh_handle_set();
 			std::set<std::string> handles = DynamicMachine::get_handle_set();
-			SATAN_DEBUG("[%s] - HandleList got %d handles'n'hints.", CLIENTORSERVER_STRING, handles.size());
+			SATAN_DEBUG("[%s] - HandleList got %zu handles'n'hints.", CLIENTORSERVER_STRING, handles.size());
 			for(auto handle : handles) {
 				auto hint = DynamicMachine::get_handle_hint(handle);
 				SATAN_DEBUG("[%s] - handles2hint[%s] = %s", CLIENTORSERVER_STRING, handle.c_str(), hint.c_str());
