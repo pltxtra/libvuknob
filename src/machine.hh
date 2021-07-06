@@ -62,7 +62,6 @@ class Machine;
 int quantize_tick(int start_tick);
 
 typedef std::function<void(int)> __MACHINE_PERIODIC_CALLBACK_F;
-typedef void __MACHINE_OPERATION_CALLBACK;
 
 class Machine {
 public:
@@ -534,16 +533,6 @@ private:
 	int internal_get_output_index(const std::string &output);
 	std::string internal_get_name();
 	void internal_set_name(const std::string &nm);
-
-	static __MACHINE_OPERATION_CALLBACK CALL_internal_get_base_xml_description(void *p);
-	static __MACHINE_OPERATION_CALLBACK CALL_internal_get_connection_xml(void *p);
-	static __MACHINE_OPERATION_CALLBACK CALL_internal_get_input_connections(void *p);
-	static __MACHINE_OPERATION_CALLBACK CALL_internal_get_input_names(void *p);
-	static __MACHINE_OPERATION_CALLBACK CALL_internal_get_output_names(void *p);
-	static __MACHINE_OPERATION_CALLBACK CALL_internal_get_input_index(void *p);
-	static __MACHINE_OPERATION_CALLBACK CALL_internal_get_output_index(void *p);
-	static __MACHINE_OPERATION_CALLBACK CALL_internal_get_name(void *p);
-	static __MACHINE_OPERATION_CALLBACK CALL_internal_set_name(void *p);
 
 	/********************************************
 	 *
