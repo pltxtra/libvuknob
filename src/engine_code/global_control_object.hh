@@ -113,8 +113,8 @@ namespace RemoteInterface {
 			}
 
 		private:
-			bool loop_state, playing, record;
-			int loop_start, loop_length, bpm, lpb, shuffle_factor;
+			bool loop_state = false, playing = false, record = false;
+			int loop_start = 0, loop_length = 16, bpm = 120, lpb = 4, shuffle_factor = 0;
 
 			ON_CLIENT(
 				std::set<std::shared_ptr<GlobalControlListener> > gco_listeners;

@@ -953,11 +953,15 @@ SERVER_CODE(
 	void BaseMachine::handle_req_attach_input(RemoteInterface::Context *context,
 						  RemoteInterface::MessageHandler *__src,
 						  const RemoteInterface::Message& msg) {
-		SATAN_DEBUG("BaseMachine::handle_req_attach_input()\n");
 		auto source_name = msg.get_value("src");
 		auto output_name = msg.get_value("oup");
 		auto input_name = msg.get_value("inp");
 		auto source = get_machine_by_name(source_name);
+		SATAN_DEBUG(
+			"BaseMachine::handle_req_attach_input(%s[%s]->%s[%s])\n",
+			source_name.c_str(), output_name.c_str(),
+			name.c_str(), input_name.c_str()
+			);
 
 		auto src = source->machine_ptr.lock();
 		auto dst = machine_ptr.lock();

@@ -36,7 +36,7 @@
 #include "../engine_code/client.hh"
 #include "../engine_code/handle_list.hh"
 
-//#define __DO_SATAN_DEBUG
+#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
 typedef RemoteInterface::ClientSpace::HandleList HandleList;
@@ -365,10 +365,10 @@ void GnuVGConnector::MachineGraphic::on_attach(std::shared_ptr<BaseMachine> base
 					  const std::string src_output,
 					  const std::string dst_input) {
 	auto src_machine = std::dynamic_pointer_cast<RIMachine>(base_src_machine);
-	SATAN_DEBUG("---->     (%d) MachineGraphic() -- attached [%s] @ %s ---> [%s] @ %s\n",
-		    gettid(),
-		    src_machine->get_name().c_str(), src_output.c_str(),
-		    machine->get_name().c_str(), dst_input.c_str());
+	if(!src_machine) {
+		// not an RIMachine - ignore (for example a Sequence)
+		return;
+	}
 
 	auto thiz = shared_from_this();
 	KammoGUI::GnuVGCanvas::run_on_ui_thread(__PRETTY_FUNCTION__,

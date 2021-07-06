@@ -12,6 +12,7 @@ AC_PROG_CC
 # Checks for libraries.
 PKG_CHECK_MODULES([gnuVG], [gnuVG])
 PKG_CHECK_MODULES([libkamoflage], [libkamoflage])
+PKG_CHECK_MODULES([libpulsesimple], [libpulse-simple])
 
 AC_CONFIG_MACRO_DIRS([m4])
 AC_CONFIG_HEADERS([config.h])

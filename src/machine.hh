@@ -616,8 +616,6 @@ public:
 	 ******************************************************************/
 public:
 	// operations called ONLY by NON audio playback threads
-	static void machine_operation_enqueue(std::function<void(void *data)> operation,
-					      void *operation_data, bool do_synch);
 	static void machine_operation_enqueue(std::function<void()> operation, bool do_synch = true);
 
 private:

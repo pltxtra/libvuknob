@@ -26,6 +26,8 @@
 #include "../remote_interface.hh"
 #include "sequence.hh"
 #include "machine_api.hh"
+#include "global_control_object.hh"
+#include "handle_list.hh"
 
 SERVER_CODE(
 
@@ -40,8 +42,6 @@ SERVER_CODE(
 		std::map<int32_t, std::shared_ptr<BaseObject> > all_objects;
 
 		int32_t last_obj_id; // I am making an assumption here that last_obj_id will not be counted up more than 1/sec. This gives that time until overflow for a session will be more than 20000 days. If this assumption does not hold, an error state will be communicated to the user.
-
-		std::map<std::shared_ptr<Machine>, std::shared_ptr<RIMachine> > machine2rimachine;
 
 		int32_t reserve_new_obj_id();
 
@@ -86,8 +86,6 @@ SERVER_CODE(
 						    std::shared_ptr<Machine> destination,
 						    const std::string &output_name,
 						    const std::string &input_name) override;
-
-		std::shared_ptr<HandleList> handle_list;
 
 		/**** end service objects data and logic ****/
 

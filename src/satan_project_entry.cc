@@ -105,7 +105,7 @@ void SatanProjectEntry::parse_satan_project_xml(KXMLDoc &xml) {
 			int e_max = 0;
 			try {
 				e_max = xml[(*k).first].get_count();
-			} catch(jException e) { e_max = 0;}
+			} catch(jException &e) { e_max = 0;}
 			SATAN_DEBUG("Found %d entries of type %s\n",
 				    e_max, (*k).first.c_str());
 			if(e_max == 1) {

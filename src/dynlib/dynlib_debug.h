@@ -65,11 +65,13 @@
 #include <android/log.h>
 #define DYNLIB_INFORM_(...)       __android_log_print(ANDROID_LOG_INFO, "SATAN_NDK", __VA_ARGS__)
 #define DYNLIB_INFORM(...)       __android_log_print(ANDROID_LOG_INFO, "SATAN_NDK", __VA_ARGS__)
+#define DYNLIB_ERROR(...)       __android_log_print(ANDROID_LOG_INFO, "SATAN_NDK", __VA_ARGS__)
 
 #else
 
 #include <stdio.h>
 #define DYNLIB_INFORM_(...)       printf(__VA_ARGS__)
 #define DYNLIB_INFORM(...)       printf(__VA_ARGS__)
+#define DYNLIB_ERROR(...)  printf(__VA_ARGS__)
 
 #endif

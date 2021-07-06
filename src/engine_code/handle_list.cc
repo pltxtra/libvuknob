@@ -84,7 +84,7 @@ SERVER_CODE(
 				// OK, so there is only one possible connection to make.. let's try!
 				try {
 					sink->attach_input(m, outputs[0], inputs[0]);
-				} catch(jException e) {
+				} catch(jException &e) {
 					SATAN_ERROR("BaseMachine::handle_req_create_machine_instance() - auto_connect error - %s.\n", e.message.c_str());
 				} catch(...) {
 					SATAN_ERROR("BaseMachine::handle_req_create_machine_instance() - unknown auto_connect error.\n");

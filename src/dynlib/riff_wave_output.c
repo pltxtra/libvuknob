@@ -54,7 +54,12 @@ void async_riff_writer_callback(AsyncOp *a_op) {
 
 	DYNLIB_DEBUG("async_riff_writer_callback() Writing to fd %d\n", arw->fd);
 
-	write(arw->fd, arw->data, arw->length);
+	int write_status = write(arw->fd, arw->data, arw->length);
+	if(write_status != arw->length) {
+		DYNLIB_ERROR("async_riff_writer_callback() failed to write to file.\n");
+		exit(1);
+	}
+
 }
 
 AsyncRiffWriter *allocate_async_riff_writers(AsyncRiffWriterContainer *arwc, size_t nr) {
@@ -257,10 +262,13 @@ void RIFF_create_file(RIFF_WAVE_FILE_t *rwf, char *__file_name) {
 	DYNLIB_DEBUG(" sinkRecord FILE: %d.\n", rwf->fd); fflush(0);
 	if(rwf->fd != -1) {
 
-		// cast to void - ignore status
-		(void)write(rwf->fd,
+		int write_status = write(rwf->fd,
 		      &(rwf->riff_header),
 		      sizeof(struct RIFF_WAVE_header));
+		if(write_status != sizeof(struct RIFF_WAVE_header)) {
+			DYNLIB_ERROR("RIFF_create_file() failed to write RIFF/Wave header.\n");
+			exit(1);
+		}
 		rwf->written_to_riff = 0;
 	}
 }
@@ -283,10 +291,13 @@ void RIFF_close_file(RIFF_WAVE_FILE_t *rwf) {
 
 		// rewrite header with correct size data
 		lseek(rwf->fd, 0, SEEK_SET);
-		// cast to void - ignore status
-		(void) write(rwf->fd,
+		int write_status = write(rwf->fd,
 		      &(rwf->riff_header),
 		      sizeof(struct RIFF_WAVE_header));
+		if(write_status != sizeof(struct RIFF_WAVE_header)) {
+			DYNLIB_ERROR("RIFF_close_file() Failed to finish RIFF/wave file properly.\n");
+			exit(1);
+		}
 
 		DYNLIB_DEBUG(" sinkRecord CLOSE file.\n"); fflush(0);
 		close(rwf->fd);

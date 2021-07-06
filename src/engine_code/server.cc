@@ -26,9 +26,8 @@
 #include <cxxabi.h>
 
 #include "server.hh"
-#include "sequence.hh"
-#include "machine_api.hh"
 #include "base_machine.hh"
+#include "../vuknob/server.h"
 
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
@@ -109,18 +108,6 @@ SERVER_CODE(
 	}
 
 	void Server::project_loaded() {
-		io_service.post(
-
-			[this]()
-			{
-				for(auto m2ri : machine2rimachine) {
-					auto x = m2ri.first->get_x_position();
-					auto y = m2ri.first->get_y_position();
-					m2ri.second->set_position(x, y);
-				}
-			}
-
-			);
 	}
 
 	void Server::machine_registered(std::shared_ptr<Machine> m_ptr) {
@@ -137,25 +124,19 @@ SERVER_CODE(
 				std::string resp_msg;
 
 				try {
-					create_object_from_factory<RemoteInterface::RIMachine>(
-						[this, m_ptr]
-						(std::shared_ptr<RemoteInterface::RIMachine> mch) {
-							mch->serverside_init_from_machine_ptr(m_ptr);
-							SATAN_DEBUG("Serverside machine initiated.\n");
-
-							machine2rimachine[m_ptr] = mch;
-						}
-						);
-
 					auto new_machine_api = create_object_from_factory<RemoteInterface::ServerSpace::MachineAPI>(
 						[this, m_ptr]
 						(std::shared_ptr<RemoteInterface::ServerSpace::MachineAPI> mchapi) {
+							SATAN_DEBUG("Serverside will initiate MachineAPI object from machine ptr...\n");
 							mchapi->init_from_machine_ptr(mchapi, m_ptr);
 							SATAN_DEBUG("Serverside MachineAPI object created\n");
 						}
 						);
 
 					Sequence::create_sequence_for_machine(new_machine_api);
+				} catch(jException &e) {
+					SATAN_ERROR("Server::machine_registered() - "
+						    "caught an jException exception: %s\n", e.message.c_str());
 				} catch(...) {
 					int status = 0;
 					char * buff = __cxxabiv1::__cxa_demangle(
@@ -190,11 +171,6 @@ SERVER_CODE(
 			[this, m_ptr]()
 			{
 				BaseMachine::machine_unregistered(m_ptr);
-				auto mch = machine2rimachine.find(m_ptr);
-				if(mch != machine2rimachine.end()) {
-					delete_object(mch->second);
-					machine2rimachine.erase(mch);
-				}
 			}
 
 			);
@@ -211,12 +187,6 @@ SERVER_CODE(
 				SATAN_DEBUG("Server::machine_inpute_attached() [%s:%s] -> [%s:%s]\n",
 					    source->get_name().c_str(), output_name.c_str(),
 					    destination->get_name().c_str(), input_name.c_str());
-
-				auto src_mch = machine2rimachine.find(source);
-				auto dst_mch = machine2rimachine.find(destination);
-				if(src_mch != machine2rimachine.end() && dst_mch != machine2rimachine.end()) {
-					dst_mch->second->attach_input(src_mch->second, output_name, input_name);
-				}
 			}
 
 			);
@@ -233,12 +203,6 @@ SERVER_CODE(
 				SATAN_DEBUG("!!! Signal detached [%s:%s] -> [%s:%s]\n",
 					    source->get_name().c_str(), output_name.c_str(),
 					    destination->get_name().c_str(), input_name.c_str());
-
-				auto src_mch = machine2rimachine.find(source);
-				auto dst_mch = machine2rimachine.find(destination);
-				if(src_mch != machine2rimachine.end() && dst_mch != machine2rimachine.end()) {
-					dst_mch->second->detach_input(src_mch->second, output_name, input_name);
-				}
 			}
 
 			);
@@ -360,18 +324,13 @@ SERVER_CODE(
 
 	void Server::create_service_objects() {
 		{ // create handle list object
-			create_object_from_factory<RemoteInterface::HandleList>(
-				[](std::shared_ptr<RemoteInterface::HandleList> new_obj){}
+			create_object_from_factory<RemoteInterface::ServerSpace::HandleList>(
+				[](std::shared_ptr<RemoteInterface::ServerSpace::HandleList> new_obj){}
 				);
 		}
 		{ // create global control object
-			create_object_from_factory<RemoteInterface::GlobalControlObject>(
-				[](std::shared_ptr<RemoteInterface::GlobalControlObject> new_obj){}
-				);
-		}
-		{ // create global sample bank
-			create_object_from_factory<RemoteInterface::SampleBank>(
-				[](std::shared_ptr<RemoteInterface::SampleBank> new_obj){}
+			create_object_from_factory<RemoteInterface::ServerSpace::GlobalControlObject>(
+				[](std::shared_ptr<RemoteInterface::ServerSpace::GlobalControlObject> new_obj){}
 				);
 		}
 		{
@@ -502,5 +461,11 @@ extern "C" {
 
 	void __RI_stop_server() {
 		return RemoteInterface::ServerSpace::Server::stop_server();
+	}
+
+	int vuknob_bootstrap_server() {
+		Machine::prepare_baseline();
+		SatanProjectEntry::clear_satan_project();
+		return __RI_start_server();
 	}
 };

@@ -20,6 +20,8 @@
 #include "pad.hh"
 #include "../machine.hh"
 
+#include "scales_control.hh"
+
 #define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
 
@@ -49,8 +51,7 @@ Pad::Arpeggiator::Pattern *Pad::Arpeggiator::Pattern::built_in = NULL;
 void Pad::Arpeggiator::Pattern::initiate_built_in() {
 	if(built_in != NULL) return;
 
-	built_in = (Pattern *)malloc(sizeof(Pattern) * MAX_BUILTIN_ARP_PATTERNS);
-	memset(built_in, 0, sizeof(Pattern) * MAX_BUILTIN_ARP_PATTERNS);
+	built_in = new Pattern [MAX_BUILTIN_ARP_PATTERNS];
 
 	/* create the built in patterns */
 	int i = -1; // just for purity
@@ -352,8 +353,6 @@ void Pad::Arpeggiator::set_direction(PadConfiguration::ArpeggioDirection dir) {
  * Class Pad::PadConfiguration
  *
  *************************************/
-
-#include "scales.hh"
 
 Pad::PadConfiguration::PadConfiguration() : chord_mode(chord_off) {}
 
@@ -690,12 +689,13 @@ bool Pad::PadMotion::process_motion(bool mute, MidiEventBuilder *_meb) {
 	if(scale != last_scale) {
 		last_scale = scale;
 
-		if(auto scalo = Scales::get_scales_object_serverside()) {
-			scalo->get_scale_keys(scale, scale_data);
+		if(auto scalo = RemoteInterface::ServerSpace::ScalesControl::get_scales_object_serverside()) {
+			auto current_scale_keys = scalo->get_scale_keys(scale);
 
 			for(auto k = 0; k < 7; k++) {
-				scale_data[ 7 + k] = scale_data[k] + 12;
-				scale_data[14 + k] = scale_data[k] + 24;
+				scale_data[     k] = current_scale_keys[k];
+				scale_data[ 7 + k] = current_scale_keys[k];
+				scale_data[14 + k] = current_scale_keys[k];
 			}
 		} else {
 			// default to standard C scale
@@ -1159,6 +1159,7 @@ void Pad::reset() {
 void Pad::process_events(int tick) {
 	PadEvent pe;
 	while(padEventQueue->try_dequeue(pe)) {
+		printf("Pad::process_events() got event.\n");
 		if(pe.finger >= 0 && pe.finger < MAX_PAD_FINGERS) {
 			if(current_session == NULL) {
 				int start_tick = tick;
@@ -1315,7 +1316,7 @@ void Pad::internal_set_record(bool _do_record) {
 			current_session->terminate(); // terminate recording
 		}
 		current_session = NULL;
-		SATAN_DEBUG(" recorded session count: %d\n", recorded_sessions.size());
+		SATAN_DEBUG(" recorded session count: %zu\n", recorded_sessions.size());
 	}
 	do_record = _do_record;
 }

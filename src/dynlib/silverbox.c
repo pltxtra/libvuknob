@@ -63,7 +63,7 @@ typedef struct silverbox_instance {
 #define NOTE_TABLE_LENGTH 256
 FTYPE note_table[NOTE_TABLE_LENGTH]; // frequency table for standard MIDI notes
 
-static float cutoff = 1.0f, resonance = 0.0f;
+float cutoff = 1.0f, resonance = 0.0f;
 
 inline float swindow(float x, float margin) {
 	if(x <= margin) {
@@ -213,7 +213,6 @@ void execute(MachineTable *mt, void *void_silverbox) {
 
 	SignalPointer *outsig = NULL;
 	SignalPointer *insig = NULL;
-
 	insig = mt->get_input_signal(mt, "midi");
 	if(insig == NULL)
 		return;
@@ -231,6 +230,8 @@ void execute(MachineTable *mt, void *void_silverbox) {
 		(FTYPE *)mt->get_signal_buffer(outsig);
 	int out_l = mt->get_signal_samples(outsig);
 
+	printf("silverbox execute... has midi input signal, %p len %d\n", midi_in, midi_l);
+	printf("silverbox execute... has mono output signal, %p len %d\n", out, out_l);
 	if(midi_l != out_l)
 		return; // we expect equal lengths..
 
@@ -279,6 +280,7 @@ void execute(MachineTable *mt, void *void_silverbox) {
 		   &&
 		   ((mev->data[0] & 0x0f) == silverbox->midi_channel)
 			) {
+			printf("Midi note on...\n");
 			int key = mev->data[1];
 			float velocity = (float)(mev->data[2]);
 			velocity = velocity / 127.0;

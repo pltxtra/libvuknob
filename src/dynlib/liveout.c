@@ -63,8 +63,9 @@ typedef int MachineType;
 #endif
 
 #else
-#define USE_ALSA_AUDIO
-//#define USE_PULSE_AUDIO
+//#define USE_ALSA_AUDIO
+#define USE_PULSE_AUDIO
+//#define USE_JACK_AUDIO
 #endif
 
 /*********************
@@ -104,8 +105,6 @@ typedef struct _JackInstanceData {
 	uint8_t *first_free_slot;
 } JackInstanceData;
 
-JackInstanceData *instance = NULL;
-
 /************************************
  *
  *     Sink type functions (for JACK)
@@ -115,6 +114,78 @@ JackInstanceData *instance = NULL;
 int srate(jack_nframes_t nframes, void *unused_mtable_ptr) {
 	instance->new_frequency = nframes;
 	return 0;
+}
+
+int jack_fill_sink_callback(int callback_status, void *data) {
+	JackInstanceData *inst = (JackInstanceData *)data;
+
+	MachineTable *mt = NULL;
+	mt = inst->mt;
+
+	switch(callback_status) {
+	case _sinkJustPlay:
+		if(inst->recordFile != -1) {
+			close(inst->recordFile);
+			inst->recordFile = -1;
+		}
+		inst->doRecord = 0;
+		break;
+	case _sinkRecord:
+		if(!inst->doRecord) {
+			inst->doRecord = 1;
+			char file_name[1024];
+			if(mt->get_recording_filename(
+				   mt, file_name, sizeof(file_name)) == 0) {
+				if(file_name[0] == '\0') {
+					strncpy(file_name, "DEFAULT.WAV", sizeof(file_name));
+				}
+
+				RIFF_create_file(&(inst->riff_file), file_name);
+			}
+		}
+		break;
+
+	default:
+	case _notSink:
+	case _sinkPaused:
+	case _sinkException:
+		RIFF_close_file(&(inst->riff_file));
+
+		inst->doRecord = 0;
+		memset(inst->samples,
+		       0,
+		       sizeof(int16_t) * inst->channels * inst->length);
+		break;
+	}
+
+	RIFF_write_data(inst->mt,
+			&(inst->riff_file),
+			inst->samples,
+			inst->period_size * inst->channels * sizeof(int16_t));
+
+        signed short *ptr;
+        int err, cptr;
+
+	ptr = inst->samples;
+	cptr = inst->period_size;
+
+	while (cptr > 0) {
+		err = snd_pcm_writei(inst->handle,
+				     ptr, cptr);
+		if (err == -EAGAIN)
+			continue;
+		if (err < 0) {
+			if (xrun_recovery(inst->handle, err) < 0) {
+				DYNLIB_DEBUG("Write error: %s\n", snd_strerror(err));
+				exit(EXIT_FAILURE);
+			}
+			break;  /* skip one period */
+		}
+		ptr += err * inst->channels;
+		cptr -= err;
+	}
+
+	return _sinkCallbackOK;
 }
 
 int fillerup(jack_nframes_t len, void *mtable_ptr) {
@@ -141,7 +212,7 @@ int fillerup(jack_nframes_t len, void *mtable_ptr) {
 		ctr = 150;
 	}
 
-	if(mt->fill_sink(mt) != 0) {
+	if(mt->fill_sink(mt, jack_fill_sink_callback, inst) != 0) {
 		/* something went wrong - zero output please */
 		jack_default_audio_sample_t *outl =
 			(jack_default_audio_sample_t *) jack_port_get_buffer (instance->output_left, len);
@@ -1022,34 +1093,91 @@ void execute(MachineTable *mt, void *data) {
 /* four megabytes! */
 #define MIDI_BUFFER_SIZE 4 * 1024 * 1024
 typedef struct _PulseInstanceData {
+	MachineTable *mt;
 	pthread_t thread;
 	pthread_attr_t pta;
 
 	pa_simple *s;
 
+	struct RIFF_WAVE_FILE riff_file;
+	int doRecord;
 	int pulse_open;
 
 	int16_t buffer[PULSE_BUFFER_SIZE * PULSE_CHANNELS];
 
+	// used for writing audio output to a file
+	int16_t *file_output_data;
+	int file_output_channels, file_output_samples;
 } PulseInstanceData;
 
-PulseInstanceData *instance = NULL;
+int fill_sink_callback(int callback_status, void *data) {
+	PulseInstanceData *inst = (PulseInstanceData *)data;
 
-void *pulse_thread(void *mtable_ptr) {
+	MachineTable *mt = inst->mt;
+	if(mt == NULL) {
+		DYNLIB_ERROR("pulse: fill_sink_callback() mt is null.\n");
+		return _sinkCallbackOK; // ignore invalid mt
+	}
+
+	switch(callback_status) {
+	case _sinkJustPlay:
+		inst->doRecord = 0;
+		break;
+	case _sinkRecord:
+		if(!inst->doRecord) {
+			inst->doRecord = 1;
+			char file_name[1024];
+			if(mt->get_recording_filename(
+				   mt, file_name, sizeof(file_name)) == 0) {
+				DYNLIB_DEBUG(" sinkRecord FNAME: ]%s[.\n", file_name); fflush(0);
+				if(file_name[0] == '\0') {
+					strncpy(file_name, "/mnt/sdcard/SATAN_OUTPUT.WAV", sizeof(file_name));
+				}
+
+				RIFF_create_file(&(inst->riff_file), file_name);
+			}
+		}
+		break;
+
+	case _sinkResumed:
+		return _sinkCallbackOK;
+
+	default:
+	case _sinkPaused:
+	case _notSink:
+	case _sinkException:
+		RIFF_close_file(&(inst->riff_file));
+
+		inst->doRecord = 0;
+
+		memset(inst->file_output_data,
+		       0,
+		       sizeof(int16_t) * inst->file_output_channels * inst->file_output_samples);
+
+		return _sinkCallbackOK;
+	}
+
+	RIFF_write_data(
+		inst->mt,
+		&(inst->riff_file), inst->file_output_data,
+		inst->file_output_samples * inst->file_output_channels * sizeof(int16_t));
+
+	return _sinkCallbackOK;
+}
+
+void *pulse_thread(void *instance_ptr) {
 	int error;
-	MachineTable *mt = (MachineTable *)mtable_ptr;
+	PulseInstanceData *instance = (PulseInstanceData *)instance_ptr;
+	MachineTable *mt = instance->mt;
 
 	for (;;) {
-		if(mt->fill_sink(mt) != 0) {
-			DYNLIB_DEBUG("fill sink failed.\n");
-			sleep(1);
-		}
+		(void) mt->fill_sink(mt, fill_sink_callback, instance);
 
 		if (pa_simple_write(instance->s,
 				    instance->buffer,
-				    PULSE_BUFFER_SIZE * PULSE_CHANNELS,
+				    PULSE_BUFFER_SIZE * PULSE_CHANNELS * sizeof(int16_t),
 				    &error) < 0) {
-			fprintf(stderr, __FILE__": pa_simple_write() failed: %s\n", pa_strerror(error));
+			DYNLIB_ERROR(__FILE__": pa_simple_write() failed: %s\n", pa_strerror(error));
 			goto fail;
 		}
 	}
@@ -1064,15 +1192,16 @@ void *pulse_thread(void *mtable_ptr) {
 	return NULL;
 }
 
-void execute_sink(MachineTable *mt) {
+void execute(MachineTable *mt, void *data) {
+	PulseInstanceData *instance = (PulseInstanceData *)data;
 	SignalPointer *s = mt->get_input_signal(mt, "stereo");
+	if(s == NULL) return; // nothing is attached yet.
 
 	float *in = mt->get_signal_buffer(s);
 	int il = mt->get_signal_samples(s);
 	int ic = mt->get_signal_channels(s);
 	int i;
 	float im;
-
 	for(i = 0; i < il; i++) {
 		im = 32767 * in[i * ic + 0];
 		instance->buffer[i * ic + 0] = (int)im;
@@ -1090,20 +1219,24 @@ PulseInstanceData *init_pulse(MachineTable *mt) {
 	};
 
 	/* alloc and clear */
-	instance = (PulseInstanceData *)malloc(sizeof(PulseInstanceData));
+	PulseInstanceData *instance = (PulseInstanceData *)malloc(sizeof(PulseInstanceData));
 	if(instance == NULL) return NULL;
 	memset(instance, 0, sizeof(PulseInstanceData));
+	instance->mt = mt;
 
 	/* init pulse! */
 	if (!(instance->s = pa_simple_new(NULL, "satan", PA_STREAM_PLAYBACK, NULL, "playback",
 					  &ss, NULL, NULL, &error))) {
-		fprintf(stderr, __FILE__": pa_simple_new() failed: %s\n", pa_strerror(error));
+		DYNLIB_ERROR(__FILE__": pa_simple_new() failed: %s\n", pa_strerror(error));
 		goto failure;
 	}
 
 	/* set audio signal defaults */
-	mt->set_signal_defaults(mt, _0D, PULSE_BUFFER_SIZE,
-				_fl32bit, ss.rate);
+	mt->set_signal_defaults(mt, _0D, PULSE_BUFFER_SIZE, FTYPE_RESOLUTION, ss.rate);
+	mt->set_signal_defaults(mt, _MIDI, PULSE_BUFFER_SIZE, _PTR, ss.rate);
+
+	/* enable low latency mode */
+	mt->enable_low_latency_mode();
 
 	/* OK, create pthread for this */
 	pthread_attr_init(&(instance->pta));
@@ -1112,82 +1245,54 @@ PulseInstanceData *init_pulse(MachineTable *mt) {
 		   &(instance->thread),
 		   &(instance->pta),
 		   pulse_thread,
-		   mt) != 0)
+		   instance) != 0)
 		goto failure;
 
+	/* everything is OK */
 	return instance;
 
  failure:
 	if(instance != NULL) free(instance);
-	instance = NULL;
-
 	return NULL;
 }
 
 void *init(MachineTable *mt, const char *name) {
-	MachineType *retval;
-
 	DYNLIB_DEBUG("\n\n\n***************CREATING: %s****************\n\n\n", name);
 
-	retval = (MachineType *)malloc(sizeof(MachineType));
-	if(retval == NULL) return NULL;
-
+	/* Allocate and initiate instance data here */
+	DYNLIB_DEBUG("Creating new pulse audio instance.\n"); fflush(0);
+	PulseInstanceData *instance = init_pulse(mt);
 	if(instance == NULL) {
-		/* Allocate and initiate instance data here */
-		DYNLIB_DEBUG("Creating new pulse audio instance: %p\n", retval); fflush(0);
-		if(init_pulse(mt) == NULL) {
-			free(retval);
-			return NULL;
-		}
-		DYNLIB_DEBUG("pulse audio instance created: %p\n", instance); fflush(0);
+		return NULL;
 	}
+	DYNLIB_DEBUG("pulse audio instance created: %p\n", instance); fflush(0);
 
 	if(strcmp("liveoutsink", name) == 0) {
 		instance->pulse_open = 1;
-		*retval = -1;
-		return retval;
-	} else if(strcmp("liveoutmidi_in", name) == 0) {
-		free(retval);
-		retval = NULL; /* NO MIDI SUPPORT YET */
-		return retval;
+		return instance;
 	}
 
+	// mode not supported
+	free(instance);
 	return NULL;
 }
 
 void delete(void *data) {
-	MachineType mtype = *(MachineType *)data;
-
-	if(mtype == -1)
-		instance->pulse_open = 0;
-	else {
-		/* no MIDI support yet */
-	}
-
-	/* free MachineType */
-	free(data);
-
-	if(instance->pulse_open == 0) {
-		/* remove pulse.. */
-	}
+	PulseInstanceData *instance = (PulseInstanceData *)data;
+	instance->pulse_open = 0;
 }
 
-void *get_controller_ptr(MachineTable *mt, void *void_info,
+float volume = 0.50f;
+void *get_controller_ptr(MachineTable *mt, void *ignored,
 			 const char *name,
 			 const char *group) {
+	if(strcmp("volume", name) == 0)
+		return &volume;
 	return NULL;
 }
 
 void reset(MachineTable *mt, void *data) {
 	return; /* nothing to do... */
-}
-
-void execute(MachineTable *mt, void *data) {
-	MachineType mtype = *(MachineType *)data;
-	if(mtype == -1)
-		execute_sink(mt);
-	else
-		return; /* NO MIDI SUPPORT YET */
 }
 
 // End Pulse Audio version

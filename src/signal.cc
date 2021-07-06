@@ -35,6 +35,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #include <jngldrum/jinformer.hh>
 
@@ -161,11 +162,11 @@ void Machine::StaticSignal::ProjectEntry::parse_xml(int project_interface_level,
 
 	// OK, done! time to read in the new project data
 	unsigned int s, s_max = 0;
-	
+
 	// Parse static signals
 	try {
 		s_max = xml_node["staticsignal"].get_count();
-	} catch(jException e) { s_max = 0;}
+	} catch(jException &e) { s_max = 0;}
 
 	for(s = 0; s < s_max; s++) {
 		Machine::StaticSignal::load_signal_xml(xml_node["staticsignal"][s]);
@@ -193,7 +194,7 @@ std::vector<Machine::StaticSignalLoader *> *Machine::StaticSignalLoader::registe
 Machine::StaticSignalLoader::StaticSignalLoader(const std::string &_identity) : identity(_identity) {
 	if(registered_loaders == NULL) {
 		registered_loaders = new std::vector<StaticSignalLoader *>();
-		
+
 	}
 	registered_loaders->push_back(this);
 
@@ -207,7 +208,7 @@ void Machine::StaticSignalLoader::replace_signal(
 	std::string file_path,
 	std::string name,
 	void *data) {
-			
+
 	Machine::StaticSignal::replace_signal(
 		index,
 		d, r,
@@ -219,20 +220,20 @@ void Machine::StaticSignalLoader::preview_signal(
 	Dimension d, Resolution r,
 	int channels, int samples, int frequency,
 	void *data) {
-		
+
 	StaticSignalPreview::preview(
 		d, r,
 		channels, samples, frequency,
 		data);
 }
 
-void Machine::StaticSignalLoader::internal_load_signal(	
+void Machine::StaticSignalLoader::internal_load_signal(
 	int index,
 	const std::string &file_path) {
 
 	bool succeeded_loading = false;
-	
-	std::vector<StaticSignalLoader *>::iterator k;	
+
+	std::vector<StaticSignalLoader *>::iterator k;
 	for(k  = registered_loaders->begin();
 	    k != registered_loaders->end();
 	    k++) {
@@ -241,7 +242,7 @@ void Machine::StaticSignalLoader::internal_load_signal(
 			try {
 				(*k)->load_static_signal(file_path, index == -1 ? true : false, index);
 				succeeded_loading = true;
-			} catch(jException e) {
+			} catch(jException &e) {
 				jInformer::inform(e.message);
  			} catch(...) {
 				jInformer::inform("Failed to load sample, reason unknown...");
@@ -249,7 +250,7 @@ void Machine::StaticSignalLoader::internal_load_signal(
 		}
 	}
 
-	if(!succeeded_loading) 
+	if(!succeeded_loading)
 		jInformer::inform("Could not load signal.");
 }
 
@@ -257,37 +258,27 @@ std::map<int, std::string> Machine::StaticSignalLoader::get_all_signal_names() {
 	std::map<int, std::string> retval;
 
 	Machine::machine_operation_enqueue(
-		[&retval](void *) {
+		[&retval]() {
 			auto sigs = StaticSignal::get_all_signals();
 			for(auto sig : sigs) {
 				retval[sig.first] = sig.second->get_name();
 			}
-		},
-		NULL, true);
+		}, true);
 	return retval;
 }
 
 std::string Machine::StaticSignalLoader::get_signal_name_for_slot(int index) {
-	typedef struct {
-		char bfr[128];
-		int idx;
-	} Param;
-	Param param;
-	param.idx = index;
-	param.bfr[127] = '\0'; // make sure it's a null terminated string
-	
+	std::string retval;
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-			StaticSignal *s = StaticSignal::get_signal(p->idx);
+		[&retval, index]() {
+			StaticSignal *s = StaticSignal::get_signal(index);
 			if(s) {
-				strncpy(p->bfr, s->get_name().c_str(), 127); // only copy 127 bytes of the string - to guarantee that it's null terminated
+				retval = s->get_name();
 			} else {
 				throw jException("No signal loaded at specified slot.", jException::sanity_error);
 			}
-		},
-		&param, true);
-	return param.bfr;
+		}, true);
+	return retval;
 }
 
 bool Machine::StaticSignalLoader::is_valid(const std::string &path) {
@@ -310,7 +301,7 @@ void Machine::StaticSignalLoader::preview_signal(
 	internal_load_signal(-1, file_path);
 }
 
-void Machine::StaticSignalLoader::load_signal(	
+void Machine::StaticSignalLoader::load_signal(
 	int index,
 	const std::string &file_path) {
 	internal_load_signal(index, file_path);
@@ -365,7 +356,7 @@ void Machine::StaticSignal::save_0D_signal_xml(int index) {
 	SATAN_DEBUG(" OPEN: %d\n", f_out);
 	if(f_out == -1) {
 		std::ostringstream emsg;
-		emsg << "[name] : " 
+		emsg << "[name] : "
 		     << "Failed to open storage file "
 		     << fname_s.str()
 		     << " , aborting save.";
@@ -378,7 +369,7 @@ void Machine::StaticSignal::save_0D_signal_xml(int index) {
 	int k, k_max;
 
 	k_max = channels * samples;
-	
+
 	std::ostringstream result;
 #define _0D_SAVE_BUFFER_SIZE 1024 * 8
 	uint8_t output_buffer[_0D_SAVE_BUFFER_SIZE];
@@ -387,7 +378,7 @@ void Machine::StaticSignal::save_0D_signal_xml(int index) {
 	for(k = 0; k < k_max; k++) {
 		uint8_t output[] = {0, 0, 0, 0, 0, 0, 0, 0};
 		ssize_t output_size = 0;
-		
+
 		switch(resolution) {
 		case _8bit:
 		{
@@ -447,7 +438,7 @@ void Machine::StaticSignal::save_0D_signal_xml(int index) {
 			if(write(f_out, output_buffer, output_buffer_index) != output_buffer_index) {
 				close(f_out);
 				std::ostringstream emsg;
-				emsg << "[name] : " 
+				emsg << "[name] : "
 				     << "Failed to write data to "
 				     << fname_s.str()
 				     << " , aborting save.";
@@ -465,7 +456,7 @@ void Machine::StaticSignal::save_0D_signal_xml(int index) {
 		if(write(f_out, output_buffer, output_buffer_index) != output_buffer_index) {
 			close(f_out);
 			std::ostringstream emsg;
-			emsg << "[name] : " 
+			emsg << "[name] : "
 			     << "Failed to write data to "
 			     << fname_s.str()
 			     << " , aborting save.";
@@ -486,7 +477,7 @@ std::string Machine::StaticSignal::save_signal_xml(int index) {
 
 	if(signals.find(index) == signals.end())
 		return "";
-	
+
 	StaticSignal *s = signals[index];
 	if(s == NULL)
 		return "";
@@ -495,7 +486,7 @@ std::string Machine::StaticSignal::save_signal_xml(int index) {
 	result << "<staticsignal "
 	       << "index=\"" << index << "\" "
 	       << "path=\"" << KXMLDoc::escaped_string(s->get_file_path()) << "\" "
-		
+
 	       << "dimension=\"" << s->get_dimension() << "\" "
 	       << "resolution=\"" << s->get_resolution() << "\" "
 	       << "channels=\"" << s->get_channels() << "\" "
@@ -526,10 +517,10 @@ std::string Machine::StaticSignal::save_signal_xml(int index) {
 			emesg << d;
 		}
 		emesg << ".";
-			
+
 		throw jException(emesg.str(), jException::sanity_error);
 	}
-	
+
 	SATAN_DEBUG_("Step 4\n");
 	result << "</staticsignal>\n";
 	SATAN_DEBUG_("Step 5\n");
@@ -582,33 +573,33 @@ void Machine::StaticSignal::load_0D_signal_xml(
 		return;
 		break;
 	}
-	
+
 	// Allocate memory and clear it
 	void *data = (void *)malloc(samples * channels * tg_size);
 	if(data == NULL) {
 		throw jException("Could not allocate enough memory for "
 				 "static signal", jException::sanity_error);
 	}
-	
+
 	memset(data, 0, samples * channels * tg_size);
-	
+
 	std::ostringstream fname_s;
 	int v, v_max = 0;
 	int f_in = -1;
 
 	fname_s << "static_sig_nr_" << index << ".dat";
-	
+
 	v_max = samples * channels;
 	f_in = open(
 		fname_s.str().c_str(),
 		O_RDONLY);
 	if(f_in == -1) {
 		std::ostringstream emsg;
-		emsg << "[" << name << "] : " 
+		emsg << "[" << name << "] : "
 		     << "Failed to open storage file "
 		     << fname_s.str()
 		     << " , aborting load.";
-		
+
 		throw jException(
 			emsg.str(),
 			jException::sanity_error);
@@ -616,15 +607,15 @@ void Machine::StaticSignal::load_0D_signal_xml(
 
 	for(v = 0; v < v_max; v++) {
 		uint8_t input[] = {0,0,0,0, 0,0,0,0};
-		
+
 		if(read(f_in,input, sr_size) != sr_size) {
 			close(f_in);
 			std::ostringstream emsg;
-			emsg << "[" << name << "] : " 
+			emsg << "[" << name << "] : "
 			     << "Failed to read data from "
 			     << fname_s.str()
 			     << " , aborting load.";
-			
+
 			throw jException(
 				emsg.str(),
 				jException::sanity_error);
@@ -682,7 +673,7 @@ void Machine::StaticSignal::load_0D_signal_xml(
 			break;
 		}
 	}
-	
+
 	replace_signal(index, d, t_r, channels, samples, frequency,
 		       file_path, name, data);
 }
@@ -701,20 +692,20 @@ void Machine::StaticSignal::load_signal_xml(const KXMLDoc &sigxml) {
 	if(
 		(i == -1)
 		||
-		(_d == -1) 
+		(_d == -1)
 		||
-		(_r == -1) 
+		(_r == -1)
 		||
-		(c == -1) 
+		(c == -1)
 		||
-		(s == -1) 
+		(s == -1)
 		||
 		(f == -1)
 		) {
 		throw jException("Faulty signal entry in XML file, missing attribute(s).",
 				 jException::sanity_error);
 	}
-	
+
 	name = sigxml.get_attr("name");
 	fpath = sigxml.get_attr("path");
 
@@ -739,7 +730,7 @@ void Machine::StaticSignal::load_signal_xml(const KXMLDoc &sigxml) {
 			emesg << d;
 		}
 		emesg << ".";
-			
+
 		throw jException(emesg.str(), jException::sanity_error);
 	}
 }
@@ -752,37 +743,22 @@ void Machine::StaticSignal::replace_signal(
 	std::string name,
 	void *data) {
 
-	StaticSignal *s = NULL;
-
-	s = new StaticSignal(
+	StaticSignal *s = new StaticSignal(
 		d, r, channels, samples, frequency,
 		file_path,
 		name, data);
 
-	typedef struct {
-		std::map<int, StaticSignal *> &sigs;
-		int idx;
-		StaticSignal *sig;
-	} Param;
-	Param param = {
-		.sigs = signals,
-		.idx = index,
-		.sig = s
-	};
-	
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-			std::map<int, StaticSignal *> &sigs = p->sigs;
-			
-			if(sigs.find(p->idx) != sigs.end()) {
-				delete sigs.find(p->idx)->second;
-				sigs.erase(sigs.find(p->idx));
+		[s, index]() {
+			std::map<int, StaticSignal *> &sigs = signals;
+
+			if(sigs.find(index) != sigs.end()) {
+				delete sigs.find(index)->second;
+				sigs.erase(sigs.find(index));
 			}
-			
-			sigs[p->idx] = p->sig;
-		},
-		&param, true);
+
+			sigs[index] = s;
+		}, true);
 }
 
 auto Machine::StaticSignal::get_all_signals() -> std::map<int, StaticSignal *> {
@@ -793,7 +769,7 @@ Machine::StaticSignal *Machine::StaticSignal::get_signal(int index) {
 	if(signals.find(index) == signals.end()) {
 		return NULL;
 	}
-	return signals[index];       
+	return signals[index];
 }
 
 /*****************************
@@ -823,7 +799,7 @@ std::map<Dimension, std::set<Machine::Signal *> > Machine::Signal::signal_map;
 
 // allocate a signal
 Machine::Signal::Signal(int c, Machine *orig, const std::string &nm, Dimension d) :
-	SignalBase(nm), 
+	SignalBase(nm),
 	originator(orig)
 
 	{
@@ -845,14 +821,14 @@ Machine::Signal::Signal(int c, Machine *orig, const std::string &nm, Dimension d
 			break;
 		}
 	}
-		
+
 	// Prepare parameters
 	dimension = d;
 	channels = c;
-		
+
 	// Place signal in signal heap
 	internal_register_signal(this);
-		
+
 	if(!buffer) {
 		throw jException("Out of memory.", jException::sanity_error);
 	}
@@ -860,14 +836,14 @@ Machine::Signal::Signal(int c, Machine *orig, const std::string &nm, Dimension d
 
 Machine::Signal::~Signal() {
 	// Place signal in signal heap
-	internal_deregister_signal(this);		
-	
+	internal_deregister_signal(this);
+
 }
 
 void Machine::Signal::attach(Machine *m) {
-	std::map<Machine *, int>::iterator k = 
+	std::map<Machine *, int>::iterator k =
 		attached_machines.find(m);
-	
+
 	if(k == attached_machines.end()) {
 		attached_machines[m] = 1;
 	} else {
@@ -876,9 +852,9 @@ void Machine::Signal::attach(Machine *m) {
 }
 
 void Machine::Signal::detach(Machine *m) {
-	std::map<Machine *, int>::iterator k = 
+	std::map<Machine *, int>::iterator k =
 		attached_machines.find(m);
-	
+
 	if(k != attached_machines.end()) {
 		(*k).second -= 1;
 
@@ -903,14 +879,14 @@ std::vector<Machine *> Machine::Signal::get_attached_machines() {
 void Machine::Signal::link(Machine *m, Signal *ns) {
 	if(dimension == _MIDI)
 		throw jException("Cannot attach more than one midi signal to an input.", jException::sanity_error);
-	
+
 	if(ns == NULL)
 		throw jException("Trying to link NULL signal.", jException::sanity_error);
-	
+
 	// to be quick, just insert it before current next..
 	Signal *last_next = next[m];
-	
-	next[m] = ns;	
+
+	next[m] = ns;
 	next[m]->previous[m] = this;
 	next[m]->next[m] = last_next;
 
@@ -920,7 +896,7 @@ void Machine::Signal::link(Machine *m, Signal *ns) {
 
 Machine::Signal *Machine::Signal::get_next(Machine *m) {
 	if(next.find(m) == next.end()) return NULL;
-	
+
 	return next[m];
 }
 
@@ -940,7 +916,7 @@ Machine::Signal *Machine::Signal::unlink(Machine *m, Signal *ns) {
 
 			s->next.erase(s->next.find(m));
 			s->previous.erase(s->previous.find(m));
-			
+
 			return head;
 		}
 		s = s->next[m];
@@ -948,7 +924,7 @@ Machine::Signal *Machine::Signal::unlink(Machine *m, Signal *ns) {
 
 	throw jException("Failed to unlink signal, not in list.", jException::sanity_error);
 }
-	
+
 Machine *Machine::Signal::get_originator() {
 	return originator;
 }
@@ -963,11 +939,11 @@ Machine *Machine::Signal::get_originator() {
 
 void Machine::Signal::set_defaults(Dimension d, int s, Resolution r, int f) {
 	internal_set_defaults(d,s,r,f);
-	
+
 }
 
 void Machine::Signal::get_defaults(Dimension d, int &s, Resolution &r, int &f) {
-	internal_get_defaults(d,s,r,f);	
+	internal_get_defaults(d,s,r,f);
 }
 
 /******************/
@@ -977,7 +953,7 @@ void Machine::Signal::internal_alloc_0d_buffer(Signal *s) {
 	s->frequency = def_frequency[s->dimension];
 	s->resolution = def_resolution[s->dimension];
 	s->samples = def_samples[s->dimension];
-	
+
 	// Calculate memory size
 	int bsiz = 0;
 
@@ -996,13 +972,13 @@ void Machine::Signal::internal_alloc_0d_buffer(Signal *s) {
 		break;
 	case _fx8p24bit:
 		bsiz = sizeof(fp8p24_t);
-		break;		
-		
+		break;
+
 	default: /* error */
 	case _MAX_R:
 		throw jException("Unsupported resolution for 0D signal.", jException::sanity_error);
 	}
-	
+
 	// XXX len may overflow!
 	int len = bsiz * s->channels * s->samples + 42; // pad with 42 for checking buffer overflows
 
@@ -1011,7 +987,7 @@ void Machine::Signal::internal_alloc_0d_buffer(Signal *s) {
 	void *new_buffer = NULL;
 	if(old_buffer == NULL) {
 		new_buffer = malloc(len);
-	} else {		
+	} else {
 		new_buffer = realloc(old_buffer, len);
 	}
 	s->buffer = new_buffer;
@@ -1031,7 +1007,7 @@ void Machine::Signal::internal_alloc_MIDI_buffer(Signal *s) {
 	s->frequency = def_frequency[s->dimension];
 	s->resolution = def_resolution[s->dimension];
 	s->samples = def_samples[s->dimension];
-	
+
 	// Calculate memory size
 	int bsiz = 0;
 
@@ -1043,12 +1019,12 @@ void Machine::Signal::internal_alloc_MIDI_buffer(Signal *s) {
 	case _8bit:
 	case _16bit:
 	case _32bit:;
-	case _fl32bit:		
+	case _fl32bit:
 	case _fx8p24bit:
 	case _MAX_R:
 		throw jException("Unsupported resolution for MIDI signal.", jException::sanity_error);
 	}
-	
+
 	// XXX len may overflow!
 	int len = bsiz * s->channels * s->samples;
 
@@ -1057,7 +1033,7 @@ void Machine::Signal::internal_alloc_MIDI_buffer(Signal *s) {
 	void *new_buffer = NULL;
 	if(old_buffer == NULL) {
 		new_buffer = malloc(len);
-	} else {		
+	} else {
 		new_buffer = realloc(old_buffer, len);
 	}
 	s->buffer = new_buffer;
@@ -1081,19 +1057,19 @@ void Machine::Signal::internal_register_signal(Signal *s) {
 	}
 
 	// add signal to map
-	signal_map[s->get_dimension()].insert(s);	
+	signal_map[s->get_dimension()].insert(s);
 }
 
 void Machine::Signal::internal_deregister_signal(Signal *s) {
 	// free buffer data
 	if(s->buffer != NULL)
 		free(s->buffer);
-	
+
 	// remove signal from map
 	std::set<Signal *>::iterator i;
 	i = signal_map[s->get_dimension()].find(s);
 	if(i != signal_map[s->get_dimension()].end()) {
-		signal_map[s->get_dimension()].erase(i);		
+		signal_map[s->get_dimension()].erase(i);
 	}
 }
 

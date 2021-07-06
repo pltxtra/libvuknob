@@ -36,6 +36,7 @@
 #include <fcntl.h>
 #include <iostream>
 #include <fstream>
+#include <unistd.h>
 
 #include <sys/mman.h>
 
@@ -67,7 +68,7 @@ void WavLoader::Chunk::process_header(uint8_t *header, uint8_t *bts) {
 	       << (char)(header[2])
 	       << (char)(header[3]);
 	header_str = stream.str();
-	
+
 	length =
 		(((uint32_t)bts[0])      ) |
 		(((uint32_t)bts[1]) <<  8) |
@@ -75,26 +76,26 @@ void WavLoader::Chunk::process_header(uint8_t *header, uint8_t *bts) {
 		(((uint32_t)bts[3]) << 24);
 }
 
-WavLoader::Chunk::Chunk(uint8_t *mmapped, off_t *current_offset, off_t max_offset) throw (jException) : is_memory_mapped(true), data(NULL) {
+WavLoader::Chunk::Chunk(uint8_t *mmapped, off_t *current_offset, off_t max_offset) : is_memory_mapped(true), data(NULL) {
 	off_t ofs = *current_offset;
 
 	if(ofs + 8 >= max_offset)
 		throw jException("WAV file is incomplete - chunk descriptor broken.", jException::sanity_error);
-	
+
 	process_header(&mmapped[ofs], &mmapped[ofs + 4]);
 
 	SATAN_DEBUG("ofs: %ld, length: %d, max: %ld\n",
 		    ofs, length, max_offset);
-	
+
 	if((ofs + (off_t)(length & 0x7fffffff)) >= max_offset)
 		throw jException("WAV file is incomplete on disk!", jException::sanity_error);
-	
+
 	data = &mmapped[ofs + 8];
-	
+
 	*current_offset = ofs + length + 8; // 8 is the chunk header, it must be added to the offset as well...
 }
 
-WavLoader::Chunk::Chunk(int f) throw (jException) : is_memory_mapped(false), data(NULL) {
+WavLoader::Chunk::Chunk(int f) : is_memory_mapped(false), data(NULL) {
 	uint8_t header[4];
 	if(read(f, header, 4) != 4)
 		throw jException("RIFF/WAV File incomplete.",
@@ -106,7 +107,7 @@ WavLoader::Chunk::Chunk(int f) throw (jException) : is_memory_mapped(false), dat
 				 jException::sanity_error);
 
 	process_header(header, bts);
-	
+
 	data = (uint8_t *)malloc(length);
 	if((uint32_t)read(f, data, length) != length) {
 		free(data);
@@ -115,7 +116,7 @@ WavLoader::Chunk::Chunk(int f) throw (jException) : is_memory_mapped(false), dat
 	}
 }
 
-WavLoader::Chunk::~Chunk() throw() {
+WavLoader::Chunk::~Chunk() {
 	if((!is_memory_mapped) && (data != NULL)) {
 		free(data);
 	}
@@ -137,7 +138,7 @@ WavLoader::MemoryMappedWave::~MemoryMappedWave() {
 		delete format;
 	if(data)
 		delete data;
-	
+
 	if(mapped)
 		munmap(mapped, file_size);
 	close(f);
@@ -158,7 +159,7 @@ WavLoader::MemoryMappedWave::MemoryMappedWave(const std::string &fname) : format
 		throw jException("File to short to be a WAV file.",
 				 jException::sanity_error);
 	}
-	
+
 	// mmap the file
 	mapped = (uint8_t *)mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, f, 0);
 
@@ -167,7 +168,7 @@ WavLoader::MemoryMappedWave::MemoryMappedWave(const std::string &fname) : format
 		throw jException("Unable to memory map WAV file.",
 				 jException::syscall_error);
 	}
-	
+
 	// confirm header is RIFF/WAVE
 	uint8_t *header = mapped;
 	if(memcmp(header, "RIFF", 4) != 0) {
@@ -190,7 +191,7 @@ WavLoader::MemoryMappedWave::MemoryMappedWave(const std::string &fname) : format
 	try {
 		while(format == NULL || data == NULL) {
 			tc = new Chunk(mapped, &mmap_offset, file_size);
-			
+
 			if(tc->name_is("fmt ")) format = tc;
 			else if(tc->name_is("data")) data = tc;
 			else delete tc;
@@ -245,7 +246,7 @@ uint32_t WavLoader::MemoryMappedWave::get_length_in_samples() {
 		return data->length / (channels * bits_per_sample / 8);
 	return 0;
 }
-		
+
 uint8_t *WavLoader::MemoryMappedWave::get_data_pointer() {
 	if(data)
 		return data->data;
@@ -288,19 +289,19 @@ bool WavLoader::is_signal_valid(const std::string &fname) {
 	if(memcmp(&header[8], "WAVE", 4) != 0) {
 		return false;
 	}
-	
+
 	return true;
 }
 
 // this function converts a wav file into fixed point data (f8p24_t)
 static int load_to_ram(fp8p24_t *ram_buffer, void *data, int channels, int samples, int bits_per_sample) {
 	uint8_t *_byte = (uint8_t *)data;
-	
+
 	for(int k = 0; k < samples; k++) {
 		for(int c = 0; c < channels; c++) {
 			uint32_t tmp = 0;
 			int32_t *tmp_signed = (int32_t *)&tmp;
-			
+
 			switch(bits_per_sample) {
 			case 8:
 				tmp = ((uint32_t)_byte[k * channels + c]) << 24;
@@ -339,11 +340,11 @@ static int load_to_ram(fp8p24_t *ram_buffer, void *data, int channels, int sampl
 			default:
 				return 0; // can't understand this resolution...
 			}
-			
+
 			ram_buffer[k * channels + c] = (*tmp_signed) >> 8; // shift it down to a value between -1.0 to 1.0
 		}
 	}
-	
+
 	return -1; // success
 }
 
@@ -356,16 +357,16 @@ void WavLoader::load_static_signal(const std::string &fname, bool only_preview, 
 				      fname.rfind('/') + 1);
 	} catch(...) {
 	}
-	
+
 	MemoryMappedWave *mmap_wave = MemoryMappedWave::get(fname);
 	if(!mmap_wave) {
 		throw jException("Unable to allocate mmap wave.", jException::sanity_error);
 	}
-	
+
 	uint32_t ram_size =
 		mmap_wave->get_bits_per_sample() *
 		mmap_wave->get_length_in_samples() / 8;
-	
+
 	if(ram_size > __STATIC_SIGNAL_RAM_SIZE_LIMIT) {
 		// limit static signals to predefined ammount of RAM data...
 		delete mmap_wave;
@@ -395,5 +396,5 @@ void WavLoader::load_static_signal(const std::string &fname, bool only_preview, 
 			throw jException("File is not in expected format.",
 					 jException::sanity_error);
 		}
-	}	
+	}
 }

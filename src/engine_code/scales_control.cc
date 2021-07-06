@@ -27,7 +27,7 @@ SERVER_CODE(
 							RemoteInterface::MessageHandler *src,
 							const RemoteInterface::Message& msg) {
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
-		auto content = msg->get_value("content");
+		auto content = msg.get_value("content");
 		Serialize::ItemDeserializer serder(content);
 		serder.process(custom_scale);
 		send_message(
@@ -44,9 +44,23 @@ SERVER_CODE(
 		target->set_value("scalescontrol_data", iser.result());
 	}
 
+	std::shared_ptr<ScalesControl> ScalesControl::get_scales_object_serverside() {
+		return serverside_scales_control_reference.lock();
+	}
+
 	);
 
 CLIENT_CODE(
+	void ScalesControl::handle_cmd_set_custom_scale(RemoteInterface::Context *context,
+							RemoteInterface::MessageHandler *src,
+							const RemoteInterface::Message& msg) {
+		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
+		Serialize::ItemDeserializer serder(msg.get_value("content"));
+		serder.process(custom_scale);
+	}
+	);
+
+SERVER_N_CLIENT_CODE(
 
 	const char* ScalesControl::get_key_text(int key) {
 		static const char *key_text[] = {
@@ -57,7 +71,7 @@ CLIENT_CODE(
 
 	int ScalesControl::get_number_of_scales() {
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
-		return scales.size();
+		return scales.size() + 1;
 	}
 
 	std::vector<std::string> ScalesControl::get_scale_names() {
@@ -72,13 +86,20 @@ CLIENT_CODE(
 	std::vector<int> ScalesControl::get_scale_keys(int index) {
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		std::vector<int> keys = {0, 2, 4, 5, 7, 9, 11};
-		try {
-			auto s = scales.at(index);
+		if((size_t)index == scales.size()) {
 			keys.clear();
-			for(auto v : s.keys) {
+			for(auto v : custom_scale.keys) {
 				keys.push_back(v);
 			}
-		} catch(std::out_of_range const& exc) { /* ignore */ }
+		} else {
+			try {
+				auto s = scales.at(index);
+				keys.clear();
+				for(auto v : s.keys) {
+					keys.push_back(v);
+				}
+			} catch(std::out_of_range const& exc) { /* ignore */ }
+		}
 		return keys;
 	}
 
@@ -107,18 +128,6 @@ CLIENT_CODE(
 			}
 			);
 	}
-
-	void ScalesControl::handle_cmd_set_custom_scale(RemoteInterface::Context *context,
-							RemoteInterface::MessageHandler *src,
-							const RemoteInterface::Message& msg) {
-		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
-		Serialize::ItemDeserializer serder(msg.get_value("content"));
-		serder.process(custom_scale);
-	}
-
-	);
-
-SERVER_N_CLIENT_CODE(
 
 	static bool scales_library_initialized = false;
 
@@ -310,17 +319,19 @@ SERVER_N_CLIENT_CODE(
 		return register_object(std::make_shared<ScalesControl>(this, serialized));
 	}
 
+	ON_SERVER(
+		std::weak_ptr<ScalesControl> ScalesControl::serverside_scales_control_reference;
+		)
 	std::shared_ptr<BaseObject> ScalesControl::ScalesControlFactory::create(
 		int32_t new_obj_id,
 		RegisterObjectFunction register_object
 		) {
 		SATAN_DEBUG("(%s) Factory will create ScalesControl - from scratch\n", CLIENTORSERVER_STRING);
-		auto new_gco = std::make_shared<ScalesControl>(new_obj_id, this);
-		auto o = register_object(new_gco);
+		auto new_sc = std::make_shared<ScalesControl>(new_obj_id, this);
 		ON_SERVER(
-			auto casted = std::dynamic_pointer_cast<PlaybackStateListener>(o);
+			serverside_scales_control_reference = new_sc;
 			);
-		return o;
+		return register_object(new_sc);
 	}
 
 	static ScalesControl::ScalesControlFactory this_will_register_us_as_a_factory;

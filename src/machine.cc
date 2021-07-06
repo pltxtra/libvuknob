@@ -301,42 +301,37 @@ void Machine::Controller::internal_set_value(const std::string &val) {
 
 void Machine::Controller::get_value(int &val) {
 	Machine::machine_operation_enqueue(
-		[&val, this](void *) {
+		[&val, this]() {
 			internal_get_value(val);
-		},
-		NULL, true);
+		}, true);
 }
 
 void Machine::Controller::get_value(float &val) {
 	Machine::machine_operation_enqueue(
-		[&val, this](void *) {
+		[&val, this]() {
 			internal_get_value(val);
-		},
-		NULL, true);
+		}, true);
 }
 
 void Machine::Controller::get_value(double &val) {
 	Machine::machine_operation_enqueue(
-		[&val, this](void*) {
+		[&val, this]() {
 			internal_get_value(val);
-		},
-		NULL, true);
+		}, true);
 }
 
 void Machine::Controller::get_value(bool &val) {
 	Machine::machine_operation_enqueue(
-		[&val, this](void *) {
+		[&val, this]() {
 			internal_get_value(val);
-		},
-		NULL, true);
+		}, true);
 }
 
 void Machine::Controller::get_value(std::string &val) {
 	Machine::machine_operation_enqueue(
-		[&val, this] (void *) {
+		[&val, this]() {
 			internal_get_value(val);
-		},
-		NULL, true);
+		}, true);
 }
 
 std::string Machine::Controller::get_value_name(const int &val) {
@@ -365,42 +360,37 @@ std::string Machine::Controller::get_value_name(const int &val) {
 
 void Machine::Controller::set_value(int &val) {
 	Machine::machine_operation_enqueue(
-		[this, val](void *) {
+		[this, val]() {
 			internal_set_value(val);
-		},
-		NULL, true);
+		}, true);
 }
 
 void Machine::Controller::set_value(float &val) {
 	Machine::machine_operation_enqueue(
-		[val, this](void *) {
+		[val, this]() {
 			internal_set_value(val);
-		},
-		NULL, true);
+		}, true);
 }
 
 void Machine::Controller::set_value(double &val) {
 	Machine::machine_operation_enqueue(
-		[val, this](void*) {
+		[val, this]() {
 			internal_set_value(val);
-		},
-		NULL, true);
+		}, true);
 }
 
 void Machine::Controller::set_value(bool &val) {
 	Machine::machine_operation_enqueue(
-		[val, this](void *) {
+		[val, this]() {
 			internal_set_value(val);
-		},
-		NULL, true);
+		}, true);
 }
 
 void Machine::Controller::set_value(const std::string &val) {
 	Machine::machine_operation_enqueue(
-		[&val, this](void *) {
+		[&val, this]() {
 			internal_set_value(val);
-		},
-		NULL, true);
+		}, true);
 }
 
 bool Machine::Controller::has_midi_controller(int &_coarse, int &_fine) {
@@ -573,16 +563,6 @@ void Machine::internal_detach_input(Machine *m,
 	}
 }
 
-typedef struct {
-	Machine *thiz;
-	std::string result;
-} CALL_internal_get_base_xml_description_t;
-__MACHINE_OPERATION_CALLBACK Machine::CALL_internal_get_base_xml_description(void *p) {
-	CALL_internal_get_base_xml_description_t *input =
-		(CALL_internal_get_base_xml_description_t *)p;
-	input->result = input->thiz->internal_get_base_xml_description();
-}
-
 std::string Machine::internal_get_base_xml_description() {
 	std::string result;
 
@@ -599,16 +579,6 @@ std::string Machine::internal_get_base_xml_description() {
 	result += "\n</machine>\n";
 
 	return result;
-}
-
-typedef struct {
-	Machine *thiz;
-	std::string result;
-} CALL_internal_get_connection_xml_t;
-__MACHINE_OPERATION_CALLBACK Machine::CALL_internal_get_connection_xml(void *p) {
-	CALL_internal_get_connection_xml_t *input =
-		(CALL_internal_get_connection_xml_t *)p;
-	input->result = input->thiz->internal_get_connection_xml();
 }
 
 std::string Machine::internal_get_connection_xml() {
@@ -638,16 +608,6 @@ std::string Machine::internal_get_connection_xml() {
 	return result;
 }
 
-typedef struct {
-	Machine *thiz;
-	std::multimap<std::string, std::pair<Machine *, std::string> >  result;
-} CALL_internal_get_input_connections_t;
-__MACHINE_OPERATION_CALLBACK Machine::CALL_internal_get_input_connections(void *p) {
-	CALL_internal_get_input_connections_t *input =
-		(CALL_internal_get_input_connections_t *)p;
-	input->result = input->thiz->internal_get_input_connections();
-}
-
 std::multimap<std::string, std::pair<Machine *, std::string> > Machine::internal_get_input_connections() {
 	std::pair<Machine *, std::string> pr;
 	std::string name;
@@ -674,16 +634,6 @@ std::multimap<std::string, std::pair<Machine *, std::string> > Machine::internal
 	return retval;
 }
 
-typedef struct {
-	Machine *thiz;
-	std::vector<std::string> result;
-} CALL_internal_get_input_names_t;
-__MACHINE_OPERATION_CALLBACK Machine::CALL_internal_get_input_names(void *p) {
-	CALL_internal_get_input_names_t *input =
-		(CALL_internal_get_input_names_t *)p;
-	input->result = input->thiz->internal_get_input_names();
-}
-
 std::vector<std::string> Machine::internal_get_input_names() {
 	std::vector<std::string> retval;
 
@@ -696,16 +646,6 @@ std::vector<std::string> Machine::internal_get_input_names() {
 	return retval;
 }
 
-typedef struct {
-	Machine *thiz;
-	std::vector<std::string> result;
-} CALL_internal_get_output_names_t;
-__MACHINE_OPERATION_CALLBACK Machine::CALL_internal_get_output_names(void *p) {
-	CALL_internal_get_output_names_t *input =
-		(CALL_internal_get_output_names_t *)p;
-	input->result = input->thiz->internal_get_output_names();
-}
-
 std::vector<std::string> Machine::internal_get_output_names() {
 	std::vector<std::string> retval;
 
@@ -716,17 +656,6 @@ std::vector<std::string> Machine::internal_get_output_names() {
 	}
 
 	return retval;
-}
-
-typedef struct {
-	Machine *thiz;
-	const std::string &inp;
-	int result;
-} CALL_internal_get_input_index_t;
-__MACHINE_OPERATION_CALLBACK Machine::CALL_internal_get_input_index(void *p) {
-	CALL_internal_get_input_index_t *input =
-		(CALL_internal_get_input_index_t *)p;
-	input->result = input->thiz->internal_get_input_index(input->inp);
 }
 
 int Machine::internal_get_input_index(const std::string &inp) {
@@ -743,17 +672,6 @@ int Machine::internal_get_input_index(const std::string &inp) {
 	throw jException("No such input.", jException::sanity_error);
 }
 
-typedef struct {
-	Machine *thiz;
-	const std::string &out;
-	int result;
-} CALL_internal_get_output_index_t;
-__MACHINE_OPERATION_CALLBACK Machine::CALL_internal_get_output_index(void *p) {
-	CALL_internal_get_output_index_t *input =
-		(CALL_internal_get_output_index_t *)p;
-	input->result = input->thiz->internal_get_output_index(input->out);
-}
-
 int Machine::internal_get_output_index(const std::string &out) {
 	int k;
 	std::map<std::string, Signal::Description>::iterator i;
@@ -766,16 +684,6 @@ int Machine::internal_get_output_index(const std::string &out) {
 	}
 
 	throw jException("No such output.", jException::sanity_error);
-}
-
-typedef struct {
-	Machine *thiz;
-	const std::string &nm;
-} CALL_internal_set_name_t;
-__MACHINE_OPERATION_CALLBACK Machine::CALL_internal_set_name(void *p) {
-	CALL_internal_set_name_t *input =
-		(CALL_internal_set_name_t *)p;
-	input->thiz->internal_set_name(input->nm);
 }
 
 void Machine::internal_set_name(const std::string &nm) {
@@ -793,107 +701,125 @@ void Machine::attach_input(Machine *m,
 			   const std::string &output_name,
 			   const std::string &input_name) {
 	machine_operation_enqueue(
-		[this, m, &input_name, &output_name](void *){
+		[this, m, &input_name, &output_name](){
 			if(has_been_deregistered || m->has_been_deregistered) {
 				throw jException("One or both machines are invalid.", jException::sanity_error);
 			} else {
 				internal_attach_input(m, output_name, input_name);
 			}
-		},
-		NULL, true);
+		}, true);
 }
 
 void Machine::detach_input(Machine *m,
 			   const std::string &output_name,
 			   const std::string &input_name) {
 	machine_operation_enqueue(
-		[this, m, &input_name, &output_name](void *){
+		[this, m, &input_name, &output_name](){
 			if(has_been_deregistered || m->has_been_deregistered) {
 				throw jException("One or both machines are invalid.", jException::sanity_error);
 			} else {
 				internal_detach_input(m, output_name, input_name);
 			}
-		},
-		NULL, true);
+		}, true);
 }
 
 std::string Machine::get_base_xml_description() {
-	CALL_internal_get_base_xml_description_t param = {
-		.thiz = this
-	};
-	machine_operation_enqueue(CALL_internal_get_base_xml_description, &param, true);
-	return param.result;
+	std::string result;
+	machine_operation_enqueue(
+		[&result, this]() {
+			result = internal_get_base_xml_description();
+		},
+		true
+		);
+	return result;
 }
 
 std::string Machine::get_connection_xml() {
-	CALL_internal_get_connection_xml_t param = {
-		.thiz = this
-	};
-	machine_operation_enqueue(CALL_internal_get_connection_xml, &param, true);
-	return param.result;
+	std::string result;
+	machine_operation_enqueue(
+		[&result, this]() {
+			result = internal_get_connection_xml();
+		},
+		true
+		);
+	return result;
 }
 
 std::multimap<std::string, std::pair<Machine *, std::string> > Machine::get_input_connections() {
-	CALL_internal_get_input_connections_t param = {
-		.thiz = this
-	};
-	machine_operation_enqueue(CALL_internal_get_input_connections, &param, true);
-	return param.result;
+	std::multimap<std::string, std::pair<Machine *, std::string> > result;
+	machine_operation_enqueue(
+		[&result, this]() {
+			result = internal_get_input_connections();
+		},
+		true
+		);
+	return result;
 }
 
 std::vector<std::string> Machine::get_input_names() {
-	CALL_internal_get_input_names_t param = {
-		.thiz = this
-	};
-	machine_operation_enqueue(CALL_internal_get_input_names, &param, true);
-	return param.result;
+	std::vector<std::string> result;
+	machine_operation_enqueue(
+		[&result, this]() {
+			result = internal_get_input_names();
+		},
+		true
+		);
+	return result;
 }
 
 std::vector<std::string> Machine::get_output_names() {
-	CALL_internal_get_output_names_t param = {
-		.thiz = this
-	};
-	machine_operation_enqueue(CALL_internal_get_output_names, &param, true);
-	return param.result;
+	std::vector<std::string> result;
+	machine_operation_enqueue(
+		[&result, this]() {
+			result = internal_get_output_names();
+		},
+		true
+		);
+	return result;
 }
 
 int Machine::get_input_index(const std::string &inp) {
-	CALL_internal_get_input_index_t param = {
-		.thiz = this,
-		.inp = inp
-	};
-	machine_operation_enqueue(CALL_internal_get_input_index, &param, true);
-	return param.result;
+	int result;
+	machine_operation_enqueue(
+		[&result, inp, this]() {
+			result = internal_get_input_index(inp);
+		},
+		true
+		);
+	return result;
 }
 
 int Machine::get_output_index(const std::string &out) {
-	CALL_internal_get_output_index_t param = {
-		.thiz = this,
-		.out = out
-	};
-	machine_operation_enqueue(CALL_internal_get_output_index, &param, true);
-	return param.result;
+	int result;
+	machine_operation_enqueue(
+		[&result, out, this]() {
+			result = internal_get_output_index(out);
+		},
+		true
+		);
+	return result;
 }
 
 std::string Machine::get_name() {
 	std::string result;
 	machine_operation_enqueue(
-		[&result, this](void */* ignored */) {
+		[&result, this]() {
 			result = name;
-		}
-		,
-		NULL, true);
+		},
+		true
+		);
 	return result;
 }
 
 void Machine::set_name(const std::string &nm) {
 	if(nm.find('=') == std:: string::npos) throw ParameterOutOfSpec();
 
-	CALL_internal_set_name_t param = {
-		.thiz = this,
-		.nm = nm
-	};
-	machine_operation_enqueue(CALL_internal_set_name, &param, true);
+	machine_operation_enqueue(
+		[this, nm]() {
+			name = nm;
+		},
+		true
+		);
 }
 
 float Machine::get_x_position() {
@@ -922,11 +848,7 @@ class MachineOperationSynchObject : public jThread::Event {
 private:
 	jThread::EventQueue synch_queue;
 public:
-	bool triggered = false;
-	std::string exception_message;
-	jException::Type exception_type;
-
-	MachineOperationSynchObject() : exception_type(jException::NO_ERROR) {}
+	MachineOperationSynchObject() {}
 	virtual ~MachineOperationSynchObject() {}
 
 	void wait() {
@@ -934,119 +856,78 @@ public:
 	}
 
 	void trigger() {
-		triggered = true;
 		synch_queue.push_event(this);
 	}
 
 	virtual void dummy_event_function() {}
 };
 
-class MachineOperation {
-public:
-	std::function<void(void *data)> callback;
-	void *callback_data;
-	MachineOperationSynchObject *synch_object;
-
-	MachineOperation() : callback(NULL), synch_object(NULL) { memset(&callback_data, 0, sizeof(callback_data)); }
-};
-
-static moodycamel::ReaderWriterQueue<MachineOperation> machine_operation_queue(100);
+static moodycamel::ReaderWriterQueue<std::function<void()> > machine_operation_queue(100);
 
 // operation called ONLY by NON audio playback threads
-void Machine::machine_operation_enqueue(std::function<void(void *data)> callback, void *callback_data, bool do_sync) {
-	// we rely on the machine_space lock here to synchronize the check of the sink variable
+void Machine::machine_operation_enqueue(std::function<void()> operation, bool do_sync) {
 	Machine::lock_machine_space();
 	if((!sink) || (!low_latency_mode)) {
 		// if sink is not set, or we dont have low latency suport,
 		// we have noone that executes machine_operation calls, so we execute directly
 		try {
-			callback(callback_data);
+			operation();
 		} catch(...) {
 			// first unlock before rethrowing
 			Machine::unlock_machine_space();
 			throw;
 		}
 		Machine::unlock_machine_space();
-	} else {
-		// we write to the queue while we hold the machine space lock - to protect the queue from multiple writers
-		// but also to protect from the fact that the sink object might otherwise be deleted between our check for
-		// it and the actual write to the queue.
-		MachineOperation mo;
-		MachineOperationSynchObject synch_object;
-
-		mo.callback = callback;
-		mo.callback_data = callback_data;
-		mo.synch_object = do_sync ? (&synch_object) : NULL;
-
-		machine_operation_queue.enqueue(mo);
-
-		Machine::unlock_machine_space();
-
-		if(do_sync) {
-			SATAN_DEBUG("do_sync -- wait for sync_object %p\n", &synch_object);
-			synch_object.wait();
-			SATAN_DEBUG("do_sync -- sync_object %p returned\n", &synch_object);
-
-			// if there was a jException thrown during execution
-			// we throw it here too
-			if(synch_object.exception_type != jException::NO_ERROR) {
-				SATAN_DEBUG("   oops - synch_object.wait() returned an exception. (%s)\n", synch_object.exception_message.c_str());
-				throw jException(synch_object.exception_message,
-						 synch_object.exception_type);
-			}
-		}
+		return;
 	}
-}
-
-// operation called ONLY by NON audio playback threads
-void Machine::machine_operation_enqueue(std::function<void()> operation, bool do_sync) {
-	machine_operation_enqueue(
-		[operation](void*) {
-			operation();
-		}, NULL, do_sync
-		);
+	Machine::unlock_machine_space();
+	if(do_sync) {
+		MachineOperationSynchObject syncho;
+		machine_operation_queue.enqueue(
+			[&syncho, operation]() {
+				try {
+					SATAN_DEBUG(" --- begin synchronized operation ---\n");
+					operation();
+					SATAN_DEBUG(" --- synchronized operation completed ---\n");
+					syncho.trigger();
+					SATAN_DEBUG(" --- synchronization complete signaled ---\n");
+				} catch(jException &e) {
+					SATAN_ERROR("Machine::machine_operation_dequeue() - Unexpected exception caught --> %s\n", e.message.c_str());
+					exit(0);
+				} catch(std::exception const& e) {
+					SATAN_ERROR("Machine::machine_operation_dequeue() - Unexpected exception caught --> %s\n", e.what());
+					exit(0);
+				} catch(...) {
+					SATAN_ERROR("Machine::machine_operation_dequeue() - Unknown exception caught\n");
+					exit(0);
+				}
+			}
+			);
+		syncho.wait();
+	} else {
+		machine_operation_queue.enqueue(operation);
+	}
 }
 
 // operation ONLY called by audio playback thread
 void Machine::machine_operation_dequeue() {
-	MachineOperation mo;
+	std::function<void()> mo;
 
 	bool d;
 	int kount = 50; // limit the processing to 50 operations per call to this function
 	while(kount > 0 && ((d = machine_operation_queue.try_dequeue(mo)) == true)) {
 		kount--;
 		// if there is a synch object attached we need to trigger it after the callback
-		if(mo.synch_object) {
-			// we can catch jExceptions and pass on the error through the synch_object
-			SATAN_DEBUG(" Calling machine operation callback (with synch - %p)\n", mo.synch_object);
-			try {
-				mo.callback(mo.callback_data);
-			} catch(jException e) {
-				mo.synch_object->exception_message = e.message;
-				mo.synch_object->exception_type = e.type;
-			} catch(std::exception const& e) {
-				SATAN_ERROR("Machine::machine_operation_dequeue() - Unexpected exception caught --> %s\n", e.what());
-				exit(0);
-			} catch(...) {
-				SATAN_ERROR("Machine::machine_operation_dequeue() - Unknown exception caught\n");
-				exit(0);
-			}
-			mo.synch_object->trigger();
-			SATAN_DEBUG(" Machine operation callback returned, and synched\n");
-		} else {
-			// otherwise, just call the callback
-			// if an exception is received here we will quit the application straight away, no mercy.
-			try {
-				SATAN_DEBUG(" Calling machine operation callback (NO synch)\n");
-				mo.callback(mo.callback_data);
-				SATAN_DEBUG(" Machine operation callback returned (NO synch)\n");
-			} catch(const std::bad_function_call& e) {
-				SATAN_ERROR("bad_function_call exception caught in machine_operation_dequeue.\n");
-				exit(0);
-			} catch(...) {
-				SATAN_ERROR("Unknown exception caught in machine_operation_dequeue.\n");
-				exit(0);
-			}
+		try {
+			SATAN_DEBUG(" Calling machine operation callback\n");
+			mo();
+			SATAN_DEBUG(" Machine operation callback returned\n");
+		} catch(const std::bad_function_call& e) {
+			SATAN_ERROR("bad_function_call exception caught in machine_operation_dequeue.\n");
+			exit(0);
+		} catch(...) {
+			SATAN_ERROR("Unknown exception caught in machine_operation_dequeue.\n");
+			exit(0);
 		}
 	}
 }
@@ -1230,7 +1111,7 @@ void Machine::setup_using_xml(const KXMLDoc &mxml) {
 		Controller *c = NULL;
 		try {
 			 c = internal_get_controller(c_xml.get_attr("name"));
-		} catch(jException je) {
+		} catch(jException &e) {
 			// ignore
 		}
 		if(c != NULL) {
@@ -1904,7 +1785,7 @@ int Machine::internal_fill_sink(int (*fill_sink_callback)(int status, void *cbd)
 			STOP_TIME_MEASURE(filler_sinker, "chain rendered");
 
 			calculate_next_tick_at_and_sequence_position();
-		} catch(jException e) {
+		} catch(jException &e) {
 			jInformer::inform(std::string("Caught an jException in fill_sink: ") + e.message);
 			throw;
 		} catch(...) {
@@ -2004,15 +1885,14 @@ void Machine::prepare_baseline() {
 
 void Machine::register_periodic(__MACHINE_PERIODIC_CALLBACK_F callback_function) {
 	Machine::machine_operation_enqueue(
-		[callback_function] (void *d) {
+		[callback_function]() {
 			periodic_callback_set.push_back(callback_function);
-		},
-		NULL, false);
+		}, false);
 }
 
 void Machine::register_machine_set_listener(std::weak_ptr<MachineSetListener> mset_listener) {
 	Machine::machine_operation_enqueue(
-		[&mset_listener] (void *d) {
+		[&mset_listener]() {
 			machine_set_listeners.insert(mset_listener);
 
 			if(auto mlist = mset_listener.lock()) {
@@ -2025,15 +1905,16 @@ void Machine::register_machine_set_listener(std::weak_ptr<MachineSetListener> ms
 						);
 				}
 			}
-		},
-		NULL, true);
+		}, true);
 }
 
 void Machine::register_playback_state_listener(std::weak_ptr<PlaybackStateListener> pstate_listener) {
-	SATAN_ERROR("::register_playback_state_listener() will enqueue machine operation...\n");
+	static int count = 0;
+	int val = count++;
+	SATAN_DEBUG("::register_playback_state_listener() will enqueue machine operation...\n");
 	Machine::machine_operation_enqueue(
-		[&pstate_listener] () {
-			SATAN_ERROR("::register_playback_state_listener() machine operation running...\n");
+		[&pstate_listener, val] () {
+			SATAN_ERROR("::register_playback_state_listener() machine operation running %d...\n", val);
 			playback_state_listeners.insert(pstate_listener);
 
 			auto l_start = __loop_start;
@@ -2082,9 +1963,8 @@ std::vector<Machine *> Machine::get_machine_set() {
 
 void Machine::jump_to(int _position) {
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			int position = *((int *)d);
-
+		[_position]() {
+			int position = _position;
 			if(__do_loop) {
 				if(position < __loop_start) {
 					position = __loop_start;
@@ -2095,8 +1975,7 @@ void Machine::jump_to(int _position) {
 			reset_all_machines();
 			reset_global_playback_parameters(__do_loop ? __loop_start : position);
 			__resume_sequence_position = __next_sequence_position;
-		},
-		&_position, true);
+		}, true);
 }
 
 void Machine::rewind() {
@@ -2273,39 +2152,28 @@ bool Machine::get_record_state() {
 
 void Machine::set_record_file_name(std::string fnm) {
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			record_fname = *((std::string *)d);
-		},
-		&fnm, true);
+		[fnm]() {
+			record_fname = fnm;
+		}, true);
 }
 
 std::string Machine::get_record_file_name() {
 	std::string retval;
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			internal_get_rec_fname((std::string *)d);
-		},
-		&retval, true);
+		[&retval]() {
+			internal_get_rec_fname(&retval);
+		}, true);
 	return retval;
 }
 
 Machine *Machine::get_by_name(std::string _name) {
-	typedef struct {
-		std::string name;
-		Machine *retval;
-	} Param;
-	Param param = {
-		.name = _name,
-		.retval = NULL
-	};
+	Machine *retval;
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-			p->retval = internal_get_by_name(p->name);
-		},
-		&param, true);
+		[_name, &retval]() {
+			retval = internal_get_by_name(_name);
+		}, true);
 
-	return param.retval;
+	return retval;
 }
 
 Machine *Machine::get_sink() {
@@ -2314,7 +2182,7 @@ Machine *Machine::get_sink() {
 
 void Machine::play() {
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
+		[]() {
 			__is_playing = true;
 			reset_global_playback_parameters(__resume_sequence_position);
 			reset_all_machines();
@@ -2329,13 +2197,12 @@ void Machine::play() {
 						);
 				}
 			}
-		},
-		NULL, false);
+		}, false);
 }
 
 void Machine::stop() {
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
+		[]() {
 			__resume_sequence_position = __next_sequence_position;
 			__is_playing = false;
 			reset_all_machines();
@@ -2350,8 +2217,7 @@ void Machine::stop() {
 						);
 				}
 			}
-		},
-		NULL, true);
+		}, true);
 	TIME_MEASURE_PRINT_ALL_STATS();
 	TIME_MEASURE_CLEAR_ALL_STATS();
 }
@@ -2362,18 +2228,10 @@ bool Machine::is_it_playing() {
 }
 
 void Machine::disconnect_and_destroy(Machine *m) {
-	typedef struct {
-		Machine *_m;
-	} Param;
-	Param param = {
-		._m = m
-	};
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-			internal_disconnect_and_destroy(p->_m);
-		},
-		&param, true);
+		[m]() {
+			internal_disconnect_and_destroy(m);
+		}, true);
 }
 
 void Machine::destroy_all_machines() {
@@ -2401,11 +2259,10 @@ void Machine::destroy_all_machines() {
 void Machine::exit_application() {
 	destroy_all_machines();
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
+		[]() {
 			SATAN_DEBUG("Will exit VuKNOB now.\n");
 			exit(0);
-		},
-		NULL, true);
+		}, true);
 }
 
 pid_t tupla;
@@ -2430,86 +2287,50 @@ void Machine::unlock_machine_space() {
 }
 
 std::vector<std::string> Machine::get_controller_groups() {
-	typedef struct {
-		Machine *thiz;
-		std::vector<std::string> retval;
-	} Param;
-	Param param = {
-		.thiz = this
-	};
+	std::vector<std::string> retval;
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-			p->retval = p->thiz->internal_get_controller_groups();
-		},
-		&param, true);
-	return param.retval;
+		[&retval, this]() {
+			retval = internal_get_controller_groups();
+		}, true);
+	return retval;
 }
 
 std::vector<std::string> Machine::get_controller_names() {
-	typedef struct {
-		Machine *thiz;
-		std::vector<std::string> retval;
-	} Param;
-	Param param = {
-		.thiz = this
-	};
+	std::vector<std::string> retval;
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-			p->retval = p->thiz->internal_get_controller_names();
-		},
-		&param, true);
-	return param.retval;
+		[&retval, this]() {
+			retval = internal_get_controller_names();
+		}, true);
+	return retval;
 }
 
 std::vector<std::string> Machine::get_controller_names(const std::string &_group_name) {
-	typedef struct {
-		Machine *thiz;
-		const std::string &gnam;
-		std::vector<std::string> retval;
-	} Param;
-	Param param = {
-		.thiz = this,
-		.gnam = _group_name
-	};
+	std::vector<std::string> retval;
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-			p->retval = p->thiz->internal_get_controller_names(p->gnam);
-		},
-		&param, true);
-	return param.retval;
+		[&retval, _group_name, this]() {
+			retval = internal_get_controller_names(_group_name);
+		}, true);
+	return retval;
 }
 
 Machine::Controller *Machine::get_controller(const std::string &_name) {
 	Machine::Controller *retval = nullptr;
 
 	Machine::machine_operation_enqueue(
-		[this, _name, &retval] (void *d) {
+		[this, _name, &retval]() {
 			retval = internal_get_controller(_name);
-		},
-		NULL, true);
+		}, true);
 
 	return retval;
 }
 
 std::string Machine::get_hint() {
-	typedef struct {
-		Machine *thiz;
-		std::string retval;
-	} Param;
-	Param param = {
-		.thiz = this,
-		.retval = NULL
-	};
+	std::string retval;
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-			p->retval = p->thiz->internal_get_hint();
-		},
-		&param, true);
-	return param.retval;
+		[&retval, this]() {
+			retval = internal_get_hint();
+		}, true);
+	return retval;
 }
 
 /************************

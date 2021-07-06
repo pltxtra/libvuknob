@@ -77,7 +77,7 @@ void DynamicMachine::ProjectEntry::set_defaults() {
 	SATAN_DEBUG("DynamicMachine::ProjectEntry::set_defaults() - refresh handles...\n");
 	try {
 		DynamicMachine::refresh_handle_set();
-	} catch(jException e) {
+	} catch(jException &e) {
 		SATAN_DEBUG("exception: %s\n", e.message.c_str());
 		exit(1);
 	}
@@ -96,7 +96,7 @@ void DynamicMachine::ProjectEntry::set_defaults() {
 		    m++) {
 			(*m)->set_position(0.0f, 0.0f);
 		}
-	} catch(jException e) {
+	} catch(jException &e) {
 		SATAN_DEBUG("exception: %s\n", e.message.c_str());
 		exit(-1);
 	}
@@ -125,7 +125,7 @@ DynamicMachine::Handle::Handle(std::string dynamic_name) : name(""), hint(""), d
 	KXMLDoc xml_proto;
 	try {
 		file >> xml_proto;
-	} catch(jException e) {
+	} catch(jException &e) {
 		std::string error = "Failed to load declaration for ";
 		error += dynamic_name + ". (" + e.message + ")";
 
@@ -169,11 +169,7 @@ DynamicMachine::Handle::Handle(std::string dynamic_name) : name(""), hint(""), d
 
 DynamicMachine::Handle::~Handle() {
 	if(module)
-#ifdef ANDROID
 		dlclose(module);
-#else
-		lt_dlclose(module);
-#endif
 }
 
 void DynamicMachine::Handle::prep_dynlib() {
@@ -240,15 +236,9 @@ void DynamicMachine::Handle::prep_dynlib() {
 			std::string f = dynamic_file;
 			if(retries == 0)
 				f = dynamic_file_fallback;
-#ifdef ANDROID
 #define DLSYM_M dlsym
 #define DLERROR_M dlerror
 			module = dlopen(f.c_str(), RTLD_LAZY);
-#else
-#define DLSYM_M lt_dlsym
-#define DLERROR_M lt_dlerror
-			module = lt_dlopenext(f.c_str());
-#endif
 		}
 		stream << "Failed to load dynamic machine from file [" << dynamic_file << "] (" << DLERROR_M () << ")\n";
 		error_message = stream.str();
@@ -492,12 +482,12 @@ void DynamicMachine::Handle::parse_machine_declaration(const KXMLDoc &xml_proto)
 			for(i = 0; i < nr_ctr; i++) {
 				parse_controller(xml_proto["controller"][i]);
 			}
-		} catch(jException e) {
+		} catch(jException &e) {
 			throw e;
 		} catch(...) {
 			/// ignore
 		}
-	} catch(jException e) {
+	} catch(jException &e) {
 		throw e;
 	} catch(...) {
 		throw jException("Declaration error.", jException::sanity_error);
@@ -675,7 +665,7 @@ void DynamicMachine::Handle::load_handle(std::string fname) {
 				name2handle[current->get_name()] = set_parent = current;
 			}
 			declaration2handle[fname] = current;
-		} catch(jException e) {
+		} catch(jException &e) {
 			std::cerr << "Set error: " << e.message << "\n";
 		} catch(...) {
 			// ignore
@@ -893,6 +883,7 @@ DynamicMachine::DynamicMachine(Handle *dhandle, float _xpos, float _ypos) : Mach
 	dh = dhandle;
 
 	std::cout << "  dynamic created with " << output_descriptor.size() << " outputs, not using base name as name.\n";
+	std::cout << "                  with " << input_descriptor.size() << " inputs.\n";
 
 	DYN_MACHINE_SETUP_BLOCK();
 }
@@ -905,6 +896,7 @@ DynamicMachine::DynamicMachine(
 	dh = dhandle;
 
 	std::cout << "  dynamic created with " << output_descriptor.size() << " outputs.\n";
+	std::cout << "                  with " << input_descriptor.size() << " outputs.\n";
 
 	DYN_MACHINE_SETUP_BLOCK();
 }
@@ -1031,26 +1023,16 @@ Machine *DynamicMachine::instance(const std::string &_dmname, float _xpos, float
 	Machine *retval;
 
 	Machine::machine_operation_enqueue(
-		[&retval, &_dmname, _xpos, _ypos] (void* /*d*/) {
+		[&retval, &_dmname, _xpos, _ypos]() {
 			retval = new DynamicMachine(Handle::get_handle(_dmname), _xpos, _ypos);
-		},
-		NULL, true);
+		}, true);
 
 	return retval;
 }
 
-void DynamicMachine::instance_from_xml(const KXMLDoc &_dyn_xml) {
-	typedef struct {
-		const KXMLDoc &dxml;
-	} Param;
-	Param param = {
-		.dxml = _dyn_xml
-	};
+void DynamicMachine::instance_from_xml(const KXMLDoc &dyn_xml) {
 	Machine::machine_operation_enqueue(
-		[] (void *d) {
-			Param *p = (Param *)d;
-			const KXMLDoc &dyn_xml = p->dxml;
-
+		[dyn_xml]() {
 			std::string machine_name = dyn_xml.get_attr("name");
 			std::string handle_name = dyn_xml["dynamicmachine"].get_attr("handle");
 
@@ -1060,8 +1042,7 @@ void DynamicMachine::instance_from_xml(const KXMLDoc &_dyn_xml) {
 				machine_name);
 
 			dm->setup_using_xml(dyn_xml);
-		},
-		&param, true);
+		}, true);
 }
 
 /* NOTE! This is for _ALL_ functions below this comment.
@@ -1074,7 +1055,7 @@ int DynamicMachine::fill_sink(MachineTable *mt,
 			      int (*fill_sink_callback)(int status, void *cbd),
 			      void *cbdata) {
 //	DECLARE_TIME_MEASURE_OBJECT_STATIC(filler_sinker, "fill_sink", 5000);
-	int retval;
+	int retval = 0;
 //	START_TIME_MEASURE(filler_sinker);
 	retval = fill_this_sink((DynamicMachine *)(mt->mp), fill_sink_callback, cbdata);
 //	STOP_TIME_MEASURE(filler_sinker, "sink filled");

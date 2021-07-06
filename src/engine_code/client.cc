@@ -28,6 +28,7 @@
 #include <cxxabi.h>
 
 #include "client.hh"
+#include "../vuknob/client.h"
 
 //#define __DO_SATAN_DEBUG
 #include "satan_debug.hh"
@@ -307,3 +308,18 @@ CLIENT_CODE(
 	}
 
 	);
+
+extern "C" {
+	extern void vuknob_connect_to_server_at_port(int port);
+	void vuknob_connect_to_server_at_port(int port) {
+		RemoteInterface::ClientSpace::Client::connect_client(
+			"localhost", port,
+			[]() {
+				printf("vuknob server connection disconnected.\n");
+			},
+			[](const std::string &failure_response) {
+				printf("vuknob server failure response: %s\n", failure_response.c_str());
+			}
+			);
+	}
+}

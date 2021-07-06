@@ -46,18 +46,14 @@
 #include <iostream>
 
 extern "C" {
-#ifdef ANDROID
 #include <dlfcn.h>
-#else
-#include <ltdl.h>
-#endif
 };
 
 #include "machine.hh"
 
 class DynamicMachine : public Machine {
 private:
-	
+
 	typedef const char* declare_dynamic (void);
 	typedef void* init_dynamic (MachineTable *, const char *);
 	typedef void execute_dynamic (MachineTable *, void *);
@@ -69,7 +65,7 @@ private:
 	class ProjectEntry : public SatanProjectEntry {
 	public:
 		ProjectEntry();
-		
+
 		virtual std::string get_xml_attributes();
 		virtual void generate_xml(std::ostream &output);
 		virtual void parse_xml(int project_interface_level, KXMLDoc &xml_node);
@@ -78,15 +74,15 @@ private:
 	private:
 		static ProjectEntry this_will_register_us_as_a_project_entry;
 	};
-	
+
 	class HandleSetException {
 	public:
 		KXMLDoc handle_set;
 		std::string base_name;
-		
+
 		HandleSetException(std::string &bname, KXMLDoc &hset);
 	};
-	
+
 	class Handle : public jThread::Monitor {
 	private:
 		std::string dl_name;
@@ -95,16 +91,13 @@ private:
 		bool act_as_sink;
 		bool dynlib_is_loaded;
 
-#ifdef ANDROID
 		void *module;
-#else
-		lt_dlhandle module;
-#endif
+
 		Handle *set_parent; /* if this handle is part of a connected set, this is the parent handle. */
 
 		std::vector<std::string> groups; // vector of group names
 		std::vector<std::string> controllers; // vector of controller names
-		
+
 		std::map<std::string, std::string> controller_group; // controller to group mapping
 		std::map<std::string, std::string> controller_title; // user displayed title for controller
 		std::map<std::string, Machine::Signal::Description> output;
@@ -131,14 +124,14 @@ private:
 		/* Used when creating an ordinary handle. */
 		Handle(std::string dynlib);
 		~Handle();
-	public:		
+	public:
 		declare_dynamic *decl;
 		init_dynamic *init;
 		execute_dynamic *exct;
 		reset_dynamic *rset;
 		delete_dynamic *delt;
 		controller_ptr_dynamic *cptr;
-		
+
 		std::string get_name();
 
 		bool is_sink();
@@ -161,7 +154,7 @@ private:
 		int get_fine_midi_controller(const std::string &ctrl);
 
 		std::string get_hint();
-		
+
 		/*
 		 * Statics
 		 *
@@ -174,7 +167,7 @@ private:
 		static std::map<std::string, Handle *> name2handle;
 
 		static std::string handle_directory;
-		
+
 		static void load_handle(std::string fname);
 	public:
 		static void refresh_handle_set();
@@ -190,9 +183,9 @@ private:
 	const char *module_name;
 	MachineTable dt;
 	std::map<std::string, void *> controller_ptr;
-	
+
 	Handle *dh;
-		
+
 	// constructor
 	DynamicMachine(Handle *dh, float _xpos, float _ypos);
 	DynamicMachine(Handle *dh, const std::string &new_name);
@@ -203,7 +196,7 @@ private:
 protected:
 	/**** inheritance - virtual ***/
 	/// Returns a set of controller groups
-	virtual std::vector<std::string> internal_get_controller_groups();	
+	virtual std::vector<std::string> internal_get_controller_groups();
 	/// Returns a set of controller names
 	virtual std::vector<std::string> internal_get_controller_names();
 	virtual std::vector<std::string> internal_get_controller_names(const std::string &group_name);
@@ -211,11 +204,11 @@ protected:
 	virtual Controller *internal_get_controller(const std::string &name);
 	/// get a hint about what this machine is (for example, "effect" or "generator")
 	virtual std::string internal_get_hint();
-	
+
 	virtual void fill_buffers();
 	virtual void reset();
 	virtual bool detach_and_destroy();
-	
+
 	// used to get a XML serialized version of
 	// the sequence object
 	virtual std::string get_class_name();
@@ -225,7 +218,7 @@ protected:
 public:
 
 	std::string get_handle_name();
-	
+
 	/*
 	 * static functions and data
 	 *
@@ -242,10 +235,10 @@ public:
 
 	/// return the hint from a handle
 	static std::string get_handle_hint(std::string handle);
-	
+
 	/// refreshes the set of registered machine handles
 	static void refresh_handle_set();
-	
+
 	/// create a dynamic machine instance from a handle
 	static Machine *instance(const std::string &dynamic_machine_handle, float xpos = 0.0, float ypos = 0.0);
 
@@ -264,16 +257,16 @@ private:
 
 	static void enable_low_latency_mode();
 	static void disable_low_latency_mode();
-	
+
 	static void set_signal_defaults(MachineTable *mt,
 					int dim,
 					int len, int res,
-					int frequency);	
+					int frequency);
 	static SignalPointer *get_output_signal(MachineTable *, const char *);
 	static SignalPointer *get_input_signal(MachineTable *, const char *);
 	static SignalPointer *get_next_signal(MachineTable *, SignalPointer *);
 	static SignalPointer *get_static_signal(int index);
-	
+
 	static int get_signal_dimension(SignalPointer *);
 	static int get_signal_channels(SignalPointer *);
 	static int get_signal_resolution(SignalPointer *);
@@ -282,10 +275,10 @@ private:
 	static void *get_signal_buffer(SignalPointer *);
 
 	static void run_simple_thread(void (*thread_function)(void *), void *);
-	
+
 	static int get_recording_filename(
-		struct _MachineTable *, char *dst, unsigned int len); 
-	
+		struct _MachineTable *, char *dst, unsigned int len);
+
 	// inform the system about an internal failure
 	static void register_failure(void *machine_instance, const char *);
 

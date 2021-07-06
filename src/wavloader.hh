@@ -47,9 +47,9 @@ private:
 		uint32_t length;
 		uint8_t *data;
 
-		Chunk(int f) throw(jException);
-		Chunk(uint8_t *mmapped, off_t *current_offset, off_t max_offset) throw(jException);
-		~Chunk() throw();
+		Chunk(int f);
+		Chunk(uint8_t *mmapped, off_t *current_offset, off_t max_offset);
+		~Chunk();
 
 		bool name_is(const std::string &cmp);
 	};
@@ -59,7 +59,7 @@ private:
 	static WavLoader loader_instance;
 
 protected:
-	virtual bool is_signal_valid(const std::string &fname);	
+	virtual bool is_signal_valid(const std::string &fname);
 	virtual void load_static_signal(const std::string &fname, bool only_preview, int static_index);
 
 public:
@@ -74,22 +74,22 @@ public:
 		int f;
 
 		Chunk *format, *data;
-		
+
 		friend class WavLoader;
 
 		MemoryMappedWave(const std::string &fname); // privatize constructor
-		
+
 	public:
 		~MemoryMappedWave();
-		
+
 		uint16_t get_channels_per_sample();
 		uint32_t get_sample_rate();
 		uint16_t get_bits_per_sample();
 		uint32_t get_length_in_samples();
-		
+
 		uint8_t *get_data_pointer();
 
-		static MemoryMappedWave *get(const std::string &fname);		
+		static MemoryMappedWave *get(const std::string &fname);
 	};
 
 };

@@ -42,17 +42,15 @@ namespace RemoteInterface {
 		public:
 			static constexpr const char* FACTORY_NAME		= "ScalesControl";
 
-			ON_CLIENT(
-				static const char* get_key_text(int key);
+			static const char* get_key_text(int key);
 
-				int get_number_of_scales();
+			int get_number_of_scales();
 
-				std::vector<std::string> get_scale_names();
-				std::vector<int> get_scale_keys(int index);
+			std::vector<std::string> get_scale_names();
+			std::vector<int> get_scale_keys(int index);
 
-				std::vector<int> get_custom_scale_keys();
-				void set_custom_scale_keys(std::vector<int>);
-				);
+			std::vector<int> get_custom_scale_keys();
+			void set_custom_scale_keys(std::vector<int>);
 
 			ScalesControl(const Factory *factory, const RemoteInterface::Message &serialized);
 			ScalesControl(int32_t new_obj_id, const Factory *factory);
@@ -100,7 +98,14 @@ namespace RemoteInterface {
 			template <class SerderClassT>
 			void serderize(SerderClassT &serder);
 
+			ON_SERVER(
+				static std::weak_ptr<ScalesControl> serverside_scales_control_reference;
+				)
 		public:
+			ON_SERVER(
+				static std::shared_ptr<ScalesControl> get_scales_object_serverside();
+				)
+
 			class ScalesControlFactory
 				: public FactoryTemplate<ScalesControl>
 			{
