@@ -85,7 +85,7 @@ std::function<void(KammoGUI::GnuVGCanvas::SVGDocument *source,
 	return [action] (KammoGUI::GnuVGCanvas::SVGDocument *source,
 			 KammoGUI::GnuVGCanvas::ElementReference *e,
 			 const KammoGUI::MotionEvent &event) {
-		if(tap_detector.analyze_events(event)) action();
+		       if(tap_detector.analyze_events(event)) action();
 	};
 }
 
@@ -198,7 +198,7 @@ void MainMenu::on_resize() {
 	transform_t.translate(scaled_fw, 0.0);
 	settings_button.set_transform(transform_t);
 
-	backdrop.set_rect_coords(0.0, 0.0, canvas_w, finger_height);
+	backdrop.set_rect_coords(0.0, 0.0, canvas_w / scaling, finger_height / scaling);
 }
 
 void MainMenu::on_connector_event(std::function<void()> f) {

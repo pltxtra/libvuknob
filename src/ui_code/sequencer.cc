@@ -250,7 +250,7 @@ std::shared_ptr<Sequencer::PatternInstance> Sequencer::PatternInstance::create_n
 	KammoGUI::GnuVGCanvas::ElementReference elref(&parent, ss_new_id.str());
 
 	auto rval = std::make_shared<PatternInstance>(elref, _instance_data, ri_seq, event_callback, _zoom_context);
-
+	SATAN_DEBUG("::create_new_pattern_instance() completed.\n");
 	return rval;
 }
 
@@ -497,7 +497,7 @@ void Sequencer::Sequence::set_graphic_parameters(double graphic_scaling_factor,
 	inverse_scaling_factor = 1.0 / graphic_scaling_factor;
 
 	find_child_by_class("seqBackground").set_rect_coords(
-		width, 0, canvas_w, height);
+		0, 0, canvas_w, height);
 
 	auto instance_window = find_child_by_class("instanceWindow");
 	SATAN_DEBUG("instanceWindow found! setting w/h to %f/%f", canvas_w, height);
@@ -603,8 +603,8 @@ void Sequencer::prepare_sequencer(KammoGUI::GnuVGCanvas* cnvs) {
 	notes_icon.set_display("none");
 	loop_icon.set_display("none");
 	length_icon.set_display("none");
-	sequencer_shade.set_display("none");
 	pattern_id_container.set_display("none");
+	sequencer_shade.set_display("none");
 
 	timelines->add_scroll_callback(
 		[this](double _line_width, double _line_offset,
@@ -667,9 +667,11 @@ void Sequencer::refresh_focus(std::weak_ptr<RISequence>ri_seq_w, int instance_st
 		}
 		KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 		transform_t.init_identity();
+		transform_t.scale(0.25, 0.25);
 		transform_t.translate(instance_start_pixel + pixels_per_line * loop_translation, icon_anchor_y);
 		loop_icon.set_transform(transform_t);
 		transform_t.init_identity();
+		transform_t.scale(0.25, 0.25);
 		transform_t.translate(instance_start_pixel + pixels_per_line * instance_length , icon_anchor_y + 0.5 * finger_height);
 		length_icon.set_transform(transform_t);
 		SATAN_ERROR("INITIAL %f, %f, %f, %d, %f\n",
@@ -700,11 +702,13 @@ void Sequencer::focus_on_pattern_instance(double _icon_anchor_x, double _icon_an
 
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	transform_t.init_identity();
+	transform_t.scale(0.25, 0.25);
 	transform_t.translate(icon_anchor_x, icon_anchor_y + finger_height);
 	trashcan_icon.set_transform(transform_t);
 	transform_t.translate(finger_width, 0.0);
 	notes_icon.set_transform(transform_t);
 	transform_t.init_identity();
+	transform_t.scale(0.25, 0.25);
 	transform_t.translate(icon_anchor_x, icon_anchor_y + 2.0 * finger_height);
 	pattern_id_container.set_transform(transform_t);
 

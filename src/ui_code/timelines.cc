@@ -445,11 +445,11 @@ void TimeLines::use_zoom_context(std::shared_ptr<TimeLines::ZoomContext> other_c
 void TimeLines::process_external_scroll_event(const KammoGUI::MotionEvent &event) {
 	auto event_current_x = event.get_x();
 
-	auto quarter_canvas_w = canvas_w / 4.0;
-	if(event_current_x < quarter_canvas_w)
-		scroll_speed = 1.0 - (event_current_x / quarter_canvas_w);
-	else if(event_current_x > (canvas_w - quarter_canvas_w))
-		scroll_speed = -(event_current_x - (canvas_w - quarter_canvas_w)) / quarter_canvas_w;
+	auto autoscroll_zone_w = finger_width * 4.0;
+	if(event_current_x < autoscroll_zone_w)
+		scroll_speed = 1.0 - (event_current_x / autoscroll_zone_w);
+	else if(event_current_x > (canvas_w - autoscroll_zone_w))
+		scroll_speed = -(event_current_x - (canvas_w - autoscroll_zone_w)) / autoscroll_zone_w;
 	else
 		scroll_speed = 0.0;
 	SATAN_ERROR("Pre-scaled scroll_speed: %f\n", scroll_speed);

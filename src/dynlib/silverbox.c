@@ -230,8 +230,6 @@ void execute(MachineTable *mt, void *void_silverbox) {
 		(FTYPE *)mt->get_signal_buffer(outsig);
 	int out_l = mt->get_signal_samples(outsig);
 
-	printf("silverbox execute... has midi input signal, %p len %d\n", midi_in, midi_l);
-	printf("silverbox execute... has mono output signal, %p len %d\n", out, out_l);
 	if(midi_l != out_l)
 		return; // we expect equal lengths..
 
