@@ -35,11 +35,11 @@
 SERVER_CODE(
 
 	Server::ClientAgent::ClientAgent(Session *session, Server *_server)
-	: BasicMessageHandler(std::move(session->get_socket())), server(_server) {
+	: BasicMessageHandler(std::move(session->get_socket()))
+	, server(_server) {
 	}
 
 	Server::ClientAgent::~ClientAgent() {
-		delete session;
 	}
 
 	void Server::ClientAgent::start() {

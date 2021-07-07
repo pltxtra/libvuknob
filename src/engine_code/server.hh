@@ -91,8 +91,8 @@ SERVER_CODE(
 
 		class ClientAgent : public BasicMessageHandler {
 		private:
-			Server *server;
-			Session *session;
+			Server *server = nullptr;
+
 		public:
 			ClientAgent(Session *session, Server *server);
 			virtual ~ClientAgent();
