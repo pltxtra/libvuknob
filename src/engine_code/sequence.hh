@@ -100,6 +100,11 @@ namespace RemoteInterface {
 					return rhs < *this;
 				}
 
+				static constexpr const char* serialize_identifier = "PatternInstance";
+				template <class SerderClassT>
+				static void serderize_single(PatternInstance *trgt, SerderClassT& iserder);
+				template <class SerderClassT> void serderize(SerderClassT& iserder);
+				static PatternInstance* allocate();
 			};
 
 			struct Note {

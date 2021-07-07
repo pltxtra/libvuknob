@@ -1000,6 +1000,11 @@ CLIENT_CODE(
 	void Sequence::add_sequence_listener(std::shared_ptr<Sequence::SequenceListener> sel) {
 		std::lock_guard<std::mutex> lock_guard(base_object_mutex);
 		sequence_listeners.insert(sel);
+		instance_list.for_each(
+			[sel](PatternInstance *pinst) {
+				sel->instance_added(*pinst);
+			}
+			);
 	}
 
 	void Sequence::add_pattern_listener(uint32_t pattern_id, std::shared_ptr<Sequence::PatternListener> pal) {
@@ -1136,6 +1141,39 @@ SERVER_N_CLIENT_CODE(
 	}
 
 	template <class SerderClassT>
+	void Sequence::PatternInstance::serderize_single(PatternInstance *trgt, SerderClassT& iserder) {
+		iserder.process(trgt->pattern_id);
+		iserder.process(trgt->start_at);
+		iserder.process(trgt->loop_length);
+		iserder.process(trgt->stop_at);
+	}
+
+	template <class SerderClassT>
+	void Sequence::PatternInstance::serderize(SerderClassT& iserder) {
+		serderize_single(this, iserder);
+
+		PatternInstance **current_instance = &(next);
+		bool has_next_instance;
+		do {
+			has_next_instance = (*current_instance) != NULL;
+			iserder.process(has_next_instance);
+			if(has_next_instance) {
+				if((*current_instance) == NULL)
+					(*current_instance) = PatternInstance::allocate();
+				serderize_single((*current_instance), iserder);
+				current_instance = &((*current_instance)->next);
+			}
+		} while(has_next_instance);
+
+	}
+
+	Sequence::PatternInstance* Sequence::PatternInstance::allocate() {
+		auto retval = pattern_instance_allocator.allocate();
+		retval->next = NULL;
+		return retval;
+	}
+
+	template <class SerderClassT>
 	void Sequence::Note::serderize_single(Note *trgt, SerderClassT& iserder) {
 		iserder.process(trgt->channel);
 		iserder.process(trgt->program);
@@ -1197,6 +1235,11 @@ SERVER_N_CLIENT_CODE(
 
 		iserder.process(patterns);
 		iserder.process(knob2midi);
+
+		bool has_instance = instance_list.head != NULL;
+		iserder.process(has_instance);
+		if(has_instance)
+			iserder.process(instance_list.head);
 
 		SATAN_DEBUG("[%s] : ----- (post %p) knob2midi.size(%zu)\n", CLIENTORSERVER_STRING, this, knob2midi.size());
 	}
