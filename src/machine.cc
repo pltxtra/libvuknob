@@ -1913,7 +1913,7 @@ void Machine::register_playback_state_listener(std::weak_ptr<PlaybackStateListen
 	int val = count++;
 	SATAN_DEBUG("::register_playback_state_listener() will enqueue machine operation...\n");
 	Machine::machine_operation_enqueue(
-		[&pstate_listener, val] () {
+		[pstate_listener, val] () {
 			SATAN_ERROR("::register_playback_state_listener() machine operation running %d...\n", val);
 			playback_state_listeners.insert(pstate_listener);
 
