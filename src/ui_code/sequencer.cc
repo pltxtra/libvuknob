@@ -91,6 +91,9 @@ void SequencerMenu::on_resize() {
 	finger_width = tmp;
 	tmp = canvas_h / ((double)canvas_height_fingers);
 	finger_height = tmp;
+	root.get_viewport(document_size);
+	// the document is three fingers wide...
+	scaling = (3 * finger_width) / document_size.width;
 }
 
 void SequencerMenu::on_render() {}
@@ -665,13 +668,14 @@ void Sequencer::refresh_focus(std::weak_ptr<RISequence>ri_seq_w, int instance_st
 			loop_translation = 0.0;
 			loop_enabled = false;
 		}
+		auto menu_scaling = sequencer_menu->get_scaling();
 		KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 		transform_t.init_identity();
-		transform_t.scale(0.25, 0.25);
+		transform_t.scale(menu_scaling, menu_scaling);
 		transform_t.translate(instance_start_pixel + pixels_per_line * loop_translation, icon_anchor_y);
 		loop_icon.set_transform(transform_t);
 		transform_t.init_identity();
-		transform_t.scale(0.25, 0.25);
+		transform_t.scale(menu_scaling, menu_scaling);
 		transform_t.translate(instance_start_pixel + pixels_per_line * instance_length , icon_anchor_y + 0.5 * finger_height);
 		length_icon.set_transform(transform_t);
 		SATAN_ERROR("INITIAL %f, %f, %f, %d, %f\n",
@@ -700,15 +704,16 @@ void Sequencer::focus_on_pattern_instance(double _icon_anchor_x, double _icon_an
 	plus_button->hide();
 	tapped_instance_start_at = instance_start_at;
 
+	auto menu_scaling = sequencer_menu->get_scaling();
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
 	transform_t.init_identity();
-	transform_t.scale(0.25, 0.25);
+	transform_t.scale(menu_scaling, menu_scaling);
 	transform_t.translate(icon_anchor_x, icon_anchor_y + finger_height);
 	trashcan_icon.set_transform(transform_t);
 	transform_t.translate(finger_width, 0.0);
 	notes_icon.set_transform(transform_t);
 	transform_t.init_identity();
-	transform_t.scale(0.25, 0.25);
+	transform_t.scale(menu_scaling, menu_scaling);
 	transform_t.translate(icon_anchor_x, icon_anchor_y + 2.0 * finger_height);
 	pattern_id_container.set_transform(transform_t);
 
@@ -972,6 +977,7 @@ void Sequencer::drag_length_icon(const KammoGUI::MotionEvent &event,
 				 std::function<void(int)> drag_length_completed_callback) {
 	timelines->process_external_scroll_event(event);
 
+	auto menu_scaling = sequencer_menu->get_scaling();
 	auto icon_anchor_x = timelines->get_pixel_value_for_sequence_line_position(icon_anchor_x_line_position);
 	auto instance_start_pixel = timelines->get_pixel_value_for_sequence_line_position(instance_start);
 	auto current_line_position = timelines->get_sequence_line_position_at(event.get_x());
@@ -995,6 +1001,7 @@ void Sequencer::drag_length_icon(const KammoGUI::MotionEvent &event,
 			    instance_length,
 			    finger_height);
 		transform_t.init_identity();
+		transform_t.scale(menu_scaling, menu_scaling);
 		transform_t.translate(instance_start_pixel + pixels_per_line * (instance_length + drag_offset), icon_anchor_y + 0.5 * finger_height);
 		length_icon.set_transform(transform_t);
 		tapped_instance.set_rect_coords(
@@ -1018,6 +1025,7 @@ void Sequencer::drag_loop_icon(const KammoGUI::MotionEvent &event,
 			       std::function<void(int)> drag_loop_completed_callback) {
 	timelines->process_external_scroll_event(event);
 
+	auto menu_scaling = sequencer_menu->get_scaling();
 	auto icon_anchor_x = timelines->get_pixel_value_for_sequence_line_position(icon_anchor_x_line_position);
 	auto instance_start_pixel = timelines->get_pixel_value_for_sequence_line_position(instance_start);
 	auto current_line_position = timelines->get_sequence_line_position_at(event.get_x());
@@ -1053,6 +1061,7 @@ void Sequencer::drag_loop_icon(const KammoGUI::MotionEvent &event,
 			    instance_length,
 			    finger_height);
 		transform_t.init_identity();
+		transform_t.scale(menu_scaling, menu_scaling);
 		transform_t.translate(instance_start_pixel + pixels_per_line * loop_translation, icon_anchor_y);
 		loop_icon.set_transform(transform_t);
 		tapped_instance.set_rect_coords(

@@ -40,6 +40,7 @@ private:
 	double finger_width = 10.0, finger_height = 10.0; // sizes in pixels
 	int canvas_width_fingers = 8, canvas_height_fingers = 8; // sizes in "fingers"
 	float canvas_w_inches, canvas_h_inches; // sizes in inches
+	double scaling = 1.0;
 	int canvas_w, canvas_h; // sizes in pixels
 
 public:
@@ -47,6 +48,7 @@ public:
 
 	virtual void on_resize() override;
 	virtual void on_render() override;
+	double get_scaling() { return scaling; }
 };
 
 class Sequencer

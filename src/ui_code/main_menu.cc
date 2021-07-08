@@ -169,14 +169,14 @@ void MainMenu::on_resize() {
 	tmp = canvas_h / ((double)canvas_height_fingers);
 	finger_height = tmp;
 
-	scaling = finger_height / document_size.height;
+	scaling = finger_width / document_size.width;
 
 	SATAN_DEBUG(" ----------------- MAIN MENU w/h: %f, %f\n", document_size.width, document_size.height);
 	SATAN_DEBUG(" ----------------- MAIN MENU scaling: %f, height: %f\n", scaling, finger_height);
 
 	KammoGUI::GnuVGCanvas::SVGMatrix transform_t;;
 	transform_t.scale(scaling, scaling);
-	transform_t.translate(0.0, canvas_h - finger_height);
+	transform_t.translate(0.0, canvas_h - finger_width);
 	root.set_transform(transform_t);
 
 	auto scaled_fw = finger_width / scaling;
@@ -198,7 +198,7 @@ void MainMenu::on_resize() {
 	transform_t.translate(scaled_fw, 0.0);
 	settings_button.set_transform(transform_t);
 
-	backdrop.set_rect_coords(0.0, 0.0, canvas_w / scaling, finger_height / scaling);
+	backdrop.set_rect_coords(0.0, 0.0, canvas_w / scaling, finger_width / scaling);
 }
 
 void MainMenu::on_connector_event(std::function<void()> f) {
