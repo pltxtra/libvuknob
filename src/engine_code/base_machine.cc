@@ -1071,6 +1071,12 @@ SERVER_CODE(
 		auto source = s->second;
 		auto destination = d->second;
 		auto source_name = source->name;
+
+		auto cnxn = Connection{.source_name = source->name, .output_name = output_name,
+				       .destination_name = destination->name, .input_name = input_name};
+		source->add_connection(OutputSocket, cnxn);
+		destination->add_connection(InputSocket, cnxn);
+
 		auto f =
 			[source_name, output_name, input_name](std::shared_ptr<Message> &msg_to_send) {
 				msg_to_send->set_value("src", source_name);
