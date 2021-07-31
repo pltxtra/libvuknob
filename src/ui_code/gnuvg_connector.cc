@@ -1151,11 +1151,14 @@ void GnuVGConnector::show() {
 	auto root = KammoGUI::GnuVGCanvas::ElementReference(this);
 	root.set_display("inline");
 	plus_button.show();
-	trash_button.show();
-	settings_button.show();
+	trash_button.hide();
+	settings_button.hide();
 }
 
 void GnuVGConnector::hide() {
+	if(selected_graphic.lock()) {
+		zoom_restore();
+	}
 	auto root = KammoGUI::GnuVGCanvas::ElementReference(this);
 	root.set_display("none");
 	plus_button.hide();

@@ -28,6 +28,7 @@ class GnuVGConnectionList : public KammoGUI::GnuVGCanvas::SVGDocument{
 private:
 	KammoGUI::GnuVGCanvas::SVGMatrix base_transform_t;
 	KammoGUI::GnuVGCanvas::SVGRect document_size;
+	int canvas_w, canvas_h;
 	double element_vertical_offset, zoom_factor;
 
 	class ConnectionGraphic : public KammoGUI::GnuVGCanvas::ElementReference {

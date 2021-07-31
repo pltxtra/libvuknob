@@ -131,28 +131,17 @@ GnuVGConnectionList::GnuVGConnectionList(KammoGUI::GnuVGCanvas *cnvs) : SVGDocum
 GnuVGConnectionList::~GnuVGConnectionList() {}
 
 void GnuVGConnectionList::on_render() {
-	// Translate the document, and scale it properly to fit the defined viewbox
+	// Resize the backdrop
 	{
-		KammoGUI::GnuVGCanvas::ElementReference root(this);
-
-		KammoGUI::GnuVGCanvas::SVGMatrix transform_t = base_transform_t;
-		root.set_transform(transform_t);
-	}
-
-	// Zoom the backdrop
-	{
-		KammoGUI::GnuVGCanvas::SVGMatrix transform_t;
-
-		transform_t.translate(-(document_size.width / 2.0), -(document_size.height / 2.0));
-		transform_t.scale(zoom_factor * 50.0, zoom_factor * 50.0);
-		transform_t.translate((document_size.width / 2.0), (document_size.height / 2.0));
-
-		backdrop.set_transform(transform_t);
+		std::stringstream opacity;
+		opacity << "opacity:" << (zoom_factor);
+		backdrop.set_style(opacity.str());
+		backdrop.set_rect_coords(0.0, 0.0, canvas_w, canvas_h);
 	}
 
 	// translate each list element
 	{
-		KammoGUI::GnuVGCanvas::SVGMatrix element_transform_t;
+		KammoGUI::GnuVGCanvas::SVGMatrix element_transform_t = base_transform_t;
 
 		for(auto gfx : graphics) {
 			gfx->set_transform(element_transform_t);
@@ -170,12 +159,12 @@ void GnuVGConnectionList::on_render() {
 		zoom_transform_t.translate((document_size.width / 2.0), (document_size.height / 2.0));
 		zoom_transform_t.translate(0.0, -(element_vertical_offset * ((double)graphics.size()) / 2.0) + 0.5 * element_vertical_offset);
 
+		layer.set_transform(base_transform_t);
 		layer.set_transform(zoom_transform_t);
 	}
 }
 
 void GnuVGConnectionList::on_resize() {
-	int canvas_w, canvas_h;
 	float canvas_w_inches, canvas_h_inches;
 
 	// get data
